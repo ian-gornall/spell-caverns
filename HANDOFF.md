@@ -2,8 +2,8 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with
 > no prior context) can pick up and build the game without re-deriving any decisions.
-> Project root: `C:\Users\iango\spell`  •  Last updated after **engine build-order step 1**
-> (lexicon + dataset-integrity tests). Git HEAD `810487d`; tree clean; `npm test` green (14 tests).
+> Project root: `C:\Users\iango\spell`  •  Last updated after **engine build-order step 2**
+> (distractor engine). Git HEAD `ebad6b4` (pre-distractors commit); tree clean; `npm test` green (33 tests).
 
 ---
 
@@ -64,14 +64,25 @@ Non-negotiable design requirements pulled from the goal:
   dataset: `REAL_WORDS` (Set of all correct spellings, for distractor/nonsense exclusion),
   `wordsByPattern(id)`, `wordsByTier(t)`, `getWord(word)`, `byRank()` (sorted shallow copy),
   re-exports `WORDS`/`PATTERNS`.
+- **`src/engine/distractors.js`** — ✅ build-order step 2. PURE wrong-answer engine:
+  `mulberry32(seed)` seeded rng, `shuffle(arr,rng)`, `levenshtein(a,b)`,
+  `generateMisspellings(word,{realWords,max})` (child-error transforms → ranked
+  closest/most-confusable first, excludes the word + real words), and
+  `buildOptions(word,{count,difficulty,curated,realWords,rng})` → shuffled
+  `[{text,correct}]` with exactly `count` options (one correct); curated misspellings
+  go first, `difficulty` 0→1 slides the distractor window easy(back)→hard(front).
 - **`test/data.test.js`** — ✅ 14 tests locking dataset integrity (size, field types,
   syllables join to word, valid pattern ids, unique words, non-decreasing rank, no
   self-misspellings, `PATTERN_BY_ID` coverage) **and** the lexicon helpers. `npm test` green.
-- Git: clean history; latest commit `810487d`.
+- **`test/distractors.test.js`** — ✅ 19 tests for the distractor engine (rng determinism
+  & range, shuffle is a non-mutating permutation, levenshtein known cases, misspellings are
+  well-formed + closest-first + real-word-excluded + capped + deduped, buildOptions count/
+  one-correct/unique/no-real-word/deterministic/difficulty-ramp/curated-first/short-word).
+- Git: clean history; latest commit `ebad6b4` (this milestone adds distractors → next commit).
 
 ### TODO ⛔ (everything that makes it a game — see §6 build order)
-- The engine logic modules (distractors, SRS, assessment, praise, nonsense) + their tests.
-  *(`lexicon.js` is done — start at `distractors.js`.)*
+- The engine logic modules (SRS, assessment, praise, nonsense) + their tests.
+  *(`lexicon.js` + `distractors.js` are done — **start at `praise.js`**.)*
 - The UI: HTML/CSS shell, screen router, audio, state/persistence.
 - The three play surfaces: **rhythm** (fast choices), **puzzle** (drag/drop), **lab**
   (nonsense-word creativity + drawing).
@@ -168,7 +179,7 @@ src/
   engine/   (PURE, test-first)
     lexicon.js              ✅  load WORDS/PATTERNS; REAL_WORDS (Set of all words, for
                                 distractor exclusion), wordsByPattern, wordsByTier, getWord, byRank
-    distractors.js          ⛔  misspelling generator + multiple-choice builder  (DESIGN in §7)
+    distractors.js          ✅  misspelling generator + multiple-choice builder  (DESIGN in §7)
     srs.js                  ⛔  mastery / spaced-repetition engine                 (DESIGN in §7)
     assessment.js           ⛔  adaptive gamified pre-assessment                   (DESIGN in §7)
     praise.js               ⛔  DDR-style speed→praise tiers + phrase pools        (DESIGN in §7)
@@ -195,7 +206,7 @@ src/
                                 "export my data" button
 test/
   data.test.js              ✅  dataset integrity (valid patterns, syllables join, no dups, sorted) + lexicon helpers
-  distractors.test.js       ⛔
+  distractors.test.js       ✅  rng/shuffle/levenshtein + generateMisspellings + buildOptions (ramp, curated, exclusions)
   srs.test.js               ⛔
   assessment.test.js        ⛔
   praise.test.js            ⛔
@@ -208,9 +219,10 @@ test/
 
 1. ~~**`src/engine/lexicon.js` + `test/data.test.js`** — load the data, expose helpers, lock in
    integrity with a test.~~ **✅ DONE** (commit `810487d`, 14 tests green). **← START HERE: step 2.**
-2. **Pure engine modules, test-first**, in this order: `distractors` → `praise` → `srs` →
-   `nonsense` → `assessment`. Each ships with a `*.test.js`. Keep `npm test` green
-   (the **test gate hook runs `npm test` before every Bash** — a red suite will block you).
+2. **Pure engine modules, test-first**, in this order: ~~`distractors`~~ ✅ → **`praise`
+   ← START HERE** → `srs` → `nonsense` → `assessment`. Each ships with a `*.test.js`. Keep
+   `npm test` green (the **test gate hook runs `npm test` before `git commit`** — a red
+   suite blocks the commit, so commit only on green).
 3. **Shell**: `index.html` + `styles.css` + `src/ui.js` + `src/state.js` + `src/audio.js`
    + `src/app.js` with a working **home screen** and audio priming on first tap.
 4. **`src/screens/assess.js`** wired to `engine/assessment.js` — the gamified pre-assessment
@@ -228,10 +240,10 @@ active and will keep the session focused on finishing the game.
 
 ## 7. Pure-engine module designs (signatures to implement)
 
-> NOTE: `distractors.js` was fully drafted in the prior session but its write was cancelled
-> in a batch rejection. Re-create it from this spec.
+> NOTE: `distractors.js` is now ✅ implemented + tested (build-order step 2). Spec kept here
+> for reference; the next module to build is `praise.js`.
 
-**`distractors.js`** — lets the game scale to thousands of words without hand-authored wrong
+**`distractors.js`** ✅ — lets the game scale to thousands of words without hand-authored wrong
 answers, and produces the easy→hard "very similar spellings" endgame.
 - `mulberry32(seed)` → seeded rng; `shuffle(arr, rng)`; `levenshtein(a,b)`.
 - `generateMisspellings(word, {realWords, max})` → ranked list, **closest (most confusable)
