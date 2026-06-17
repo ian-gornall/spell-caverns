@@ -528,12 +528,25 @@ decides MC ("tap the correct spelling") vs. type-in.
 
 ---
 
-## 11. Open questions to confirm with the user (have sensible defaults)
+## 11. Open questions / concerns
 - **Learner's name** for personalization? (default: "Explorer" / configurable in Settings)
-- **Voice** preference for dictation/praise (pick an upbeat English `speechSynthesis` voice; expose
-  on/off + a voice picker in Settings).
 - **Default theme color** of the cavern (default: crystal-blue; configurable).
-None of these block building — defaults are fine; surface them in Settings.
+
+### ⚠️ Play-test concerns raised by the user (2026-06-17) — IMPORTANT
+1. **AUDIO QUALITY (decision pending).** Browser `speechSynthesis` sounds robotic; the
+   user rejected it as "lazy" and wants real high-quality TTS. The timing was fixed (the
+   speed clock now starts only after the word is fully spoken + a 1.5s grace), but the
+   VOICE itself still needs upgrading. Likely path: **pre-generate audio with a good
+   neural TTS** (local **Piper** = free/offline/no-key, OR a cloud neural voice =
+   highest quality/needs key+$) for the word list + the fixed praise/gentle phrase pools,
+   serve as files, fall back to Web Speech if a file is missing, and have the service
+   worker cache them for offline. `audio.say(word,{onDone})` / `speakPraise` are the
+   single integration points to swap. CONFIRM the approach (provider/budget) before building.
+2. **PEDAGOGY / TRANSFERENCE (shelved, must revisit).** Choosing the correct spelling from
+   multiple choices is RECOGNITION, which may not build spelling PRODUCTION/recall. Need
+   production modes (type-in, drag/tap-to-build letters = the puzzle/lab modes) and a way to
+   **test real-world transference** (does in-game gain transfer to spelling the word
+   unaided?). Keep the MC rhythm loop, but don't assume it teaches spelling on its own.
 
 ---
 
