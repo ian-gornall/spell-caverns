@@ -59,7 +59,7 @@ try {
     const c = await ts.count();
     for (let i = 0; i < c; i++) {
       if ((await ts.nth(i).textContent())?.trim() === word) {
-        await ts.nth(i).click();
+        await ts.nth(i).click({ timeout: 1500 });
         return true;
       }
     }
@@ -91,22 +91,33 @@ try {
   }
   if (!wrongClicked) fail('could not find a wrong tile to click');
   await page.waitForTimeout(250);
+  // The verdict text is now the (random) spoken phrase; the WRONG branch is pinned
+  // by its deterministic chip ("The gem was…") + the revealed correct spelling.
   const verdict2 = (await page.locator('.verdict').textContent())?.trim();
+  const chip2 = (await page.locator('.verdict-chip').textContent())?.trim();
   const revealed = await page.locator('.rhythm .tile.reveal').count();
-  if (/try again/i.test(verdict2 || '')) ok(`wrong tap stayed gentle: "${verdict2}"`);
-  else fail(`wrong tap verdict not gentle: "${verdict2}"`);
+  if (/gem was/i.test(chip2 || '')) ok(`wrong tap stayed gentle (phrase "${verdict2}", chip "${chip2}")`);
+  else fail(`wrong tap not handled as a miss: verdict "${verdict2}", chip "${chip2}"`);
   if (revealed >= 1) ok('correct spelling was revealed on the wrong tap');
   else fail('correct spelling was not revealed after a wrong tap');
 
   // --- play out the rest of the wave to the reward screen ---
-  for (let guard = 0; guard < 40; guard++) {
-    const reward = await page.locator('.reward').count();
-    if (reward > 0) break;
-    const live = await page.locator('.rhythm .tiles:not(.locked) .tile').count();
-    if (live > 0) {
-      await page.locator('.rhythm .tiles:not(.locked) .tile').first().click();
+  // Click the CORRECT tile each time: deterministic and quick (correct advances
+  // faster), so the loop reliably reaches the wave reward.
+  for (let guard = 0; guard < 60; guard++) {
+    if ((await page.locator('.reward').count()) > 0) break;
+    const unlocked = await page.locator('.rhythm .tiles:not(.locked) .tile').count();
+    if (unlocked > 0) {
+      const c = await target();
+      try {
+        if (!c || !(await clickExact(c.word))) {
+          await page.locator('.rhythm .tiles:not(.locked) .tile').first().click({ timeout: 1000 });
+        }
+      } catch {
+        /* tiles locked mid-poll — retry next iteration */
+      }
     }
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(250);
   }
   await page.waitForSelector('.reward', { timeout: 8000 });
   const rewardText = (await page.locator('.reward h2').textContent())?.trim();

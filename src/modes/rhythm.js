@@ -30,6 +30,10 @@ const DIST_BASE = { easy: 0.3, medium: 0.55, hard: 0.8 };
 // The live meter spans roughly the speed tiers (perfect 1.2s .. great 3.5s); after
 // this it sits at the floor ("Good", still full credit, just no speed bonus).
 const METER_MS = 3500;
+// After the word finishes being spoken, hold the meter FULL for this long so the
+// learner can comprehend the word and read the choices before the clock starts
+// (play-test feedback 2026-06-17: don't start the timer until the word is spoken).
+const GRACE_MS = 1500;
 const ORDER = ['easy', 'medium', 'hard'];
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
 
@@ -94,9 +98,10 @@ export function startRhythm(ctx) {
   let index = 0;
   let combo = 0;
   let earned = 0; // gems earned this wave (for the reward screen)
-  let startTime = 0;
+  let startTime = 0; // 0 = clock not started yet (still in the read window)
   let locked = false;
   let rafId = 0;
+  let graceTimer = 0;
 
   if (!session.length) {
     sentenceEl.textContent = 'No words to dig right now — try a different difficulty in Settings.';
@@ -133,10 +138,23 @@ export function startRhythm(ctx) {
     return Math.max(0, Math.min(1, base + (ps - 0.5) * 0.4));
   }
 
+  // "Armed" state: meter visible and FULL but not counting down yet — shown while
+  // the word is spoken and during the grace window after it.
+  function armMeter() {
+    speedMeter.style.visibility = 'visible';
+    speedMeter.classList.add('armed');
+    const proj = projectedScore({ responseMs: 0, combo: combo + 1 });
+    potentialEl.textContent = `💎 +${proj.points}`;
+    potentialEl.style.color = proj.color;
+    speedFill.style.width = '100%';
+    speedFill.style.background = proj.color;
+  }
+
   // Live "gems if you answer NOW" meter — depletes as the clock runs (the pressure
-  // to be fast). Uses the exact scoring the award uses (projectedScore).
+  // to be fast). Uses the exact scoring the award uses (projectedScore). Only runs
+  // once the clock has started (startTime set, i.e. after the read window).
   function meterLoop() {
-    if (locked) return;
+    if (locked || !startTime) return;
     const elapsed = performance.now() - startTime;
     const proj = projectedScore({ responseMs: elapsed, combo: combo + 1 });
     potentialEl.textContent = `💎 +${proj.points}`;
@@ -175,23 +193,16 @@ export function startRhythm(ctx) {
   function present() {
     if (index >= session.length) return finish();
     locked = false;
+    startTime = 0; // read window: clock not started yet
+    clearTimeout(graceTimer);
+    cancelAnimationFrame(rafId);
     const entry = session[index];
     renderDots();
     verdictEl.classList.remove('flash');
     verdictEl.textContent = '';
     verdictChip.textContent = '';
-    speedMeter.style.visibility = 'visible';
 
     sentenceEl.replaceChildren(...blankedSentence(entry));
-    audio.say(entry.word);
-
-    // Test hook (Playwright): expose the current target off-DOM so a smoke test can
-    // drive a deterministic correct/wrong tap. Not rendered, not used by gameplay.
-    try {
-      window.__rhythmCurrent = { word: entry.word, index, total: session.length };
-    } catch {
-      /* ignore */
-    }
 
     const opts = buildOptions(entry.word, {
       count: settings.optionCount || 3,
@@ -208,19 +219,44 @@ export function startRhythm(ctx) {
       ),
     );
 
-    startTime = performance.now();
-    cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(meterLoop);
+    // Test hook (Playwright): expose the current target off-DOM so a smoke test can
+    // drive a deterministic correct/wrong tap. Not rendered, not used by gameplay.
+    try {
+      window.__rhythmCurrent = { word: entry.word, index, total: session.length };
+    } catch {
+      /* ignore */
+    }
+
+    // Dictate, then hold the meter FULL (armed) until the word is fully spoken AND a
+    // grace window passes — only THEN does the speed clock start ticking down.
+    armMeter();
+    audio.say(entry.word, {
+      onDone: () => {
+        if (locked) return;
+        clearTimeout(graceTimer);
+        graceTimer = setTimeout(() => {
+          if (locked) return;
+          startTime = performance.now(); // the speed clock starts now
+          speedMeter.classList.remove('armed');
+          cancelAnimationFrame(rafId);
+          rafId = requestAnimationFrame(meterLoop);
+        }, GRACE_MS);
+      },
+    });
   }
 
   function choose(o, entry, btn) {
     if (locked) return;
     locked = true;
+    clearTimeout(graceTimer);
     cancelAnimationFrame(rafId);
     tilesEl.classList.add('locked');
     speedMeter.style.visibility = 'hidden';
+    speedMeter.classList.remove('armed');
 
-    const responseMs = performance.now() - startTime;
+    // Tapping during the read window (clock not started) counts as the fastest tier —
+    // no penalty for answering before the timer begins.
+    const responseMs = startTime ? performance.now() - startTime : 0;
     const correct = !!o.correct;
     const streak = correct ? combo + 1 : 0;
     const verdict = gradeAnswer({ correct, responseMs, combo: streak, rng });

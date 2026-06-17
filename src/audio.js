@@ -127,9 +127,44 @@ function speak(text, { rate = 1, pitch = 1 } = {}) {
   }
 }
 
-// Dictation: clear and only slightly slowed — too slow sounds robotic.
-export function say(word) {
-  speak(word, { rate: 0.92, pitch: 1.02 });
+// Dictation: clear and only slightly slowed — too slow sounds robotic. Calls
+// `onDone` when the word has FINISHED being spoken (so the rhythm meter can wait
+// until then before the clock starts). A fallback timer guarantees `onDone` fires
+// even on engines that never emit `onend` (or when speech is muted/unavailable),
+// estimating the spoken duration from the word length.
+export function say(word, { onDone } = {}) {
+  const text = String(word || '');
+  const estMs = 650 + text.length * 95; // rough spoken length
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    if (typeof onDone === 'function') onDone();
+  };
+
+  if (!settings.voice || !text) {
+    setTimeout(finish, 200); // no dictation, but still hand control back promptly
+    return;
+  }
+  try {
+    if (!window.speechSynthesis) {
+      setTimeout(finish, estMs);
+      return;
+    }
+    const u = new SpeechSynthesisUtterance(text);
+    const v = pickVoice();
+    if (v) u.voice = v;
+    u.rate = 0.92;
+    u.pitch = 1.02;
+    u.volume = settings.volume ?? 1;
+    u.onend = finish;
+    u.onerror = finish;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+    setTimeout(finish, estMs + 600); // safety net if onend never arrives
+  } catch {
+    setTimeout(finish, estMs);
+  }
 }
 
 // Spoken praise: warm + natural (only fired on speed tiers / combos by callers).

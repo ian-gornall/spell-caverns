@@ -373,6 +373,19 @@ button {
   width: 100%;
   border-radius: 999px;
   background: var(--gold);
+  transition: width 0.08s linear;
+}
+/* armed = word being spoken / read-grace: full bar, gently pulsing, not counting */
+.speedmeter.armed .speed-fill {
+  animation: armed-pulse 1.1s ease-in-out infinite;
+}
+.speedmeter.armed .speed-pot {
+  opacity: 0.85;
+}
+@keyframes armed-pulse {
+  50% {
+    opacity: 0.45;
+  }
 }
 
 .tiles {
