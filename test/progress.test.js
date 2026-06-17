@@ -22,6 +22,8 @@ import {
   summary,
   seedFromAssessment,
   tierToPrior,
+  serializeTracker,
+  deserializeTracker,
 } from '../src/engine/progress.js';
 
 // ---------------------------------------------------------------- answerScore
@@ -136,4 +138,46 @@ test('seedFromAssessment replays responses into the tracker identically', () => 
   assert.equal(getRecord(t, 'cat').attempts, 2);
   assert.equal(getRecord(t, 'rhythm').attempts, 1);
   assert.ok(mastery(t, 'cat') > mastery(t, 'rhythm'), 'correct word should outrank the missed one');
+});
+
+// ------------------------------------------------ serialize / deserialize (persistence)
+test('serializeTracker -> JSON -> deserializeTracker round-trips losslessly', () => {
+  const t = createTracker();
+  recordAnswer(t, 'cave', true, { responseMs: 500 });
+  recordAnswer(t, 'cave', true, { responseMs: 1500 });
+  recordAnswer(t, 'gneiss', false, { responseMs: 6000 });
+
+  // Survive an actual JSON string trip (that's what localStorage does).
+  const restored = deserializeTracker(JSON.parse(JSON.stringify(serializeTracker(t))));
+
+  assert.equal(restored.tick, t.tick, 'tick (recency counter) preserved');
+  assert.equal(restored.records.size, t.records.size, 'every record survives');
+  for (const [word, rec] of t.records) {
+    assert.deepEqual(restored.records.get(word), rec, `record for "${word}" preserved`);
+  }
+  // mastery/confidence read back identically through the public helpers
+  assert.equal(mastery(restored, 'cave'), mastery(t, 'cave'));
+  assert.equal(confidence(restored, 'cave'), confidence(t, 'cave'));
+});
+
+test('a deserialized tracker keeps recording correctly (recency/tick continue)', () => {
+  const t = createTracker();
+  recordAnswer(t, 'quartz', true, { responseMs: 800 });
+  const restored = deserializeTracker(serializeTracker(t));
+  const before = mastery(restored, 'quartz');
+  const rec = recordAnswer(restored, 'quartz', false, { responseMs: 7000 });
+  assert.equal(rec.attempts, 2, 'attempt count continues from the restored state');
+  assert.ok(rec.lastSeen > 1, 'tick keeps incrementing after restore');
+  assert.ok(mastery(restored, 'quartz') < before, 'a later miss still pulls mastery down');
+});
+
+test('deserializeTracker tolerates missing/empty input by returning a fresh tracker', () => {
+  for (const bad of [undefined, null, {}, { records: null }]) {
+    const t = deserializeTracker(bad);
+    assert.equal(t.records.size, 0);
+    assert.equal(t.tick, 0);
+    // and it's usable
+    recordAnswer(t, 'x', true, { responseMs: 500 });
+    assert.equal(t.records.size, 1);
+  }
 });

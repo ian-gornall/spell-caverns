@@ -132,6 +132,29 @@ export function summary(tracker, { knownAt = 0.85, confAt = 0.6, shakyBelow = 0.
   };
 }
 
+// --- persistence ---------------------------------------------------------
+// A tracker holds a Map (and a tick counter), neither of which survives
+// JSON.stringify directly. These two convert to/from a plain, JSON-safe object
+// so state.js can park the whole tracker in localStorage and read it back. Pure
+// and browser-agnostic; the round-trip is lossless (see progress.test.js).
+export function serializeTracker(tracker) {
+  return {
+    tick: tracker.tick,
+    // records keyed by word, but we store the values (each already carries .word)
+    records: [...tracker.records.values()].map((r) => ({ ...r })),
+  };
+}
+
+export function deserializeTracker(data) {
+  const tracker = createTracker();
+  if (!data || typeof data !== 'object') return tracker;
+  tracker.tick = Number.isFinite(data.tick) ? data.tick : 0;
+  for (const rec of Array.isArray(data.records) ? data.records : []) {
+    if (rec && typeof rec.word === 'string') tracker.records.set(rec.word, { ...rec });
+  }
+  return tracker;
+}
+
 // Seed a tracker from a pre-assessment result by REPLAYING its responses through
 // recordAnswer — identical to how live play feeds the tracker (no separate path).
 export function seedFromAssessment(tracker, assessmentResult) {
