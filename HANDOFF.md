@@ -2,8 +2,8 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with
 > no prior context) can pick up and build the game without re-deriving any decisions.
-> Project root: `C:\Users\iango\spell`  •  Last updated after **engine build-order step 2**
-> (distractor engine). Git HEAD `ebad6b4` (pre-distractors commit); tree clean; `npm test` green (33 tests).
+> Project root: `C:\Users\iango\spell`  •  Last updated after **engine build-order step 3**
+> (distractor + praise engines). Git HEAD `e3582b2`; tree clean; `npm test` green (45 tests).
 
 ---
 
@@ -78,11 +78,21 @@ Non-negotiable design requirements pulled from the goal:
   & range, shuffle is a non-mutating permutation, levenshtein known cases, misspellings are
   well-formed + closest-first + real-word-excluded + capped + deduped, buildOptions count/
   one-correct/unique/no-real-word/deterministic/difficulty-ramp/curated-first/short-word).
-- Git: clean history; latest commit `ebad6b4` (this milestone adds distractors → next commit).
+- **`src/engine/praise.js`** — ✅ build-order step 3. PURE DDR/Pump-It-Up reinforcement:
+  `SPEED_TIERS` (perfect ≤1200ms / amazing ≤2200 / great ≤3500 / good else; each with
+  label, color, point mult, spoken-phrase pool), `MISS_TIER`, `BASE_POINTS`, `COMBO_PHRASES`,
+  `GENTLE_PHRASES`, and `gradeAnswer({correct,responseMs,combo,rng})` →
+  `{tier,label,phrase,points,mult,color,combo,isCombo}`. Points = `BASE_POINTS*mult*comboFactor`
+  (combo bonus +0.1/streak, capped at 20). Milestones every 5 → celebratory combo phrase.
+  Wrong → gentle phrase, 0 points, streak reset (no harsh buzz).
+- **`test/praise.test.js`** — ✅ 12 tests (tier table shape/ordering, speed-tier boundaries,
+  invalid-time fallback, faster/higher-combo scores more, combo cap, base scoring, milestone
+  combo phrases, non-milestone uses tier pool, gentle wrong branch, seeded determinism, no-rng).
+- Git: clean history; latest commit `e3582b2` (this milestone adds praise → next commit).
 
 ### TODO ⛔ (everything that makes it a game — see §6 build order)
-- The engine logic modules (SRS, assessment, praise, nonsense) + their tests.
-  *(`lexicon.js` + `distractors.js` are done — **start at `praise.js`**.)*
+- The engine logic modules (SRS, assessment, nonsense) + their tests.
+  *(`lexicon.js` + `distractors.js` + `praise.js` are done — **start at `srs.js`**.)*
 - The UI: HTML/CSS shell, screen router, audio, state/persistence.
 - The three play surfaces: **rhythm** (fast choices), **puzzle** (drag/drop), **lab**
   (nonsense-word creativity + drawing).
@@ -182,7 +192,7 @@ src/
     distractors.js          ✅  misspelling generator + multiple-choice builder  (DESIGN in §7)
     srs.js                  ⛔  mastery / spaced-repetition engine                 (DESIGN in §7)
     assessment.js           ⛔  adaptive gamified pre-assessment                   (DESIGN in §7)
-    praise.js               ⛔  DDR-style speed→praise tiers + phrase pools        (DESIGN in §7)
+    praise.js               ✅  DDR-style speed→praise tiers + phrase pools        (DESIGN in §7)
     nonsense.js             ⛔  pattern-based nonsense-word generator              (DESIGN in §7)
   state.js                  ⛔  localStorage store: profile, settings, SRS cards, progress,
                                 feedback log, telemetry; export/import JSON
@@ -209,7 +219,7 @@ test/
   distractors.test.js       ✅  rng/shuffle/levenshtein + generateMisspellings + buildOptions (ramp, curated, exclusions)
   srs.test.js               ⛔
   assessment.test.js        ⛔
-  praise.test.js            ⛔
+  praise.test.js            ✅  tier boundaries, speed+combo scoring, milestone phrases, gentle wrong branch
   nonsense.test.js          ⛔
 ```
 
@@ -219,8 +229,8 @@ test/
 
 1. ~~**`src/engine/lexicon.js` + `test/data.test.js`** — load the data, expose helpers, lock in
    integrity with a test.~~ **✅ DONE** (commit `810487d`, 14 tests green). **← START HERE: step 2.**
-2. **Pure engine modules, test-first**, in this order: ~~`distractors`~~ ✅ → **`praise`
-   ← START HERE** → `srs` → `nonsense` → `assessment`. Each ships with a `*.test.js`. Keep
+2. **Pure engine modules, test-first**, in this order: ~~`distractors`~~ ✅ → ~~`praise`~~ ✅
+   → **`srs` ← START HERE** → `nonsense` → `assessment`. Each ships with a `*.test.js`. Keep
    `npm test` green (the **test gate hook runs `npm test` before `git commit`** — a red
    suite blocks the commit, so commit only on green).
 3. **Shell**: `index.html` + `styles.css` + `src/ui.js` + `src/state.js` + `src/audio.js`
@@ -255,7 +265,7 @@ answers, and produces the easy→hard "very similar spellings" endgame.
   distractors from the front of the closest-first pool); **0 = easy** (more obviously wrong).
   Use the word's curated `misspellings` first, then generated; guarantee enough options.
 
-**`praise.js`** — DDR/Pump-It-Up reinforcement.
+**`praise.js`** ✅ — DDR/Pump-It-Up reinforcement (implemented + tested, build-order step 3).
 - `SPEED_TIERS` e.g. perfect(≤~1.2s) / amazing(≤~2.2s) / great(≤~3.5s) / good(else), each with
   label, color, point multiplier.
 - `gradeAnswer({correct, responseMs, combo, rng})` → `{tier, label, phrase, points, mult, color}`.
