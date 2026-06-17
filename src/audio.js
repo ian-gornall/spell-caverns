@@ -1,20 +1,53 @@
 // src/audio.js — multisensory feedback: spoken dictation/praise + synth SFX.
 //
-// Two engines (HANDOFF §4):
-//   - Web Speech (`speechSynthesis`) reads the target word aloud (dictation) and
-//     speaks speed-tier / combo praise — the design's "key" requirement.
-//   - Web Audio synthesizes short chimes/zaps/fanfares for INSTANT feedback on
-//     every answer (no asset files; TTS alone lags if queued every tap).
+// Voice (dictation + spoken praise) prefers PRE-GENERATED neural-TTS clips
+// (audio/words/<slug>.mp3, audio/phrases/<slug>.mp3, listed in audio/manifest.json
+// — see scripts/gen_audio.mjs) because browser speechSynthesis sounds robotic. If a
+// clip isn't available it falls back to Web Speech, so the app always has a voice.
+// Web Audio synthesizes short chimes/zaps/fanfares for INSTANT feedback on every
+// answer (TTS alone lags if queued every tap).
 //
 // iOS unlock: audio + speech must be started by a USER GESTURE — `prime()` is
-// called from the first tap (see app.js). Everything is wrapped so a browser
-// with no audio/voices (e.g. headless Playwright) degrades silently, never throws.
+// called from the first tap (see app.js). Everything is wrapped so a browser with
+// no audio/voices (e.g. headless Playwright) degrades silently, never throws.
 // This is a UI module — never imported by `node --test`.
 
 let actx = null; // Web Audio context (created on prime)
 let primed = false;
 let voices = [];
 let settings = { voice: true, volume: 0.85, voiceName: null };
+
+// Pre-generated clip manifest (sets of slugs) + reusable <audio> players.
+let manifest = null; // { words:Set, phrases:Set } once loaded
+let manifestPromise = null;
+let clipEl = null; // dictation player
+let praiseEl = null; // praise player
+
+// Must match the slug() in scripts/gen_audio.mjs so runtime lookups hit the files.
+function slug(s) {
+  return String(s)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+// Load audio/manifest.json once. Absent manifest => Web Speech only (no error).
+function ensureManifest() {
+  if (manifestPromise) return manifestPromise;
+  manifestPromise = (async () => {
+    try {
+      const res = await fetch('/audio/manifest.json', { cache: 'no-cache' });
+      if (res.ok) {
+        const m = await res.json();
+        manifest = { words: new Set(m.words || []), phrases: new Set(m.phrases || []) };
+      }
+    } catch {
+      /* no manifest — fall back to Web Speech */
+    }
+  })();
+  return manifestPromise;
+}
+ensureManifest(); // kick off early (harmless if it 404s)
 
 export function configure(s) {
   settings = { ...settings, ...s };
@@ -42,8 +75,13 @@ try {
   /* ignore */
 }
 
-// Unlock audio during a user gesture. Resumes/creates the AudioContext and
-// "warms up" speechSynthesis with a near-silent utterance so later speech works.
+// A 0.05s silent WAV — played (muted) during the gesture to unlock <audio> on iOS
+// so later programmatic clip playback (on auto-advance) is allowed.
+const SILENT_WAV =
+  'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+
+// Unlock audio during a user gesture: resume the AudioContext, warm up
+// speechSynthesis, and unlock the reusable <audio> players (iOS needs all three).
 export function prime() {
   if (primed) return;
   try {
@@ -65,6 +103,20 @@ export function prime() {
   } catch {
     /* no speech */
   }
+  try {
+    clipEl = clipEl || new Audio();
+    praiseEl = praiseEl || new Audio();
+    for (const a of [clipEl, praiseEl]) {
+      a.muted = true;
+      a.src = SILENT_WAV;
+      const p = a.play();
+      if (p && p.then) p.then(() => { a.pause(); a.muted = false; }).catch(() => { a.muted = false; });
+      else a.muted = false;
+    }
+  } catch {
+    /* no HTMLAudio */
+  }
+  ensureManifest();
   primed = true;
 }
 
@@ -95,12 +147,20 @@ function pickVoice() {
   return pool.slice().sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
 }
 
-// Stop any in-flight speech immediately (called when changing screens).
+// Stop any in-flight voice immediately (speech + clip players) when changing screens.
 export function stop() {
   try {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   } catch {
     /* ignore */
+  }
+  for (const a of [clipEl, praiseEl]) {
+    if (!a) continue;
+    try {
+      a.pause();
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -110,66 +170,98 @@ export function listVoices() {
   return voices.filter((v) => /^en/i.test(v.lang));
 }
 
-function speak(text, { rate = 1, pitch = 1 } = {}) {
-  if (!settings.voice || !text) return;
+// Speak via Web Speech (the fallback path). Calls `onDone` when finished, with a
+// length-based safety timer for engines that never fire `onend`.
+function speakTTS(text, { rate = 1, pitch = 1, onDone } = {}) {
+  const done = onceFn(onDone);
+  const estMs = 650 + String(text).length * 95;
+  if (!settings.voice || !text) {
+    setTimeout(done, 160);
+    return;
+  }
   try {
-    if (!window.speechSynthesis) return;
+    if (!window.speechSynthesis) {
+      setTimeout(done, estMs);
+      return;
+    }
     const u = new SpeechSynthesisUtterance(String(text));
     const v = pickVoice();
     if (v) u.voice = v;
     u.rate = rate;
     u.pitch = pitch;
     u.volume = settings.volume ?? 1;
+    u.onend = done;
+    u.onerror = done;
     window.speechSynthesis.cancel(); // never queue — keeps feedback snappy
     window.speechSynthesis.speak(u);
+    setTimeout(done, estMs + 600); // safety net
   } catch {
-    /* ignore */
+    setTimeout(done, estMs);
   }
 }
 
-// Dictation: clear and only slightly slowed — too slow sounds robotic. Calls
-// `onDone` when the word has FINISHED being spoken (so the rhythm meter can wait
-// until then before the clock starts). A fallback timer guarantees `onDone` fires
-// even on engines that never emit `onend` (or when speech is muted/unavailable),
-// estimating the spoken duration from the word length.
+function onceFn(fn) {
+  let called = false;
+  return () => {
+    if (called) return;
+    called = true;
+    if (typeof fn === 'function') fn();
+  };
+}
+
+// Play a pre-generated clip on a reusable <audio>. onDone on 'ended'; onFail on any
+// load/play error (caller then falls back to Web Speech).
+function playClip(el, url, { onDone, onFail } = {}) {
+  const a = el || new Audio();
+  const done = onceFn(onDone);
+  const fail = onceFn(onFail);
+  try {
+    a.onended = done;
+    a.onerror = fail;
+    a.volume = settings.volume ?? 1;
+    a.muted = false;
+    a.src = url;
+    a.currentTime = 0;
+    const p = a.play();
+    if (p && p.catch) p.catch(fail);
+  } catch {
+    fail();
+  }
+  return a;
+}
+
+// Dictation: play the word's clip if we have one, else Web Speech. Calls `onDone`
+// when the word has FINISHED (so the rhythm meter waits before the clock starts).
 export function say(word, { onDone } = {}) {
   const text = String(word || '');
-  const estMs = 650 + text.length * 95; // rough spoken length
-  let done = false;
-  const finish = () => {
-    if (done) return;
-    done = true;
-    if (typeof onDone === 'function') onDone();
-  };
-
+  const done = onceFn(onDone);
   if (!settings.voice || !text) {
-    setTimeout(finish, 200); // no dictation, but still hand control back promptly
+    setTimeout(done, 160);
     return;
   }
-  try {
-    if (!window.speechSynthesis) {
-      setTimeout(finish, estMs);
-      return;
-    }
-    const u = new SpeechSynthesisUtterance(text);
-    const v = pickVoice();
-    if (v) u.voice = v;
-    u.rate = 0.92;
-    u.pitch = 1.02;
-    u.volume = settings.volume ?? 1;
-    u.onend = finish;
-    u.onerror = finish;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-    setTimeout(finish, estMs + 600); // safety net if onend never arrives
-  } catch {
-    setTimeout(finish, estMs);
+  const s = slug(text);
+  if (manifest && manifest.words.has(s)) {
+    clipEl = playClip(clipEl, `/audio/words/${s}.mp3`, {
+      onDone: done,
+      onFail: () => speakTTS(text, { rate: 0.92, pitch: 1.02, onDone: done }),
+    });
+  } else {
+    speakTTS(text, { rate: 0.92, pitch: 1.02, onDone: done });
   }
 }
 
-// Spoken praise: warm + natural (only fired on speed tiers / combos by callers).
+// Spoken praise: prefer the clip; warm + natural Web Speech otherwise. (Only fired
+// on speed tiers / combos by callers, so it never lags the per-tap feedback.)
 export function speakPraise(phrase) {
-  speak(phrase, { rate: 1.0, pitch: 1.1 });
+  if (!settings.voice || !phrase) return;
+  const s = slug(phrase);
+  if (manifest && manifest.phrases.has(s)) {
+    praiseEl = playClip(praiseEl, `/audio/phrases/${s}.mp3`, {
+      onFail: () => speakTTS(phrase, { rate: 1.0, pitch: 1.1 }),
+    });
+  } else {
+    speakTTS(phrase, { rate: 1.0, pitch: 1.1 });
+  }
 }
 
 // --- Web Audio synth SFX -----------------------------------------------------

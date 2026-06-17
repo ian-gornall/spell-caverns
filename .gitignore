@@ -1,3 +1,6 @@
 node_modules/
 data/_raw_freq.txt
 scripts/smoke.png
+# Generated TTS audio — regenerable via scripts/gen_audio.mjs (committed once the
+# voice/source is finalized; ignored while only a partial test set exists).
+audio/

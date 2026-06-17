@@ -128,6 +128,28 @@ try {
   await page.waitForSelector('.rhythm .tile', { timeout: 5000 });
   ok('"Keep mining" started a fresh wave');
 
+  // --- pre-generated TTS clip wiring: a clip is a valid, loadable MP3 in-browser ---
+  const clipOk = await page.evaluate(async () => {
+    try {
+      const res = await fetch('/audio/manifest.json', { cache: 'no-cache' });
+      if (!res.ok) return 'no manifest (' + res.status + ')';
+      const m = await res.json();
+      if (!m.phrases || !m.phrases.length) return 'manifest has no phrases yet';
+      const s = m.phrases[0];
+      const a = new Audio(`/audio/phrases/${s}.mp3`);
+      return await new Promise((resolve) => {
+        a.addEventListener('loadeddata', () => resolve('ok:' + s));
+        a.addEventListener('error', () => resolve('error loading ' + s));
+        a.load();
+        setTimeout(() => resolve('timeout loading ' + s), 4000);
+      });
+    } catch (e) {
+      return 'exc:' + e.message;
+    }
+  });
+  if (/^ok:/.test(clipOk)) ok(`generated TTS clip loads + decodes in-browser (${clipOk})`);
+  else fail(`TTS clip did not load: ${clipOk}`);
+
   await page.screenshot({ path: 'scripts/smoke.png', fullPage: false });
   ok('screenshot saved to scripts/smoke.png');
 } catch (e) {
