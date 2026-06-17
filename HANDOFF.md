@@ -2,9 +2,10 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with
 > no prior context) can pick up and build the game without re-deriving any decisions.
-> Project root: `C:\Users\iango\spell`  •  Last updated 2026-06-17 after the **pure engine
-> was completed + the dataset was expanded + UX research was documented**.
-> Git HEAD `48ba130`; tree clean; `npm test` green (**87 tests**).
+> Project root: `C:\Users\iango\spell`  •  Last updated 2026-06-17 after the **PWA shell +
+> the rhythm-mode vertical slice were built and verified in a real browser**.
+> Git HEAD `44b4e90`; tree clean; `npm test` green (**90 tests**); UI smoke-tested with
+> Playwright (`node scripts/smoke.mjs`, server running). The game is now PLAYABLE.
 
 ---
 
@@ -15,26 +16,46 @@
   spelling-pattern families. Rebuildable: `node scripts/merge.mjs` (chunks + `curated.js` +
   `supplement.js`).
 - **The entire PURE DECISION ENGINE is complete + tested** (`src/engine/`, all `node --test`):
-  `lexicon` · `distractors` · `praise` · `assessment` · `progress` · `session` · `nonsense`.
-  **87 tests green.** See §2 for each module's API and §4 for the design decisions behind them.
-- **`UX.md`** — research-backed UI/UX design guide (exemplars + child-UX principles + the touch
-  rules). **Read it before building any UI.**
+  `lexicon` · `distractors` · `praise` · `assessment` · `progress` (now also
+  `serializeTracker`/`deserializeTracker` for persistence) · `session` · `nonsense`.
+  **90 tests green.** See §2 for each module's API and §4 for the design decisions behind them.
+- **`UX.md`** — research-backed UI/UX design guide. Followed for the shell below.
+- **✅ PWA SHELL + RHYTHM MODE — built and verified in a real browser (the game is PLAYABLE):**
+  - `index.html` (iPad full-screen PWA meta) + `styles.css` (crystal-cavern theme, big touch
+    targets, praise tier colors).
+  - `src/state.js` (localStorage store: profile/settings/gems/stats/feedback + the LIVE mastery
+    tracker; export/import/reset), `src/audio.js` (Web Speech dictation + spoken praise, Web Audio
+    synth SFX; primed on first gesture; **degrades silently with no audio/voices**), `src/ui.js`
+    (`el()` helper, screen router, shared gem/depth header, toast, particle burst), `src/app.js`
+    (bootstrap, `ctx` wiring, audio priming, route table).
+  - `src/screens/home.js` (big themed menu), `src/screens/settings.js` (difficulty/length/voice/
+    volume/name + export-import-reset; **locked difficulties explain how to unlock**),
+    `src/screens/progress.js` (gem haul, cavern depth, mastery spectrum, recent-days strip).
+  - `src/modes/rhythm.js` — **THE CORE LOOP**: `buildSession` → dictate + blanked sentence →
+    `buildOptions` tiles → tap → `gradeAnswer` (SFX + big colored label + spoken speed/combo praise +
+    gem-burst + combo meter) → `recordAnswer` → advance → wave-complete reward that keeps the loop
+    going. Distractor similarity adapts per word from `predictedSuccess`. Wrong stays gentle + reveals
+    the correct spelling. (Carries a small off-DOM test hook `window.__rhythmCurrent` for the smoke test.)
+  - `scripts/smoke.mjs` — **Playwright** smoke test (home → Play → correct tap mines gems + PERFECT
+    praise → loop advances → wrong tap gentle + reveal → wave reward → Keep mining; zero console
+    errors). Run: `npm start` then `node scripts/smoke.mjs`. (Playwright installed `--no-save`, so
+    `package.json` stays dependency-free; `node_modules` + `scripts/smoke.png` are git-ignored.)
 
-**⛔ NOTHING of the UI exists yet.** Next is the PWA front end.
-
-**→ NEXT ACTION (agreed with the user): build toward the RHYTHM MODE (the core loop), UI-first.**
-1. Thin shell: `index.html` + `styles.css` + `src/ui.js` + `src/state.js` (localStorage,
-   export/import) + `src/audio.js` (Web Speech dictation + spoken praise, Web Audio SFX; **prime
-   audio on the first Start tap** — iOS requires a user gesture) + `src/app.js` + a home screen.
-2. Vertical slice through `src/modes/rhythm.js`: dictate word (`audio.say`) → show blanked
-   sentence → 3–4 BIG answer tiles from `distractors.buildOptions` → tap one → `praise.gradeAnswer`
-   feedback (SFX + colored label + spoken phrase + gem/combo) → `progress.recordAnswer`. Pull the
-   session's words from `session.buildSession`.
-3. **Verify with Playwright** (real browser, per repo rules — NOT `node --test`; UI is browser-only).
-   Get it playable on the iPad via `npm start`, then iterate on feel with the user.
+**→ NEXT ACTION — keep going down the build order (§6 steps 4, 6, 7, 8, 9):**
+1. **`src/screens/assess.js`** is OPTIONAL as a separate screen: per §4 the pre-assessment is just
+   the COLD-START of rhythm mode (empty tracker → only `easy` unlocked → low-tier words from one
+   family), so the first wave already *is* the assessment. A dedicated gamified intro that runs
+   `engine/assessment.js` explicitly (no "test" framing) is a nice-to-have, not a blocker.
+2. **`src/modes/puzzle.js`** (drag-OR-tap unscramble / fill-the-blank; UX.md §0 forgiving drag) then
+   **`src/modes/lab.js`** (nonsense-word spell + draw-a-meaning canvas → Specimen Collection).
+   Alternate rhythm ↔ puzzle within a session.
+3. **`src/screens/feedback.js`** (emoji rating + too-hard/just-right/too-easy + note; `state.addFeedback`
+   already exists). Flesh out **progress.js** (specimen collection, pattern map).
+4. **PWA packaging**: `manifest.webmanifest` + `sw.js` (offline cache) + home-screen icons; test
+   install on the iPad. Then **README.md**. Final pass.
 
 Build **test-first where it's pure**, keep `npm test` green (the **test gate hook runs `npm test`
-before every `git commit`**), and **commit per milestone**.
+before every `git commit`**), **verify UI changes with `scripts/smoke.mjs`**, and **commit per milestone**.
 
 ---
 
@@ -302,8 +323,8 @@ the learner draws, names, and catalogs in a **Specimen Collection**. Combos = po
 ## 5. Planned file layout (what to create)
 
 ```
-index.html                  ⛔  app shell, full-screen iPad meta, loads src/app.js (type=module)
-styles.css                  ⛔  kid-friendly, big touch targets, cavern/crystal theme
+index.html                  ✅  app shell, full-screen iPad meta, loads src/app.js (type=module)
+styles.css                  ✅  kid-friendly, big touch targets, cavern/crystal theme
 manifest.webmanifest        ⛔  PWA install (name, icons, display:standalone, portrait)
 sw.js                       ⛔  service worker — cache app + data for offline
 README.md                   ⛔  how to run on the iPad, how to give feedback, how to iterate
@@ -311,7 +332,7 @@ UX.md                       ✅  UI/UX design guide (exemplars + child-UX princi
 server.js                   ✅
 package.json                ✅
 data/  (all ✅)             words.js · patterns.js · curated.js · backbone.json · chunks/
-scripts/ (all ✅)          build_backbone.mjs · merge.mjs
+scripts/                    build_backbone.mjs ✅ · merge.mjs ✅ · smoke.mjs ✅ (Playwright UI test)
 src/
   engine/   (PURE, test-first)
     lexicon.js              ✅  load WORDS/PATTERNS; REAL_WORDS (Set of all words, for
@@ -322,26 +343,27 @@ src/
     session.js              ✅  two-axis level builder (patternSpread+masteryTarget)(DESIGN in §7)
     praise.js               ✅  DDR-style speed→praise tiers + phrase pools        (DESIGN in §7)
     nonsense.js             ✅  pattern-based nonsense-word generator (onset+rime) (DESIGN in §7)
-  state.js                  ⛔  localStorage store: profile, settings, mastery/progress,
-                                feedback log, telemetry; export/import JSON
-  audio.js                  ⛔  primeAudio(gesture); say(word) dictation; speakPraise(phrase);
-                                sfx(type) via Web Audio; respects settings (voice/volume)
-  ui.js                     ⛔  screen router, el() helper, header (gem count + cavern depth),
-                                particle/confetti burst, toast, transitions
-  app.js                    ⛔  bootstrap: load state, prime audio on Start, route to home
+    (progress.js also adds serializeTracker/deserializeTracker for localStorage persistence)
+  state.js                  ✅  localStorage store: profile, settings, gems, stats, feedback +
+                                LIVE mastery tracker; export/import/reset JSON
+  audio.js                  ✅  prime() on first gesture; say() dictation; speakPraise();
+                                sfx() via Web Audio; respects settings; silent if no audio/voices
+  ui.js                     ✅  screen router (render), el() helper, shared gem/depth header,
+                                particle burst, toast
+  app.js                    ✅  bootstrap: load state, ctx wiring, prime audio on first tap, routes
   modes/
-    rhythm.js               ⛔  CORE fast loop — DDR style (DESIGN in §8)
+    rhythm.js               ✅  CORE fast loop — DDR style, built + smoke-verified (DESIGN in §8)
     puzzle.js               ⛔  drag/drop unscramble + fill-the-blanks (DESIGN in §8)
     lab.js                  ⛔  nonsense-word spell + draw-a-meaning canvas (DESIGN in §8)
   screens/
-    home.js                 ⛔  big-button menu: Play / Crystal Lab / Pre-Assessment /
-                                Progress / Settings / Feedback
-    assess.js               ⛔  runs engine/assessment.js with gamified UI
-    progress.js             ⛔  gems, depth, words mastered, pattern map, daily chart, specimens
-    settings.js             ⛔  sliders/toggles: speed, difficulty, voice on/off, volume,
-                                learner name, theme color, reset
+    home.js                 ✅  big themed menu (Play live; Crystal Lab/Feedback stubbed)
+    assess.js               ⛔  OPTIONAL — cold-start already happens inside rhythm (see §0/§4)
+    progress.js             ✅  gem haul, cavern depth, mastery spectrum, recent-days strip
+                                (TODO: specimen collection, pattern map)
+    settings.js             ✅  difficulty (unlock-gated)/length/choices/voice/volume/name +
+                                export/import/reset  (TODO: advanced 2-axis custom levels)
     feedback.js             ⛔  emoji fun-rating + "too hard / just right / too easy" + note +
-                                "export my data" button
+                                "export my data" button  (state.addFeedback already exists)
 test/
   data.test.js              ✅  dataset integrity (valid patterns, syllables join, no dups, sorted) + lexicon helpers
   distractors.test.js       ✅  rng/shuffle/levenshtein + generateMisspellings + buildOptions (ramp, curated, exclusions)
