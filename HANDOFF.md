@@ -532,16 +532,26 @@ decides MC ("tap the correct spelling") vs. type-in.
 - **Learner's name** for personalization? (default: "Explorer" / configurable in Settings)
 - **Default theme color** of the cavern (default: crystal-blue; configurable).
 
-### ⚠️ Play-test concerns raised by the user (2026-06-17) — IMPORTANT
-1. **AUDIO QUALITY (decision pending).** Browser `speechSynthesis` sounds robotic; the
-   user rejected it as "lazy" and wants real high-quality TTS. The timing was fixed (the
-   speed clock now starts only after the word is fully spoken + a 1.5s grace), but the
-   VOICE itself still needs upgrading. Likely path: **pre-generate audio with a good
-   neural TTS** (local **Piper** = free/offline/no-key, OR a cloud neural voice =
-   highest quality/needs key+$) for the word list + the fixed praise/gentle phrase pools,
-   serve as files, fall back to Web Speech if a file is missing, and have the service
-   worker cache them for offline. `audio.say(word,{onDone})` / `speakPraise` are the
-   single integration points to swap. CONFIRM the approach (provider/budget) before building.
+### ⚠️ Play-test concerns raised by the user (2026-06-17)
+1. **AUDIO QUALITY — RESOLVED (generation is incremental).** Browser `speechSynthesis` was
+   too robotic. Now: pre-generated **Gemini neural TTS** clips (voice **"Kore"**), served as
+   MP3 and played by `src/audio.js`, with Web Speech as the fallback for any word that
+   doesn't have a clip yet. Pipeline = `scripts/gen_audio.mjs` (`npm run gen:audio`).
+   - **Free-tier reality:** Gemini free tier allows only **10 requests/DAY per model** (3 TTS
+     models ≈ 30/day). The generator works around this by **batching ~30 words per request**
+     and **splitting the returned audio at the N−1 longest silences** (the word count is
+     known, so the split is exact — proven clean at 15/15 and 30/30). That makes the full
+     ~2,950-clip set **free over ~2–3 days**, most-common words first.
+   - **To continue:** `GEMINI_API_KEY=<key> npm run gen:audio` once per day until the manifest
+     covers everything (it's RESUMABLE — skips existing files, rotates across the 3 TTS models,
+     stops when the daily caps are hit). Paid alternative: enable Gemini billing and it finishes
+     in ~1hr for ~**$1–3 one-time** (25 audio-tokens/sec, ≈$0.03/min output) — not required.
+   - **Files:** `audio/words/<slug>.mp3`, `audio/phrases/<slug>.mp3`, `audio/manifest.json`
+     (slug = lowercase, non-alnum→`_`). `server.js` serves `.mp3`. `audio/` is **git-ignored**
+     until a full single-voice set exists, then commit it (or keep regenerable).
+   - ⚠️ **The user's Gemini API key was shared in chat — advise rotating it** in Google AI Studio.
+   - Timing was also fixed earlier: the speed clock starts only after the word is fully spoken
+     + a 1.5s comprehension grace.
 2. **PEDAGOGY / TRANSFERENCE (shelved, must revisit).** Choosing the correct spelling from
    multiple choices is RECOGNITION, which may not build spelling PRODUCTION/recall. Need
    production modes (type-in, drag/tap-to-build letters = the puzzle/lab modes) and a way to
