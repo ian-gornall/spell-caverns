@@ -1,0 +1,12 @@
+{
+  "name": "crystal-spell-caverns",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Crystal Spell Caverns — an adaptive, gamified spelling adventure for iPad (ages 8-10).",
+  "scripts": {
+    "test": "node --test",
+    "start": "node server.js",
+    "serve": "node server.js"
+  }
+}
