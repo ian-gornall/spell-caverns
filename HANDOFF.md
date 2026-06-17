@@ -2,8 +2,39 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with
 > no prior context) can pick up and build the game without re-deriving any decisions.
-> Project root: `C:\Users\iango\spell`  •  Last updated after **engine build-order step 3**
-> (distractor + praise engines). Git HEAD `e3582b2`; tree clean; `npm test` green (45 tests).
+> Project root: `C:\Users\iango\spell`  •  Last updated 2026-06-17 after the **pure engine
+> was completed + the dataset was expanded + UX research was documented**.
+> Git HEAD `48ba130`; tree clean; `npm test` green (**87 tests**).
+
+---
+
+## 0. CURRENT STATE & NEXT ACTION (read first)
+
+**Done so far (all committed, tree clean):**
+- **Word data:** `data/words.js` = **2,919 words**, frequency-ordered, ages 5–13, 63 internal
+  spelling-pattern families. Rebuildable: `node scripts/merge.mjs` (chunks + `curated.js` +
+  `supplement.js`).
+- **The entire PURE DECISION ENGINE is complete + tested** (`src/engine/`, all `node --test`):
+  `lexicon` · `distractors` · `praise` · `assessment` · `progress` · `session` · `nonsense`.
+  **87 tests green.** See §2 for each module's API and §4 for the design decisions behind them.
+- **`UX.md`** — research-backed UI/UX design guide (exemplars + child-UX principles + the touch
+  rules). **Read it before building any UI.**
+
+**⛔ NOTHING of the UI exists yet.** Next is the PWA front end.
+
+**→ NEXT ACTION (agreed with the user): build toward the RHYTHM MODE (the core loop), UI-first.**
+1. Thin shell: `index.html` + `styles.css` + `src/ui.js` + `src/state.js` (localStorage,
+   export/import) + `src/audio.js` (Web Speech dictation + spoken praise, Web Audio SFX; **prime
+   audio on the first Start tap** — iOS requires a user gesture) + `src/app.js` + a home screen.
+2. Vertical slice through `src/modes/rhythm.js`: dictate word (`audio.say`) → show blanked
+   sentence → 3–4 BIG answer tiles from `distractors.buildOptions` → tap one → `praise.gradeAnswer`
+   feedback (SFX + colored label + spoken phrase + gem/combo) → `progress.recordAnswer`. Pull the
+   session's words from `session.buildSession`.
+3. **Verify with Playwright** (real browser, per repo rules — NOT `node --test`; UI is browser-only).
+   Get it playable on the iPad via `npm start`, then iterate on feel with the user.
+
+Build **test-first where it's pure**, keep `npm test` green (the **test gate hook runs `npm test`
+before every `git commit`**), and **commit per milestone**.
 
 ---
 
@@ -485,17 +516,20 @@ None of these block building — defaults are fine; surface them in Settings.
 ---
 
 ### One-paragraph summary for whoever picks this up
-The **word data is finished**: a 2,829-word, frequency-ordered, ages-5–13 dataset
-(`data/words.js`) grouped into 63 internal spelling-pattern families, each word carrying a
-difficulty tier, syllables, plausible child misspellings, and a kid-safe sentence — fully
-rebuildable via `scripts/merge.mjs`. The **data-access layer** (`src/engine/lexicon.js`) and
-its **integrity test suite** (`test/data.test.js`, 14 tests) are also done and green — that
-was build-order step 1. **Everything else is still to build**: the rest of the pure engine
-(distractors / SRS / assessment / praise / nonsense, test-first — **start at `distractors.js`**),
-then the PWA UI — a
-DDR-style fast "tap the right spelling" rhythm mode with spoken speed-tiered praise, a
-drag/drop puzzle mode, and a "Crystal Lab" where the learner spells invented same-pattern
-words and draws their meanings — plus progress, settings, and feedback screens, themed as a
-crystal-cavern mining adventure. Follow §6 build order, keep `npm test` green, and run on the
-iPad with `npm start`.
-```
+The **word data and the entire pure decision engine are finished and tested (87 tests green)**.
+The data: a **2,919-word**, frequency-ordered, ages-5–13 dataset (`data/words.js`) in 63 internal
+spelling-pattern families, each word with tier / syllables / plausible child misspellings /
+kid-safe sentence — rebuildable via `scripts/merge.mjs` (chunks + `curated.js` + `supplement.js`).
+The engine (`src/engine/`, all pure + UI-agnostic): `lexicon` (data access), `distractors`
+(misspelling generator + multiple-choice builder), `praise` (DDR speed→praise tiers + combos),
+`assessment` (cold-start adaptive staircase that seeds the tracker — NO binary known/unknown),
+`progress` (CONTINUOUS mastery tracker: recency+speed-weighted score + confidence; difficulty is
+observed, not assumed), `session` (TWO-axis level builder: `patternSpread` × `masteryTarget`,
+easy/med/hard presets + custom, harder levels UNLOCK with mastery — never forced), and `nonsense`
+(pattern-based Crystal-Lab specimens). The **key design decisions live in §4 — don't relitigate
+them.** **Everything UI is still to build** (see §0 for the exact next action): a thin PWA shell
+then the **rhythm mode** (DDR "tap the right spelling" with spoken praise + gem mining), then
+puzzle mode, the Crystal Lab, and progress/settings/feedback screens — themed as a crystal-cavern
+mining adventure, designed per **`UX.md`** (touch-first, big targets, tap-or-drag, gentle).
+Verify UI with **Playwright**; run on the iPad with `npm start`. Keep `npm test` green; commit per
+milestone.
