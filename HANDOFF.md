@@ -98,14 +98,21 @@ Non-negotiable design requirements pulled from the goal:
   `confidence`, `effectiveDifficulty(t,word,prior)` (blends prior→observed by confidence),
   `predictedSuccess`, `isProductiveStruggle`, `summary` (display buckets known/learning/shaky,
   NOT gates), `seedFromAssessment`, `tierToPrior`. `test/progress.test.js` ✅ (11).
-- Git: clean history; latest commit `207f426` (this milestone adds progress + assessment
-  refactor → next commit).
+- **`src/engine/session.js`** — ✅ two-axis level builder. `DIFFICULTY_PRESETS`
+  (easy/medium/hard as `{patternSpread, masteryTarget}` points), `UNLOCK_THRESHOLDS`,
+  `CONFUSABLE_CLUSTERS` (real pattern ids), `resolveDifficulty` (preset name OR custom axes,
+  clamped), `unlockedDifficulties`/`isUnlocked` (gate by "known" count — unlock, never force),
+  `buildSession(tracker,{difficulty,length,rng,words})` → ordered word entries: opens with a
+  shuffled mixed review of seen words, draws target-band words round-robin across chosen
+  patterns (preferring confusable families as spread rises), orders blocked→interleaved.
+  `test/session.test.js` ✅ (10).
+- Git: clean history; latest commit `710e8e3` (this milestone adds session → next commit).
 
 ### TODO ⛔ (everything that makes it a game — see §6 build order)
 - The engine logic modules + their tests, in REORDERED order (see §4 learning-model decision):
-  ~~`assessment`~~ ✅ → ~~`progress`~~ ✅ → **`session.js` (level builder) ← START HERE** →
-  `nonsense.js`.
-  *(`lexicon` + `distractors` + `praise` + `assessment` + `progress` are done.)*
+  ~~`assessment`~~ ✅ → ~~`progress`~~ ✅ → ~~`session`~~ ✅ → **`nonsense.js` ← START HERE**
+  (last pure-engine module — pattern-based nonsense words for the Crystal Lab).
+  *(`lexicon` + `distractors` + `praise` + `assessment` + `progress` + `session` are done.)*
 - The UI: HTML/CSS shell, screen router, audio, state/persistence.
 - The three play surfaces: **rhythm** (fast choices), **puzzle** (drag/drop), **lab**
   (nonsense-word creativity + drawing).
@@ -221,6 +228,24 @@ caution — see git history of this file / the design chat), is:
   classifier). The continuous mastery tracker (`progress.js`) is the heart; the cold-start
   phase and live play feed it IDENTICALLY.
 
+### Difficulty = TWO ORTHOGONAL AXES + UNLOCK-not-force (decided 2026-06-17 with the user)
+Backed by research (existing programs mostly use ONE graded axis; the adaptive-learning lit
+treats interleaving & retrieval-strength as DISTINCT dimensions — Rau/Aleven/Rummel 2013
+"which dimension should we interleave?"; spacing≠interleaving have distinct theoretical bases;
+in an educational game blocked practice helps *in-game* scores but interleaved helps *transfer*).
+- **Axis 1 `patternSpread` (0..1):** how many spelling patterns a session mixes (interleaving /
+  discriminative contrast). Rising spread PREFERS CONFUSABLE families (not random ones — that's
+  where the discrimination payoff is) and shifts ordering blocked → interleaved.
+- **Axis 2 `masteryTarget` (0..1):** the average "learning score" (= `progress.predictedSuccess`)
+  of the words pulled in. High = review-heavy/easy; low = new-and-shaky/hard (productive struggle).
+- **easy/medium/hard are PRESETS = points in this 2-D space** (`DIFFICULTY_PRESETS`). An advanced
+  config screen passes a custom `{patternSpread, masteryTarget}` — saveable custom levels that
+  override the defaults. `buildSession` accepts a preset name OR a custom axes object.
+- **Harder difficulties UNLOCK with demonstrated mastery — the game NEVER force-bumps.**
+  Unlocking is the nudge (better than forcing, per the user). `unlockedDifficulties(tracker)`
+  gates by the count of "known"-bucket words (`UNLOCK_THRESHOLDS`). Kid freely picks among
+  unlocked; parents see the same.
+
 ### Theme (decided): **"Crystal Spell Caverns"**
 A miner/explorer descends a glowing **crystal cavern** (ties his love of rocks/minerals +
 Zelda exploration + Brotato waves). Each correct spelling **mines a gem**; mastering a
@@ -248,7 +273,7 @@ src/
     distractors.js          ✅  misspelling generator + multiple-choice builder  (DESIGN in §7)
     assessment.js           ✅  cold-start pre-assessment (staircase, continuous) (DESIGN in §7)
     progress.js (engine)    ✅  continuous mastery tracker (replaces srs.js)      (DESIGN in §7)
-    session.js              ⛔  session builder: difficulty+length levers → words (DESIGN in §7)
+    session.js              ✅  two-axis level builder (patternSpread+masteryTarget)(DESIGN in §7)
     praise.js               ✅  DDR-style speed→praise tiers + phrase pools        (DESIGN in §7)
     nonsense.js             ⛔  pattern-based nonsense-word generator              (DESIGN in §7)
   state.js                  ⛔  localStorage store: profile, settings, mastery/progress,
@@ -276,7 +301,7 @@ test/
   distractors.test.js       ✅  rng/shuffle/levenshtein + generateMisspellings + buildOptions (ramp, curated, exclusions)
   assessment.test.js        ✅  cold-start staircase: frontier, responses+timing, seeds tracker
   progress.test.js          ✅  continuous mastery: EMA, confidence, prior→observed blend, buckets
-  session.test.js           ⛔
+  session.test.js           ✅  two axes, unlock gates, confusable-cluster pick, blocked↔interleaved
   praise.test.js            ✅  tier boundaries, speed+combo scoring, milestone phrases, gentle wrong branch
   nonsense.test.js          ⛔
 ```
@@ -289,7 +314,7 @@ test/
    integrity with a test.~~ **✅ DONE** (commit `810487d`, 14 tests green). **← START HERE: step 2.**
 2. **Pure engine modules, test-first** (REORDERED per the §4 learning-model decision):
    ~~`distractors`~~ ✅ → ~~`praise`~~ ✅ → ~~`assessment`~~ ✅ → ~~`progress`~~ ✅ →
-   **`session` (builder) ← START HERE** → `nonsense`.
+   ~~`session`~~ ✅ → **`nonsense` ← START HERE (last engine module)**.
    Each ships with a `*.test.js`. Keep `npm test` green (the **test gate hook runs `npm test`
    before `git commit`** — a red suite blocks the commit, so commit only on green).
 3. **Shell**: `index.html` + `styles.css` + `src/ui.js` + `src/state.js` + `src/audio.js`
@@ -345,7 +370,8 @@ data the kid/parent can read. (Implemented; continuous mastery — see §2 entry
 - NOTE: spaced *mixing* (open a session with a shuffled review of recent words) is enforced by
   `session.js`, not by per-card due-dates.
 
-**`session.js` (level builder)** — turns the kid's two levers into an actual word set.
+**`session.js` (level builder)** ✅ — turns the kid's two levers into an actual word set.
+(Implemented + tested; see the §2 entry + §4 two-axis decision for the final API.)
 - `buildSession(tracker, { difficulty: 'easy'|'medium'|'hard' | 0..1, length, rng })` →
   an ordered list of word entries to play, where **difficulty bundles** *(a)* how many NEW
   words to introduce vs. review and *(b)* the spelling-pattern MIX: `easy` = one pattern family
