@@ -28,6 +28,9 @@ function nav(name, params = {}) {
     toast('Coming soon! ✨');
     return;
   }
+  // Stop any in-flight speech from the screen we're leaving FIRST — then build the
+  // next screen, so its on-mount dictation (rhythm) survives and is actually heard.
+  audio.stop();
   ctx.route = name;
   render(factory(ctx, params));
 }

@@ -2,27 +2,36 @@
 //
 // One word per beat:
 //   dictate the word (audio.say) -> show its sentence with the word BLANKED for
-//   context -> slide in 3-4 BIG answer tiles (distractors.buildOptions) -> learner
-//   TAPS one fast -> praise.gradeAnswer drives instant SFX + a big colored label +
-//   spoken speed/combo praise + a gem-mine burst + the combo meter -> mastery is
-//   recorded (progress.recordAnswer). Wrong stays gentle: soft sound, reveal the
-//   correct spelling, no shaming. A "wave" = `length` words, then a reward that
-//   keeps the loop going (keep mining / home).
+//   context -> a LIVE "gems you'd earn right now" meter ticks DOWN to create speed
+//   pressure -> 3-4 BIG answer tiles (distractors.buildOptions) -> learner TAPS one
+//   -> praise.gradeAnswer drives instant SFX + the spoken praise phrase shown as the
+//   on-screen feedback (so voice == text) + a gem-burst + the combo meter -> mastery
+//   is recorded (progress.recordAnswer). Wrong stays gentle: soft sound, reveal the
+//   correct spelling, no shaming.
+//
+// A "wave" = `length` words; then a reward screen that KEEPS THE LOOP GOING and
+// surfaces progression — newly-unlocked difficulties to celebrate, a "go deeper"
+// (harder) button when one is available, or a countdown to the next unlock — so it
+// feels like you're getting somewhere (play-test feedback 2026-06-17).
 //
 // The session's words come from session.buildSession (the two-axis level builder).
-// Difficulty of the DISTRACTORS adapts per word from the learner's predicted
-// success, so easy words get obvious wrong answers and mastered words get the
-// very-similar-spelling endgame. UI module — verified with Playwright, not node.
-import { el, header, burst, toast } from '../ui.js';
-import { buildSession } from '../engine/session.js';
+// Distractor similarity adapts per word from predicted success. UI module — verified
+// with Playwright, not node.
+import { el, header, burst } from '../ui.js';
+import { buildSession, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { buildOptions, mulberry32 } from '../engine/distractors.js';
-import { gradeAnswer } from '../engine/praise.js';
-import { recordAnswer, predictedSuccess, tierToPrior } from '../engine/progress.js';
+import { gradeAnswer, projectedScore } from '../engine/praise.js';
+import { recordAnswer, predictedSuccess, tierToPrior, summary } from '../engine/progress.js';
 import { REAL_WORDS } from '../engine/lexicon.js';
 
 // Per-preset baseline for how similar the distractors are (0 obvious -> 1 minimal
 // difference). Adapted per word by the learner's predicted success below.
 const DIST_BASE = { easy: 0.3, medium: 0.55, hard: 0.8 };
+// The live meter spans roughly the speed tiers (perfect 1.2s .. great 3.5s); after
+// this it sits at the floor ("Good", still full credit, just no speed bonus).
+const METER_MS = 3500;
+const ORDER = ['easy', 'medium', 'hard'];
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
 
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -33,6 +42,7 @@ export function startRhythm(ctx) {
   const settings = state.settings;
   const seed = (Date.now() >>> 0) || 1;
   const rng = mulberry32(seed);
+  const unlockedAtStart = unlockedDifficulties(state.tracker);
 
   const session = buildSession(state.tracker, {
     difficulty: settings.difficulty,
@@ -44,9 +54,20 @@ export function startRhythm(ctx) {
   const dots = el('div', { class: 'dots' });
   const comboFill = el('div', { class: 'combo-fill' });
   const comboLabel = el('div', { class: 'combo-label' });
-  const verdictEl = el('div', { class: 'verdict' });
+  const verdictEl = el('div', { class: 'verdict' }); // the SPOKEN phrase, shown big
+  const verdictChip = el('div', { class: 'verdict-chip' }); // "+N 💎 · PERFECT"
   const sentenceEl = el('div', { class: 'sentence' });
   const tilesEl = el('div', { class: 'tiles' });
+
+  const potentialEl = el('div', { class: 'speed-pot' });
+  const speedFill = el('div', { class: 'speed-fill' });
+  const speedMeter = el(
+    'div',
+    { class: 'speedmeter' },
+    potentialEl,
+    el('div', { class: 'speed-bar' }, speedFill),
+  );
+
   const hearBtn = el(
     'button',
     { class: 'hear-again', onClick: () => audio.say(session[index]?.word) },
@@ -64,13 +85,8 @@ export function startRhythm(ctx) {
     dots,
     el('div', { class: 'combo-wrap' }, comboFill),
     comboLabel,
-    el(
-      'div',
-      { class: 'prompt' },
-      hearBtn,
-      sentenceEl,
-      verdictEl,
-    ),
+    el('div', { class: 'prompt' }, hearBtn, sentenceEl, verdictEl, verdictChip),
+    speedMeter,
     tilesEl,
   );
 
@@ -80,9 +96,11 @@ export function startRhythm(ctx) {
   let earned = 0; // gems earned this wave (for the reward screen)
   let startTime = 0;
   let locked = false;
+  let rafId = 0;
 
   if (!session.length) {
     sentenceEl.textContent = 'No words to dig right now — try a different difficulty in Settings.';
+    speedMeter.style.display = 'none';
     return screen;
   }
 
@@ -99,12 +117,9 @@ export function startRhythm(ctx) {
   function blankedSentence(entry) {
     const s = entry.sentence || '';
     const re = new RegExp('\\b' + escapeRegex(entry.word) + '\\b', 'i');
-    if (re.test(s)) {
-      // split so the blank can be styled, the rest stays plain text
-      const m = s.match(re);
-      const before = s.slice(0, m.index);
-      const after = s.slice(m.index + m[0].length);
-      return [before, el('span', { class: 'blank' }, '_____'), after];
+    const m = s.match(re);
+    if (m) {
+      return [s.slice(0, m.index), el('span', { class: 'blank' }, '_____'), s.slice(m.index + m[0].length)];
     }
     return [s]; // fallback: keep full sentence (still gives context)
   }
@@ -118,28 +133,43 @@ export function startRhythm(ctx) {
     return Math.max(0, Math.min(1, base + (ps - 0.5) * 0.4));
   }
 
+  // Live "gems if you answer NOW" meter — depletes as the clock runs (the pressure
+  // to be fast). Uses the exact scoring the award uses (projectedScore).
+  function meterLoop() {
+    if (locked) return;
+    const elapsed = performance.now() - startTime;
+    const proj = projectedScore({ responseMs: elapsed, combo: combo + 1 });
+    potentialEl.textContent = `💎 +${proj.points}`;
+    potentialEl.style.color = proj.color;
+    const frac = Math.max(0.04, 1 - elapsed / METER_MS);
+    speedFill.style.width = `${frac * 100}%`;
+    speedFill.style.background = proj.color;
+    rafId = requestAnimationFrame(meterLoop);
+  }
+
   function bumpGems() {
     if (!gemCountEl) return;
     gemCountEl.textContent = String(state.gems || 0);
     gemCountEl.classList.remove('bump');
-    void gemCountEl.offsetWidth; // restart animation
+    void gemCountEl.offsetWidth;
     gemCountEl.classList.add('bump');
   }
 
-  function flashVerdict(text, color) {
-    verdictEl.textContent = text;
+  function flashVerdict(phrase, chip, color) {
+    verdictEl.textContent = phrase;
     verdictEl.style.color = color;
+    verdictChip.textContent = chip;
+    verdictChip.style.color = color;
     verdictEl.classList.remove('flash');
     void verdictEl.offsetWidth;
     verdictEl.classList.add('flash');
   }
 
   function updateCombo(verdict) {
-    const within = combo % 5;
-    comboFill.style.width = `${(within / 5) * 100}%`;
-    if (combo >= 2) comboLabel.textContent = `🔥 Combo x${combo}`;
-    else comboLabel.textContent = '';
+    comboFill.style.width = `${((combo % 5) / 5) * 100}%`;
     if (verdict && verdict.isCombo) comboLabel.textContent = `⚡ ${verdict.phrase}`;
+    else if (combo >= 2) comboLabel.textContent = `🔥 Combo x${combo}`;
+    else comboLabel.textContent = '';
   }
 
   function present() {
@@ -149,6 +179,8 @@ export function startRhythm(ctx) {
     renderDots();
     verdictEl.classList.remove('flash');
     verdictEl.textContent = '';
+    verdictChip.textContent = '';
+    speedMeter.style.visibility = 'visible';
 
     sentenceEl.replaceChildren(...blankedSentence(entry));
     audio.say(entry.word);
@@ -172,20 +204,21 @@ export function startRhythm(ctx) {
     tilesEl.classList.remove('locked');
     tilesEl.replaceChildren(
       ...opts.map((o) =>
-        el(
-          'button',
-          { class: 'tile', onClick: (e) => choose(o, entry, e.currentTarget) },
-          o.text,
-        ),
+        el('button', { class: 'tile', onClick: (e) => choose(o, entry, e.currentTarget) }, o.text),
       ),
     );
+
     startTime = performance.now();
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(meterLoop);
   }
 
   function choose(o, entry, btn) {
     if (locked) return;
     locked = true;
+    cancelAnimationFrame(rafId);
     tilesEl.classList.add('locked');
+    speedMeter.style.visibility = 'hidden';
 
     const responseMs = performance.now() - startTime;
     const correct = !!o.correct;
@@ -201,22 +234,22 @@ export function startRhythm(ctx) {
       earned += verdict.points;
       ctx.store.addGems(verdict.points);
       audio.sfx(verdict.isCombo ? 'combo' : verdict.tier);
-      // speak only on the moments that matter (fast tiers / combos) — not every tap
+      // speak the phrase on the moments that matter (fast tiers / combos), not every
+      // tap (queued TTS lags). When spoken, it matches the on-screen phrase exactly.
       if (verdict.isCombo || verdict.tier === 'perfect' || verdict.tier === 'amazing') {
         audio.speakPraise(verdict.phrase);
       }
       btn.classList.add('correct');
-      flashVerdict(verdict.label, verdict.color);
+      flashVerdict(verdict.phrase, `+${verdict.points} 💎 · ${verdict.label}`, verdict.color);
       const r = btn.getBoundingClientRect();
       burst(r.left + r.width / 2, r.top + r.height / 2, verdict.color, verdict.isCombo ? 26 : 14);
       bumpGems();
     } else {
       combo = 0;
       audio.sfx('miss');
-      audio.speakPraise(verdict.phrase); // gentle encouragement
+      audio.speakPraise(verdict.phrase); // gentle encouragement (matches the text)
       btn.classList.add('wrong');
-      flashVerdict(verdict.label, verdict.color);
-      // reveal the correct spelling so the word is still seen correctly
+      flashVerdict(verdict.phrase, 'The gem was…', verdict.color);
       [...tilesEl.children].forEach((c) => {
         if (c.textContent === entry.word) c.classList.add('reveal');
       });
@@ -229,32 +262,76 @@ export function startRhythm(ctx) {
         index += 1;
         present();
       },
-      correct ? 850 : 1500,
+      correct ? 850 : 1600,
     );
   }
 
   function finish() {
+    cancelAnimationFrame(rafId);
     ctx.store.recordSessionPlayed();
     ctx.save();
+
+    const cur = typeof settings.difficulty === 'string' ? settings.difficulty : null;
+    const unlockedNow = unlockedDifficulties(state.tracker);
+    const newly = unlockedNow.filter((d) => !unlockedAtStart.includes(d));
+    const harder = cur
+      ? ORDER.slice(ORDER.indexOf(cur) + 1).filter((d) => unlockedNow.includes(d))
+      : [];
+    const nextHarder = harder[0];
+    const nextLocked = ORDER.find((d) => !unlockedNow.includes(d));
+    const knownCount = summary(state.tracker).counts.known;
+
     const grade = earned >= (settings.length || 10) * 18 ? '🏆' : earned > 0 ? '💎' : '⛏️';
+    const goHarder = () => {
+      settings.difficulty = nextHarder;
+      ctx.save();
+      ctx.nav('rhythm');
+    };
+
+    const buttons = [];
+    if (nextHarder) {
+      buttons.push(
+        el('button', { class: 'btn primary', onClick: goHarder }, `⏫ Go deeper: ${cap(nextHarder)}`),
+        el('button', { class: 'btn', onClick: () => ctx.nav('rhythm') }, '⛏️ Same depth'),
+      );
+    } else {
+      buttons.push(
+        el('button', { class: 'btn primary', onClick: () => ctx.nav('rhythm') }, '⛏️ Keep mining'),
+      );
+    }
+    buttons.push(
+      el('button', { class: 'btn', onClick: () => ctx.nav('progress') }, '🗺️ Progress'),
+      el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
+    );
+
+    const progressLine =
+      newly.length > 0
+        ? el('div', { class: 'unlock-banner' }, `🔓 New depth unlocked: ${newly.map(cap).join(', ')}!`)
+        : nextLocked
+          ? el(
+              'div',
+              { class: 'unlock-hint' },
+              `🔒 ${cap(nextLocked)} unlocks in ${Math.max(0, UNLOCK_THRESHOLDS[nextLocked] - knownCount)} more mastered word(s)`,
+            )
+          : el('div', { class: 'unlock-banner' }, '🌟 All depths unlocked — you’re a master miner!');
+
     const reward = el(
       'div',
       { class: 'reward' },
       el('div', { class: 'big' }, grade),
       el('h2', {}, 'Wave complete!'),
       el('div', { class: 'earned' }, `+${earned} gems mined`),
-      el('p', { style: { color: 'var(--ink-dim)' } }, `Total: 💎 ${state.gems || 0}`),
-      el(
-        'div',
-        { class: 'row' },
-        el('button', { class: 'btn primary', onClick: () => ctx.nav('rhythm') }, '⛏️ Keep mining'),
-        el('button', { class: 'btn', onClick: () => ctx.nav('progress') }, '🗺️ Progress'),
-        el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
-      ),
+      progressLine,
+      el('p', { style: { color: 'var(--ink-dim)' } }, `Total: 💎 ${state.gems || 0}  ·  Depth ⛏️ ${ctx.depth()}`),
+      el('div', { class: 'row' }, ...buttons),
     );
-    // swap the play area for the reward, keep the header
-    screen.replaceChildren(header(ctx, { title: 'Wave complete', onBack: () => ctx.nav('home') }), reward);
-    if (earned > 0) audio.sfx('combo');
+
+    screen.replaceChildren(
+      header(ctx, { title: 'Wave complete', onBack: () => ctx.nav('home') }),
+      reward,
+    );
+    if (newly.length > 0) audio.sfx('combo');
+    else if (earned > 0) audio.sfx('great');
   }
 
   present();

@@ -15,6 +15,7 @@ import {
   COMBO_PHRASES,
   GENTLE_PHRASES,
   gradeAnswer,
+  projectedScore,
 } from '../src/engine/praise.js';
 
 const SPEC_FIELDS = ['tier', 'label', 'phrase', 'points', 'mult', 'color'];
@@ -123,4 +124,36 @@ test('gradeAnswer works without an injected rng', () => {
   const res = gradeAnswer({ correct: true, responseMs: 800, combo: 1 });
   assert.ok(res.phrase.length > 0);
   assert.ok(res.points > 0);
+});
+
+// ----------------------------------------------------- projectedScore (live meter)
+// The rhythm mode shows a live, ticking "gems you'd earn if you answer NOW" meter.
+// projectedScore is the phrase-free, rng-free core of gradeAnswer's scoring so the
+// meter and the actual award never disagree.
+test('projectedScore agrees with gradeAnswer on tier/points (no phrase, no rng)', () => {
+  for (const ms of [0, 800, 2500, 9000, undefined]) {
+    for (const combo of [0, 3, 50]) {
+      const g = gradeAnswer({ correct: true, responseMs: ms, combo, rng: mulberry32(1) });
+      const p = projectedScore({ responseMs: ms, combo });
+      assert.equal(p.points, g.points, `points mismatch at ms=${ms} combo=${combo}`);
+      assert.equal(p.tier, g.tier);
+      assert.equal(p.label, g.label);
+      assert.equal(p.color, g.color);
+      assert.equal(p.mult, g.mult);
+      assert.ok(!('phrase' in p), 'projectedScore must not carry a phrase');
+    }
+  }
+});
+
+test('projectedScore drops as the answer gets slower (the pressure to be fast)', () => {
+  const fast = projectedScore({ responseMs: 0, combo: 0 }).points;
+  const mid = projectedScore({ responseMs: 2500, combo: 0 }).points;
+  const slow = projectedScore({ responseMs: 9000, combo: 0 }).points;
+  assert.ok(fast > mid && mid > slow, `expected fast>mid>slow, got ${fast},${mid},${slow}`);
+  // a building combo raises the live projection
+  assert.ok(
+    projectedScore({ responseMs: 800, combo: 6 }).points >
+      projectedScore({ responseMs: 800, combo: 0 }).points,
+    'combo should raise the projection',
+  );
 });

@@ -31,8 +31,10 @@ export const DIFFICULTY_PRESETS = {
 };
 
 // How many "known" words (the progress summary bucket) must exist before a
-// difficulty unlocks. Tunable; easy is always available.
-export const UNLOCK_THRESHOLDS = { easy: 0, medium: 12, hard: 30 };
+// difficulty unlocks. Tuned LOW so progression feels fast — the learner should
+// see harder options open up within a wave or two (play-test feedback 2026-06-17).
+// Easy is always available; unlocking is a nudge, never a force (HANDOFF §4).
+export const UNLOCK_THRESHOLDS = { easy: 0, medium: 4, hard: 10 };
 
 // Families that are easily confused — increasing patternSpread prefers mixing
 // WITHIN a cluster so the learner must discriminate (the interleaving payoff),

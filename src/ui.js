@@ -44,15 +44,10 @@ export function setRoot(node) {
   root = node;
 }
 
-// Swap in a new screen. Cancels any in-flight speech so a previous screen's
-// dictation doesn't bleed into the next one.
+// Swap in a new screen. (Speech is stopped in nav() BEFORE the new screen is
+// built, so a screen that dictates on mount — e.g. rhythm — isn't cut off here.)
 export function render(screenNode) {
   if (!root) return;
-  try {
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
-  } catch {
-    /* ignore */
-  }
   root.replaceChildren(screenNode);
 }
 

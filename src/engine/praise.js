@@ -99,6 +99,24 @@ function tierForTime(ms) {
   return SPEED_TIERS.find((tier) => t <= tier.maxMs) || SPEED_TIERS[SPEED_TIERS.length - 1];
 }
 
+// projectedScore({responseMs, combo}) -> { tier, label, color, mult, points } for
+// the CURRENT elapsed time, with NO phrase and NO rng. The rhythm mode calls this
+// every animation frame to show a live "gems you'd earn if you answer now" meter
+// that visibly decays as the clock runs — the DDR pressure to be fast. It is the
+// exact scoring gradeAnswer uses, so the live meter and the real award agree.
+export function projectedScore({ responseMs, combo = 0 } = {}) {
+  const tier = tierForTime(responseMs);
+  const streak = Math.max(0, combo);
+  const comboFactor = 1 + Math.min(streak, COMBO_CAP) * COMBO_STEP;
+  return {
+    tier: tier.key,
+    label: tier.label,
+    color: tier.color,
+    mult: tier.mult,
+    points: Math.round(BASE_POINTS * tier.mult * comboFactor),
+  };
+}
+
 // gradeAnswer({correct, responseMs, combo, rng}) -> a verdict the UI + audio use:
 //   { tier, label, phrase, points, mult, color, combo, isCombo }
 // `combo` is the streak length INCLUDING this answer (so 5,10,15... are milestones).
@@ -117,22 +135,21 @@ export function gradeAnswer({ correct, responseMs, combo = 0, rng } = {}) {
     };
   }
 
-  const tier = tierForTime(responseMs);
   const streak = Math.max(0, combo);
-  const comboFactor = 1 + Math.min(streak, COMBO_CAP) * COMBO_STEP;
-  const points = Math.round(BASE_POINTS * tier.mult * comboFactor);
+  const proj = projectedScore({ responseMs, combo: streak });
+  const tier = SPEED_TIERS.find((t) => t.key === proj.tier) || SPEED_TIERS[SPEED_TIERS.length - 1];
   const isCombo = streak > 0 && streak % COMBO_MILESTONE === 0;
   const phrase = isCombo
     ? pick(COMBO_PHRASES, rng).replace('{combo}', String(streak))
     : pick(tier.phrases, rng);
 
   return {
-    tier: tier.key,
-    label: tier.label,
+    tier: proj.tier,
+    label: proj.label,
     phrase,
-    points,
-    mult: tier.mult,
-    color: tier.color,
+    points: proj.points,
+    mult: proj.mult,
+    color: proj.color,
     combo: streak,
     isCombo,
   };

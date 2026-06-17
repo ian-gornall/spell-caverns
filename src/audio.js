@@ -68,13 +68,40 @@ export function prime() {
   primed = true;
 }
 
+// Names/markers of the higher-quality (neural/natural) voices shipped by the
+// major platforms — picking one of these over the default makes dictation sound
+// far less robotic (play-test feedback). Ordered best-effort, most-natural first.
+const NICE_VOICE = /natural|neural|premium|enhanced|siri|aria|jenny|guy|ava|samantha|allison|serena|google\s+(uk|us)|google us english/i;
+
+function scoreVoice(v) {
+  let s = 0;
+  if (/^en[-_]?us/i.test(v.lang)) s += 3;
+  else if (/^en/i.test(v.lang)) s += 2;
+  if (NICE_VOICE.test(v.name)) s += 5;
+  if (v.localService) s += 1; // local = no network hiccup mid-word
+  return s;
+}
+
 function pickVoice() {
   if (!voices.length) loadVoices();
   if (settings.voiceName) {
     const named = voices.find((v) => v.name === settings.voiceName);
     if (named) return named;
   }
-  return voices.find((v) => /^en/i.test(v.lang)) || voices[0] || null;
+  // Prefer a natural-sounding English voice; fall back to any English, then any.
+  const english = voices.filter((v) => /^en/i.test(v.lang));
+  const pool = english.length ? english : voices;
+  if (!pool.length) return null;
+  return pool.slice().sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
+}
+
+// Stop any in-flight speech immediately (called when changing screens).
+export function stop() {
+  try {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  } catch {
+    /* ignore */
+  }
 }
 
 // English voices for the Settings picker.
@@ -100,14 +127,14 @@ function speak(text, { rate = 1, pitch = 1 } = {}) {
   }
 }
 
-// Dictation: slower + clear so the learner can hear each sound.
+// Dictation: clear and only slightly slowed — too slow sounds robotic.
 export function say(word) {
-  speak(word, { rate: 0.82, pitch: 1 });
+  speak(word, { rate: 0.92, pitch: 1.02 });
 }
 
-// Spoken praise: upbeat and quick (only fired on speed tiers / combos by callers).
+// Spoken praise: warm + natural (only fired on speed tiers / combos by callers).
 export function speakPraise(phrase) {
-  speak(phrase, { rate: 1.05, pitch: 1.12 });
+  speak(phrase, { rate: 1.0, pitch: 1.1 });
 }
 
 // --- Web Audio synth SFX -----------------------------------------------------
