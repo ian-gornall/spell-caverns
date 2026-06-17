@@ -276,6 +276,7 @@ styles.css                  ⛔  kid-friendly, big touch targets, cavern/crystal
 manifest.webmanifest        ⛔  PWA install (name, icons, display:standalone, portrait)
 sw.js                       ⛔  service worker — cache app + data for offline
 README.md                   ⛔  how to run on the iPad, how to give feedback, how to iterate
+UX.md                       ✅  UI/UX design guide (exemplars + child-UX principles, touch rules)
 server.js                   ✅
 package.json                ✅
 data/  (all ✅)             words.js · patterns.js · curated.js · backbone.json · chunks/
@@ -328,8 +329,9 @@ test/
    integrity with a test.~~ **✅ DONE** (commit `810487d`, 14 tests green). **← START HERE: step 2.**
 2. ~~**Pure engine modules, test-first**: `distractors` → `praise` → `assessment` → `progress`
    → `session` → `nonsense`.~~ **✅ ALL DONE — engine complete, 85 tests green.**
-3. **Shell ← START HERE**: `index.html` + `styles.css` + `src/ui.js` + `src/state.js` +
-   `src/audio.js` + `src/app.js` with a working **home screen** and audio priming on first tap.
+3. **Shell ← START HERE** (read **`UX.md`** first — research-backed design guide): `index.html`
+   + `styles.css` + `src/ui.js` + `src/state.js` + `src/audio.js` + `src/app.js` with a working
+   **home screen** and audio priming on first tap. UI verified with **Playwright** (real browser).
 4. **`src/screens/assess.js`** wired to `engine/assessment.js` — the gamified pre-assessment
    that seeds the unknown-word queue.
 5. **`src/modes/rhythm.js`** — the core DDR loop (this is the heart of the game).
