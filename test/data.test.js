@@ -142,3 +142,25 @@ test('byRank returns a sorted shallow copy that does not alias WORDS', () => {
   a.reverse();
   assert.equal(WORDS[0].word, 'the');
 });
+
+// ------------------------------------------------------------- coverage (supplement)
+// The frequency-filtered backbone missed many common, age-appropriate words and
+// left some teaching pattern-families thin. The curated supplement (data/supplement.js)
+// fills those gaps; these tests lock the coverage in so a re-merge can't silently drop it.
+test('common high-frequency words are covered', () => {
+  const must = [
+    'tight', 'knight', 'fright', 'slight', 'tonight', 'brave', 'prize', 'spark',
+    'storm', 'smooth', 'climb', 'gentle', 'gem', 'copper', 'lazy', 'hammer',
+    'giant', 'rabbit', 'spoon', 'crash',
+  ];
+  const missing = must.filter((w) => !REAL_WORDS.has(w));
+  assert.equal(missing.length, 0, `still missing common words: ${missing.join(', ')}`);
+});
+
+test('the -ight teaching family is well populated', () => {
+  const ight = wordsByPattern('ight');
+  assert.ok(ight.length >= 24, `only ${ight.length} -ight words`);
+  for (const w of ['tight', 'slight', 'knight', 'fright']) {
+    assert.ok(ight.some((e) => e.word === w), `-ight family should include ${w}`);
+  }
+});

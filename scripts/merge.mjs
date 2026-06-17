@@ -2,6 +2,7 @@
 //   - data/patterns.js  : canonical spelling-pattern families (re-exported)
 //   - data/chunks/part_*.js : the 12 enriched chunks (authoritative frequency ranks)
 //   - data/curated.js   : the 317 hand-crafted entries, layered on top as a quality overlay
+//   - data/supplement.js: hand-enriched fill-ins for common words/families the backbone missed
 // Drops skip:true entries, dedups, validates, sorts by frequency (rank asc), writes data/words.js.
 import { writeFile } from 'node:fs/promises';
 import { PATTERNS, PATTERN_IDS } from '../data/patterns.js';
@@ -35,10 +36,12 @@ for (let c = 0; c < NCHUNKS; c++) {
   }
 }
 
-// --- layer the curated overlay on top (better sentences + hand-picked misspellings) ---
+// --- layer the curated overlay + supplement on top (better sentences, hand-picked
+//     misspellings, and fill-ins for common words/families the backbone missed) ---
 const { WORDS: CURATED } = await import('../data/curated.js');
+const { WORDS: SUPPLEMENT } = await import('../data/supplement.js');
 let mergedCount = 0, curatedOnly = 0;
-for (const c of CURATED) {
+for (const c of [...CURATED, ...SUPPLEMENT]) {
   const word = String(c.word).toLowerCase();
   if (map.has(word)) {
     const e = map.get(word);

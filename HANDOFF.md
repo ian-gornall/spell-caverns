@@ -44,18 +44,24 @@ Non-negotiable design requirements pulled from the goal:
 
 ### DONE ✅ (the entire word-research / data layer)
 - **`data/words.js`** — the **final, engine-facing dataset**. AUTO-GENERATED; do not
-  hand-edit. **2,829 words**, **frequency-ordered** (`rank` 1 = most common), spanning
+  hand-edit. **2,919 words**, **frequency-ordered** (`rank` 1 = most common), spanning
   **ages 5–13** (difficulty `tier` 1–9). Re-exports `PATTERNS`. Imports cleanly in Node 22.
+  (Was 2,829; +90 from the curated supplement below.)
 - **`data/patterns.js`** — canonical **63 spelling-pattern families** (the single source
   of truth for `pattern` ids). Exports `PATTERNS`, `PATTERN_IDS` (Set), `PATTERN_BY_ID`.
 - **`data/curated.js`** — the **317 hand-crafted entries** (great themed sentences +
   hand-picked misspellings). Used as a quality *overlay* by the merge.
+- **`data/supplement.js`** — ✅ **~90 hand-enriched fill-ins** (2026-06-17) for common,
+  age-appropriate words the frequency backbone missed and to fatten thin teaching families
+  (esp. completed the **-ight** family: tight/slight/knight/fright/tonight/…). Same schema as
+  curated.js; layered in by merge.mjs. `test/data.test.js` now guards this coverage. To add
+  more common gaps, append here and re-run `node scripts/merge.mjs`.
 - **`data/backbone.json`**, **`data/chunks/input_*.json`**, **`data/chunks/part_*.js`** —
   intermediate build artifacts (the 12 enriched chunks). Kept so the dataset is rebuildable.
 - **`scripts/build_backbone.mjs`** — fetches a frequency list, filters to ~3000
   age-appropriate words in frequency order, splits into 12 chunk inputs.
-- **`scripts/merge.mjs`** — merges chunks + curated overlay → `data/words.js`, drops
-  `skip:true`, validates, sorts by frequency. **Rebuild the dataset anytime with
+- **`scripts/merge.mjs`** — merges chunks + curated overlay + supplement → `data/words.js`,
+  drops `skip:true`, validates, sorts by frequency. **Rebuild the dataset anytime with
   `node scripts/merge.mjs`.**
 - **`server.js`** — zero-dependency static server (`npm start`) that prints a LAN URL for
   the iPad. ES modules need http (won't load from `file://`), so this is how you run it.
@@ -153,7 +159,7 @@ Facts the engine relies on:
 - **`pattern` is internal.** Never show the learner a rule or pattern name. Patterns exist
   so the game can (a) interleave similarly-spelled words for implicit learning and
   (b) generate same-pattern **nonsense words** for the creativity lab.
-- Per-tier counts: `{1:145, 2:254, 3:434, 4:344, 5:157, 6:553, 7:487, 8:143, 9:312}`.
+- Per-tier counts (post-supplement): `{1:145, 2:254, 3:448, 4:390, 5:187, 6:553, 7:487, 8:143, 9:312}`.
 - Biggest patterns: `multisyllable`(348), `ending-ed-ing`(225), `advanced-multisyllable`(198),
   `schwa-er-or-ar`(133), `ee-ea`(116), `tricky`(106), `double-cons`(102), `tion`(92)…
 - A few patterns are intentionally thin (`cious-tious:1`, `tricky-ould:4`, `wh:4`,
