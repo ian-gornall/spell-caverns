@@ -106,13 +106,21 @@ Non-negotiable design requirements pulled from the goal:
   shuffled mixed review of seen words, draws target-band words round-robin across chosen
   patterns (preferring confusable families as spread rises), orders blocked→interleaved.
   `test/session.test.js` ✅ (10).
-- Git: clean history; latest commit `710e8e3` (this milestone adds session → next commit).
+- **`src/engine/nonsense.js`** — ✅ pattern-based nonsense-word generator (Crystal Lab).
+  `ONSETS` (shared consonant clusters), `RIMES` (per-pattern {rimes, onsets?}),
+  `NONSENSE_PATTERNS` (39 supported phonetic families), `makeNonsenseWord(patternId,
+  {realWords, rng, avoid})` → pronounceable non-word embodying the pattern (onset+rime model,
+  every combo a legal syllable), or null for unsupported/exhausted. `test/nonsense.test.js` ✅ (8).
+  ⚠️ KNOWN LIMITATION: "real word" = in REAL_WORDS (the 2,829-word dataset only), so some real
+  English words not in the dataset (e.g. "tight", "vogue", "joist") can slip through. Harmless
+  for the Lab; to get true non-words, bundle a larger English exclusion list (polish follow-up).
+- Git: clean history; latest commit `20aa853` (this milestone adds nonsense → next commit).
 
-### TODO ⛔ (everything that makes it a game — see §6 build order)
-- The engine logic modules + their tests, in REORDERED order (see §4 learning-model decision):
-  ~~`assessment`~~ ✅ → ~~`progress`~~ ✅ → ~~`session`~~ ✅ → **`nonsense.js` ← START HERE**
-  (last pure-engine module — pattern-based nonsense words for the Crystal Lab).
-  *(`lexicon` + `distractors` + `praise` + `assessment` + `progress` + `session` are done.)*
+### 🎉 THE PURE ENGINE IS COMPLETE — all 6 modules done, 85 tests green.
+### TODO ⛔ (the game itself — now the PWA UI; see §6 build order step 3+)
+- The UI shell: `index.html` + `styles.css` + `src/ui.js` + `src/state.js` (localStorage,
+  export/import) + `src/audio.js` (Web Speech + Web Audio) + `src/app.js` (bootstrap, prime
+  audio on first tap) + a working home screen. **← START HERE (build-order step 3).**
 - The UI: HTML/CSS shell, screen router, audio, state/persistence.
 - The three play surfaces: **rhythm** (fast choices), **puzzle** (drag/drop), **lab**
   (nonsense-word creativity + drawing).
@@ -275,7 +283,7 @@ src/
     progress.js (engine)    ✅  continuous mastery tracker (replaces srs.js)      (DESIGN in §7)
     session.js              ✅  two-axis level builder (patternSpread+masteryTarget)(DESIGN in §7)
     praise.js               ✅  DDR-style speed→praise tiers + phrase pools        (DESIGN in §7)
-    nonsense.js             ⛔  pattern-based nonsense-word generator              (DESIGN in §7)
+    nonsense.js             ✅  pattern-based nonsense-word generator (onset+rime) (DESIGN in §7)
   state.js                  ⛔  localStorage store: profile, settings, mastery/progress,
                                 feedback log, telemetry; export/import JSON
   audio.js                  ⛔  primeAudio(gesture); say(word) dictation; speakPraise(phrase);
@@ -303,7 +311,7 @@ test/
   progress.test.js          ✅  continuous mastery: EMA, confidence, prior→observed blend, buckets
   session.test.js           ✅  two axes, unlock gates, confusable-cluster pick, blocked↔interleaved
   praise.test.js            ✅  tier boundaries, speed+combo scoring, milestone phrases, gentle wrong branch
-  nonsense.test.js          ⛔
+  nonsense.test.js          ✅  pronounceable non-words per pattern, signatures, avoid/realWord exclusion
 ```
 
 ---
@@ -312,13 +320,10 @@ test/
 
 1. ~~**`src/engine/lexicon.js` + `test/data.test.js`** — load the data, expose helpers, lock in
    integrity with a test.~~ **✅ DONE** (commit `810487d`, 14 tests green). **← START HERE: step 2.**
-2. **Pure engine modules, test-first** (REORDERED per the §4 learning-model decision):
-   ~~`distractors`~~ ✅ → ~~`praise`~~ ✅ → ~~`assessment`~~ ✅ → ~~`progress`~~ ✅ →
-   ~~`session`~~ ✅ → **`nonsense` ← START HERE (last engine module)**.
-   Each ships with a `*.test.js`. Keep `npm test` green (the **test gate hook runs `npm test`
-   before `git commit`** — a red suite blocks the commit, so commit only on green).
-3. **Shell**: `index.html` + `styles.css` + `src/ui.js` + `src/state.js` + `src/audio.js`
-   + `src/app.js` with a working **home screen** and audio priming on first tap.
+2. ~~**Pure engine modules, test-first**: `distractors` → `praise` → `assessment` → `progress`
+   → `session` → `nonsense`.~~ **✅ ALL DONE — engine complete, 85 tests green.**
+3. **Shell ← START HERE**: `index.html` + `styles.css` + `src/ui.js` + `src/state.js` +
+   `src/audio.js` + `src/app.js` with a working **home screen** and audio priming on first tap.
 4. **`src/screens/assess.js`** wired to `engine/assessment.js` — the gamified pre-assessment
    that seeds the unknown-word queue.
 5. **`src/modes/rhythm.js`** — the core DDR loop (this is the heart of the game).
@@ -381,10 +386,11 @@ data the kid/parent can read. (Implemented; continuous mastery — see §2 entry
   introduces new words grouped for productive struggle.
 - All word selection is program-driven (the kid never picks words). Pulls from `tracker`.
 
-**`nonsense.js`** — for the Crystal Lab.
+**`nonsense.js`** ✅ — for the Crystal Lab (implemented + tested; see §2 entry for the API +
+the known real-word-exclusion limitation).
 - `ONSETS` list + `RIMES` per pattern id (e.g. `ight → ["ight"]`, `silent-e-a → ["ake","ame","ate"]`).
 - `makeNonsenseWord(patternId, {realWords, rng, avoid})` → a pronounceable **non-word** in that
-  pattern (e.g. "splight", "dathe"), guaranteed not a real word and not in `avoid`.
+  pattern (e.g. "splight", "dathe"), excluded against `realWords` (the dataset) and `avoid`.
 
 **`assessment.js`** — gamified adaptive pre-assessment (**THE GATE — build first**); **samples
 by frequency**, adapts by tier. Presentation-agnostic: the engine yields words; the screen
