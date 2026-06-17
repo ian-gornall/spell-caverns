@@ -1,14 +1,14 @@
-// src/engine/assessment.js — PURE adaptive pre-assessment ("THE GATE").
+// src/engine/assessment.js — PURE adaptive pre-assessment: the COLD-START phase.
 //
-// Before any levels are built, this figures out which words the learner can and
-// can't spell, so the game never wastes time on words he already knows. It's an
-// adaptive STAIRCASE: ask a small batch of words at a difficulty tier; if he's
-// accurate, climb to a harder tier; when errors appear we've found his
-// "frontier", and we stop. The output seeds the progress tracker:
-//   - knownWords  (don't teach these),
-//   - unknownQueue (teach these, most-common first),
-//   - estimatedTier (where he is now),
-//   - perPattern   (which spelling families are shaky).
+// This is NOT a separate "test" with a known/unknown verdict (HANDOFF §4 — that
+// binary model was rejected as inaccurate). It's the cold-start phase of the same
+// game: with no response data yet, it puts words in front of the learner using
+// the tier/rank PRIOR, via an adaptive STAIRCASE — ask a small batch at a tier;
+// if he's accurate, climb; when errors appear we've found his "frontier", and we
+// stop. Its job is to gather initial, well-spread RESPONSES (with timing) that
+// seed the continuous mastery tracker (progress.js), plus an `estimatedTier`
+// PRIOR anchor for where to start serving. Real difficulty is decided later from
+// his actual responses, not here.
 //
 // PRESENTATION-AGNOSTIC: this engine only decides WHICH word to show next. The
 // screen decides how (tap-the-correct-spelling vs. type-in) using the distractor
@@ -140,9 +140,12 @@ export function nextItem(state) {
   return entry;
 }
 
-// submit(state, word, correct, {fast}) -> records the answer to the pending item.
+// submit(state, word, correct, {responseMs, fast}) -> records the answer to the
+// pending item. `responseMs`/`fast` are carried through to seed the continuous
+// tracker (speed factors into mastery), not used by the staircase itself.
 export function submit(state, word, correct, opts = {}) {
   const fast = !!opts.fast;
+  const responseMs = Number.isFinite(opts.responseMs) ? opts.responseMs : undefined;
   const tier =
     state.pending && state.pending.entry.word === word
       ? state.pending.tier
@@ -150,7 +153,7 @@ export function submit(state, word, correct, opts = {}) {
   const s = stat(state, tier);
   s.asked += 1;
   if (correct) s.correct += 1;
-  state.responses.push({ word, tier, correct: !!correct, fast });
+  state.responses.push({ word, tier, correct: !!correct, fast, responseMs });
   state.askedWords.add(word);
   state.pending = null;
   return state;
@@ -160,44 +163,42 @@ export function isDone(state) {
   return !!state.done;
 }
 
-// result(state) -> the assessment findings that seed the progress tracker.
+// result(state) -> the cold-start findings. Deliberately NO known/unknown sets:
+//   - responses     : raw answers (with timing) to seed the progress tracker,
+//   - estimatedTier  : the PRIOR anchor for where to start serving words,
+//   - perPattern     : continuous per-family accuracy among sampled items,
+//   - correctCount / itemsAsked : tallies.
+// The teaching pool (which words, in what mix) is the session builder's job,
+// derived from the tracker + estimatedTier — difficulty is decided from observed
+// responses, not pre-judged here.
 export function result(state) {
-  const knownWords = new Set();
-  const unknownWords = new Set();
   const perPattern = {};
+  let correctCount = 0;
 
   for (const r of state.responses) {
-    if (r.correct) knownWords.add(r.word);
-    else unknownWords.add(r.word);
     const entry = state.byWord.get(r.word);
     const pid = entry ? entry.pattern : 'unknown';
     const p = perPattern[pid] || (perPattern[pid] = { asked: 0, correct: 0 });
     p.asked += 1;
-    if (r.correct) p.correct += 1;
+    if (r.correct) {
+      p.correct += 1;
+      correctCount += 1;
+    }
   }
 
   const estimatedTier = state.responses.length ? state.lastPassedTier : state.startTier - 1;
 
-  // Starter teaching queue: frequency-ordered words in the frontier zone the
-  // learner hasn't shown he knows, PLUS any word he got wrong outright. The
-  // session/mastery layer refines selection (pattern grouping + productive
-  // struggle); this is just the raw, ranked pool.
-  const loTier = Math.max(1, estimatedTier);
-  const hiTier = clampTier(estimatedTier + 1);
-  const want = new Map();
-  for (const w of state.words) {
-    if (knownWords.has(w.word)) continue;
-    const inZone = w.tier >= loTier && w.tier <= hiTier;
-    if (inZone || unknownWords.has(w.word)) want.set(w.word, w);
-  }
-  const unknownQueue = [...want.values()].sort((a, b) => a.rank - b.rank).map((w) => w.word);
-
   return {
-    knownWords,
-    unknownWords,
-    unknownQueue,
     estimatedTier,
     perPattern,
+    responses: state.responses.map((r) => ({
+      word: r.word,
+      correct: r.correct,
+      responseMs: r.responseMs,
+      fast: r.fast,
+      tier: r.tier,
+    })),
     itemsAsked: state.responses.length,
+    correctCount,
   };
 }

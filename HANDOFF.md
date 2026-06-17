@@ -88,13 +88,24 @@ Non-negotiable design requirements pulled from the goal:
 - **`test/praise.test.js`** — ✅ 12 tests (tier table shape/ordering, speed-tier boundaries,
   invalid-time fallback, faster/higher-combo scores more, combo cap, base scoring, milestone
   combo phrases, non-milestone uses tier pool, gentle wrong branch, seeded determinism, no-rng).
-- Git: clean history; latest commit `e3582b2` (this milestone adds praise → next commit).
+- **`src/engine/assessment.js`** — ✅ cold-start pre-assessment (the staircase). Exports
+  `createAssessment / nextItem / submit / isDone / result`. `result()` → `{estimatedTier
+  (PRIOR anchor), perPattern, responses (word/correct/responseMs/fast/tier), itemsAsked,
+  correctCount}` — **no known/unknown sets** (continuous model). `test/assessment.test.js` ✅ (11).
+- **`src/engine/progress.js`** — ✅ CONTINUOUS mastery tracker (heart of the model; replaces
+  srs). `createTracker`, `recordAnswer(t,word,correct,{responseMs,fast})` (recency-weighted
+  mastery EMA α=0.4 scored by correctness+speed; confidence=1−0.5^attempts), `mastery`,
+  `confidence`, `effectiveDifficulty(t,word,prior)` (blends prior→observed by confidence),
+  `predictedSuccess`, `isProductiveStruggle`, `summary` (display buckets known/learning/shaky,
+  NOT gates), `seedFromAssessment`, `tierToPrior`. `test/progress.test.js` ✅ (11).
+- Git: clean history; latest commit `207f426` (this milestone adds progress + assessment
+  refactor → next commit).
 
 ### TODO ⛔ (everything that makes it a game — see §6 build order)
 - The engine logic modules + their tests, in REORDERED order (see §4 learning-model decision):
-  **`assessment.js` (the gate) → `progress.js` (mastery tracker, replaces srs) → `session.js`
-  (level builder) → `nonsense.js`.**
-  *(`lexicon.js` + `distractors.js` + `praise.js` are done — **start at `assessment.js`**.)*
+  ~~`assessment`~~ ✅ → ~~`progress`~~ ✅ → **`session.js` (level builder) ← START HERE** →
+  `nonsense.js`.
+  *(`lexicon` + `distractors` + `praise` + `assessment` + `progress` are done.)*
 - The UI: HTML/CSS shell, screen router, audio, state/persistence.
 - The three play surfaces: **rhythm** (fast choices), **puzzle** (drag/drop), **lab**
   (nonsense-word creativity + drawing).
@@ -189,6 +200,27 @@ caution — see git history of this file / the design chat), is:
   builder** that turns the difficulty+length levers into a concrete word set with the
   blocked→interleaved pattern mix. No interval scheduler.
 
+### Mastery model REFINEMENT (decided 2026-06-17 with the user — supersedes binary known/unknown)
+- **NO flat known/unknown categorization — it's inaccurate.** Mastery is a CONTINUOUS,
+  recency-weighted score per word that also factors **response speed** (fast-correct > slow-
+  correct > wrong), plus a **confidence** that grows with attempt count. "new/learning/known"
+  are only *display buckets* derived from score+confidence — never a gate the engine treats
+  as truth. (This OVERRIDES `assessment.result()`'s `knownWords`/`unknownWords` Sets — those
+  are being refactored into continuous, confidence-tagged seeds.)
+- **Difficulty is OBSERVED, not assumed.** `tier`/`rank` are only a cold-start PRIOR. A word's
+  real difficulty for THIS learner = his actual responses. `effectiveDifficulty =
+  blend(prior, observed)` sliding prior→observed as confidence accrues. "Productive struggle"
+  is only identifiable once there's enough data to place a word in the challenging-but-
+  achievable band; before that, it's genuinely undetermined.
+- **The pre-assessment is NOT a separate test — it's the COLD-START phase of the same game.**
+  Identical presentation/gameplay (engine is presentation-agnostic). Only the data regime
+  differs: no responses yet → lean on the prior; as answers arrive → shift to observed. No
+  hard "assessment done → known words" moment; just an evolving tracker that earns confidence.
+- **Module consequence (refined):** `assessment.js` = the cold-start word-selection policy +
+  bootstrap prior (staircase survives only as efficient early sampling, NOT as a known/unknown
+  classifier). The continuous mastery tracker (`progress.js`) is the heart; the cold-start
+  phase and live play feed it IDENTICALLY.
+
 ### Theme (decided): **"Crystal Spell Caverns"**
 A miner/explorer descends a glowing **crystal cavern** (ties his love of rocks/minerals +
 Zelda exploration + Brotato waves). Each correct spelling **mines a gem**; mastering a
@@ -214,8 +246,8 @@ src/
     lexicon.js              ✅  load WORDS/PATTERNS; REAL_WORDS (Set of all words, for
                                 distractor exclusion), wordsByPattern, wordsByTier, getWord, byRank
     distractors.js          ✅  misspelling generator + multiple-choice builder  (DESIGN in §7)
-    assessment.js           ⛔  adaptive gamified pre-assessment — THE GATE       (DESIGN in §7)
-    progress.js (engine)    ⛔  program-owned mastery tracker (replaces srs.js)   (DESIGN in §7)
+    assessment.js           ✅  cold-start pre-assessment (staircase, continuous) (DESIGN in §7)
+    progress.js (engine)    ✅  continuous mastery tracker (replaces srs.js)      (DESIGN in §7)
     session.js              ⛔  session builder: difficulty+length levers → words (DESIGN in §7)
     praise.js               ✅  DDR-style speed→praise tiers + phrase pools        (DESIGN in §7)
     nonsense.js             ⛔  pattern-based nonsense-word generator              (DESIGN in §7)
@@ -242,8 +274,8 @@ src/
 test/
   data.test.js              ✅  dataset integrity (valid patterns, syllables join, no dups, sorted) + lexicon helpers
   distractors.test.js       ✅  rng/shuffle/levenshtein + generateMisspellings + buildOptions (ramp, curated, exclusions)
-  assessment.test.js        ⛔
-  progress.test.js          ⛔  (engine mastery tracker)
+  assessment.test.js        ✅  cold-start staircase: frontier, responses+timing, seeds tracker
+  progress.test.js          ✅  continuous mastery: EMA, confidence, prior→observed blend, buckets
   session.test.js           ⛔
   praise.test.js            ✅  tier boundaries, speed+combo scoring, milestone phrases, gentle wrong branch
   nonsense.test.js          ⛔
@@ -256,8 +288,8 @@ test/
 1. ~~**`src/engine/lexicon.js` + `test/data.test.js`** — load the data, expose helpers, lock in
    integrity with a test.~~ **✅ DONE** (commit `810487d`, 14 tests green). **← START HERE: step 2.**
 2. **Pure engine modules, test-first** (REORDERED per the §4 learning-model decision):
-   ~~`distractors`~~ ✅ → ~~`praise`~~ ✅ → **`assessment` ← START HERE (the gate)** →
-   `progress` (engine mastery tracker, replaces srs) → `session` (builder) → `nonsense`.
+   ~~`distractors`~~ ✅ → ~~`praise`~~ ✅ → ~~`assessment`~~ ✅ → ~~`progress`~~ ✅ →
+   **`session` (builder) ← START HERE** → `nonsense`.
    Each ships with a `*.test.js`. Keep `npm test` green (the **test gate hook runs `npm test`
    before `git commit`** — a red suite blocks the commit, so commit only on green).
 3. **Shell**: `index.html` + `styles.css` + `src/ui.js` + `src/state.js` + `src/audio.js`
@@ -300,9 +332,9 @@ answers, and produces the easy→hard "very similar spellings" endgame.
   Phrase pools per tier + special **combo** phrases at milestones (every 5). `audio.speakPraise`
   speaks `phrase`; UI shows `label` big with `color`. Wrong → gentle "try again" (no harsh buzz).
 
-**`progress.js` (engine mastery tracker)** — REPLACES the dropped `srs.js`. Program-owned
+**`progress.js` (engine mastery tracker)** ✅ — REPLACES the dropped `srs.js`. Program-owned
 record of what the learner has learned; no interval scheduler. Drives word selection + the
-data the kid/parent can read.
+data the kid/parent can read. (Implemented; continuous mastery — see §2 entry for the API.)
 - `createTracker(seed?)` → state seeded from `assessment.result()` (knownWords pre-marked
   "known", unknownQueue as the to-learn pool, frequency-ordered).
 - `recordAnswer(tracker, word, correct, {fast})` → updates that word's status
@@ -338,6 +370,10 @@ decides MC ("tap the correct spelling") vs. type-in.
 - Staircase: ask `batch` items per tier from `startTier` up; climb while accuracy ≥
   `climbThreshold`, stop at the "frontier" where errors appear; `estimatedTier` = highest tier
   passed; ~18–25 items. Output seeds the `progress.js` tracker (unknown, most-common first).
+- ✅ DONE (per §4 mastery-model refinement): `result()` no longer emits `knownWords`/
+  `unknownWords` Sets. It returns `{estimatedTier, perPattern, responses (with responseMs/
+  fast), itemsAsked, correctCount}`; `progress.seedFromAssessment(tracker, result)` replays
+  those responses into the continuous tracker. The staircase remains the cold-start sampler.
 
 ---
 
