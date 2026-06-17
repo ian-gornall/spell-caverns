@@ -91,8 +91,10 @@ Non-negotiable design requirements pulled from the goal:
 - Git: clean history; latest commit `e3582b2` (this milestone adds praise → next commit).
 
 ### TODO ⛔ (everything that makes it a game — see §6 build order)
-- The engine logic modules (SRS, assessment, nonsense) + their tests.
-  *(`lexicon.js` + `distractors.js` + `praise.js` are done — **start at `srs.js`**.)*
+- The engine logic modules + their tests, in REORDERED order (see §4 learning-model decision):
+  **`assessment.js` (the gate) → `progress.js` (mastery tracker, replaces srs) → `session.js`
+  (level builder) → `nonsense.js`.**
+  *(`lexicon.js` + `distractors.js` + `praise.js` are done — **start at `assessment.js`**.)*
 - The UI: HTML/CSS shell, screen router, audio, state/persistence.
 - The three play surfaces: **rhythm** (fast choices), **puzzle** (drag/drop), **lab**
   (nonsense-word creativity + drawing).
@@ -165,6 +167,28 @@ new chunks the same way, re-run `merge.mjs`. The pipeline scales.
   modules (DOM/Audio/Canvas) live elsewhere and are never imported by tests. This satisfies
   the repo's **test-first** rule.
 
+### Learning model (decided 2026-06-17 with the user — supersedes the old SRS plan)
+The earlier plan centered a Leitner/spaced-repetition scheduler. **That is dropped.** The
+user's model, backed by learning-science research (blocking→interleaving / contextual
+interference; the spacing effect; the word-families "don't let it become rote pattern-zipping"
+caution — see git history of this file / the design chat), is:
+- **Pre-assessment is the GATE.** Build + run `assessment.js` **before any levels**. It
+  establishes known vs. unknown so the game never wastes time on words he already spells.
+- **Levels = pattern-based PRODUCTIVE STRUGGLE on the UNKNOWN words — NOT word "retirement".**
+  The pre-assessment removes known words up front; the learning loop then teaches unknowns,
+  grouped by spelling pattern, ramping **blocked → interleaved**.
+- **Two kid-facing levers only: session DIFFICULTY and session LENGTH.** Difficulty bundles
+  *(a)* how many NEW words and *(b)* how mixed the spelling patterns are (one family → a few →
+  unrelated). The kid pulls these levers; the kid does **NOT** pick individual words.
+- **Word selection + progress tracking are the PROGRAM's job**, fully automatic. (Picking
+  specific words could be a hidden/advanced mode later — never a default lever.)
+- **Student-guided, NOT parent-guided.** The kid drives. Parents get the **same** view of the
+  data and the **same** levers (no separate teacher console). Progress is transparent to both.
+- **Module consequence:** the planned `srs.js` is replaced by (1) a thin, program-owned
+  **progress/mastery tracker** (what's learned, what to serve next) and (2) a **session
+  builder** that turns the difficulty+length levers into a concrete word set with the
+  blocked→interleaved pattern mix. No interval scheduler.
+
 ### Theme (decided): **"Crystal Spell Caverns"**
 A miner/explorer descends a glowing **crystal cavern** (ties his love of rocks/minerals +
 Zelda exploration + Brotato waves). Each correct spelling **mines a gem**; mastering a
@@ -190,11 +214,12 @@ src/
     lexicon.js              ✅  load WORDS/PATTERNS; REAL_WORDS (Set of all words, for
                                 distractor exclusion), wordsByPattern, wordsByTier, getWord, byRank
     distractors.js          ✅  misspelling generator + multiple-choice builder  (DESIGN in §7)
-    srs.js                  ⛔  mastery / spaced-repetition engine                 (DESIGN in §7)
-    assessment.js           ⛔  adaptive gamified pre-assessment                   (DESIGN in §7)
+    assessment.js           ⛔  adaptive gamified pre-assessment — THE GATE       (DESIGN in §7)
+    progress.js (engine)    ⛔  program-owned mastery tracker (replaces srs.js)   (DESIGN in §7)
+    session.js              ⛔  session builder: difficulty+length levers → words (DESIGN in §7)
     praise.js               ✅  DDR-style speed→praise tiers + phrase pools        (DESIGN in §7)
     nonsense.js             ⛔  pattern-based nonsense-word generator              (DESIGN in §7)
-  state.js                  ⛔  localStorage store: profile, settings, SRS cards, progress,
+  state.js                  ⛔  localStorage store: profile, settings, mastery/progress,
                                 feedback log, telemetry; export/import JSON
   audio.js                  ⛔  primeAudio(gesture); say(word) dictation; speakPraise(phrase);
                                 sfx(type) via Web Audio; respects settings (voice/volume)
@@ -217,8 +242,9 @@ src/
 test/
   data.test.js              ✅  dataset integrity (valid patterns, syllables join, no dups, sorted) + lexicon helpers
   distractors.test.js       ✅  rng/shuffle/levenshtein + generateMisspellings + buildOptions (ramp, curated, exclusions)
-  srs.test.js               ⛔
   assessment.test.js        ⛔
+  progress.test.js          ⛔  (engine mastery tracker)
+  session.test.js           ⛔
   praise.test.js            ✅  tier boundaries, speed+combo scoring, milestone phrases, gentle wrong branch
   nonsense.test.js          ⛔
 ```
@@ -229,10 +255,11 @@ test/
 
 1. ~~**`src/engine/lexicon.js` + `test/data.test.js`** — load the data, expose helpers, lock in
    integrity with a test.~~ **✅ DONE** (commit `810487d`, 14 tests green). **← START HERE: step 2.**
-2. **Pure engine modules, test-first**, in this order: ~~`distractors`~~ ✅ → ~~`praise`~~ ✅
-   → **`srs` ← START HERE** → `nonsense` → `assessment`. Each ships with a `*.test.js`. Keep
-   `npm test` green (the **test gate hook runs `npm test` before `git commit`** — a red
-   suite blocks the commit, so commit only on green).
+2. **Pure engine modules, test-first** (REORDERED per the §4 learning-model decision):
+   ~~`distractors`~~ ✅ → ~~`praise`~~ ✅ → **`assessment` ← START HERE (the gate)** →
+   `progress` (engine mastery tracker, replaces srs) → `session` (builder) → `nonsense`.
+   Each ships with a `*.test.js`. Keep `npm test` green (the **test gate hook runs `npm test`
+   before `git commit`** — a red suite blocks the commit, so commit only on green).
 3. **Shell**: `index.html` + `styles.css` + `src/ui.js` + `src/state.js` + `src/audio.js`
    + `src/app.js` with a working **home screen** and audio priming on first tap.
 4. **`src/screens/assess.js`** wired to `engine/assessment.js` — the gamified pre-assessment
@@ -250,8 +277,9 @@ active and will keep the session focused on finishing the game.
 
 ## 7. Pure-engine module designs (signatures to implement)
 
-> NOTE: `distractors.js` is now ✅ implemented + tested (build-order step 2). Spec kept here
-> for reference; the next module to build is `praise.js`.
+> NOTE: `distractors.js` ✅ and `praise.js` ✅ are implemented + tested. Per the §4 learning-
+> model decision, the next module is **`assessment.js`** (the gate), then `progress.js`
+> (engine mastery tracker, replacing the old `srs.js`) and `session.js` (the level builder).
 
 **`distractors.js`** ✅ — lets the game scale to thousands of words without hand-authored wrong
 answers, and produces the easy→hard "very similar spellings" endgame.
@@ -272,26 +300,44 @@ answers, and produces the easy→hard "very similar spellings" endgame.
   Phrase pools per tier + special **combo** phrases at milestones (every 5). `audio.speakPraise`
   speaks `phrase`; UI shows `label` big with `color`. Wrong → gentle "try again" (no harsh buzz).
 
-**`srs.js`** — mastery via Leitner-style boxes; tuned so words recur **within a session**
-(short intervals for low boxes) and **across sessions** (longer for high boxes).
-- `createCard(word, now)`, `review(card, correct, {now, fast})` (fast correct advances faster),
-  `isMastered(card)`, `isDue(card, now)`.
-- `selectNext({cards:Map, queue:[words by rank], now, maxActive, rng})` → next word: prefer most-
-  overdue due card; else introduce the next queued (most-common) new word, capping concurrent
-  in-progress words (`maxActive ≈ 8`) so the learner isn't overwhelmed.
+**`progress.js` (engine mastery tracker)** — REPLACES the dropped `srs.js`. Program-owned
+record of what the learner has learned; no interval scheduler. Drives word selection + the
+data the kid/parent can read.
+- `createTracker(seed?)` → state seeded from `assessment.result()` (knownWords pre-marked
+  "known", unknownQueue as the to-learn pool, frequency-ordered).
+- `recordAnswer(tracker, word, correct, {fast})` → updates that word's status
+  (new → learning → known) on a short correct-streak; a miss drops it back and flags it to
+  resurface sooner **within the learning set** (productive struggle, not interval scheduling).
+- `summary(tracker)` → `{ known:Set, learning:Set, unseen:[...], perPattern, counts }` — the
+  transparent progress view (same for kid + parent).
+- NOTE: spaced *mixing* (open a session with a shuffled review of recent words) is enforced by
+  `session.js`, not by per-card due-dates.
+
+**`session.js` (level builder)** — turns the kid's two levers into an actual word set.
+- `buildSession(tracker, { difficulty: 'easy'|'medium'|'hard' | 0..1, length, rng })` →
+  an ordered list of word entries to play, where **difficulty bundles** *(a)* how many NEW
+  words to introduce vs. review and *(b)* the spelling-pattern MIX: `easy` = one pattern family
+  (blocked); `medium` = a few contrasting families (light interleave); `hard` = unrelated /
+  confusable patterns under speed (full interleave — the §1-#6 endgame). `length` sets how many
+  items. Opens with a shuffled mixed-pattern review of recent words (the spacing benefit), then
+  introduces new words grouped for productive struggle.
+- All word selection is program-driven (the kid never picks words). Pulls from `tracker`.
 
 **`nonsense.js`** — for the Crystal Lab.
 - `ONSETS` list + `RIMES` per pattern id (e.g. `ight → ["ight"]`, `silent-e-a → ["ake","ame","ate"]`).
 - `makeNonsenseWord(patternId, {realWords, rng, avoid})` → a pronounceable **non-word** in that
   pattern (e.g. "splight", "dathe"), guaranteed not a real word and not in `avoid`.
 
-**`assessment.js`** — gamified adaptive pre-assessment; **samples by frequency**, adapts by tier.
-- `createAssessment(words, {startTier, rng})`, `nextItem(state)` (→ word or null when done),
-  `submit(state, word, correct, {fast})`, `result(state)` →
-  `{ knownWords:Set, unknownQueue:[words frequency-ordered], estimatedTier, perPattern }`.
-- Staircase: climb tiers while accuracy high, stop at the "frontier" where errors appear; ~18–25
-  items; keep it short and fun (mostly "tap the correct spelling", a few quick type-ins). Output
-  seeds the SRS queue (unknown, most-common first).
+**`assessment.js`** — gamified adaptive pre-assessment (**THE GATE — build first**); **samples
+by frequency**, adapts by tier. Presentation-agnostic: the engine yields words; the screen
+decides MC ("tap the correct spelling") vs. type-in.
+- `createAssessment(words, {startTier, batch, minItems, maxItems, climbThreshold, rng})`,
+  `nextItem(state)` (→ word entry or null when done), `submit(state, word, correct, {fast})`,
+  `isDone(state)`, `result(state)` → `{ knownWords:Set, unknownWords:Set,
+  unknownQueue:[words frequency-ordered], estimatedTier, perPattern, itemsAsked }`.
+- Staircase: ask `batch` items per tier from `startTier` up; climb while accuracy ≥
+  `climbThreshold`, stop at the "frontier" where errors appear; `estimatedTier` = highest tier
+  passed; ~18–25 items. Output seeds the `progress.js` tracker (unknown, most-common first).
 
 ---
 
