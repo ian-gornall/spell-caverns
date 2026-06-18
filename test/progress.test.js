@@ -26,6 +26,9 @@ import {
   deserializeTracker,
   knownPeak,
   lapsedWords,
+  serveCooldown,
+  isEligible,
+  serveOverdue,
 } from '../src/engine/progress.js';
 
 // ---------------------------------------------------------------- answerScore
@@ -230,4 +233,62 @@ test('deserializeTracker tolerates missing/empty input by returning a fresh trac
     recordAnswer(t, 'x', true, { responseMs: 500 });
     assert.equal(t.records.size, 1);
   }
+});
+
+// ------------------------------------------------ serve spacing (don't immediately
+// repeat known words; keep unknown words in frequent rotation — the user's request)
+test('serveCooldown: unseen and shaky words rest barely at all (frequent recurrence)', () => {
+  const t = createTracker();
+  assert.equal(serveCooldown(getRecord(t, 'never')), 0, 'never-seen -> no cooldown');
+  // a missed (shaky) word: low mastery -> ~0 cooldown so it comes straight back
+  recordAnswer(t, 'shaky', false, { responseMs: 5000 });
+  assert.ok(serveCooldown(getRecord(t, 'shaky')) <= 2, 'shaky word should recur freely');
+});
+
+test('serveCooldown grows with mastery and with confirmations', () => {
+  // freshly mastered (one perfect answer): a real rest, but the shortest of the known set
+  const t1 = createTracker();
+  recordAnswer(t1, 'w', true, { responseMs: 400 }); // perfect -> mastery ~1.0, attempts 1
+  const once = serveCooldown(getRecord(t1, 'w'));
+  assert.ok(once >= 20, `a mastered word should rest several sessions, got ${once}`);
+
+  // the SAME word confirmed many more times rests MUCH longer (revisit over a long horizon)
+  const t2 = createTracker();
+  for (let i = 0; i < 8; i++) recordAnswer(t2, 'w', true, { responseMs: 400 });
+  const many = serveCooldown(getRecord(t2, 'w'));
+  assert.ok(many > once * 1.5, `well-confirmed word should rest far longer (${many} vs ${once})`);
+
+  // a still-learning word (correct but slow, mid mastery) rests far less than a mastered one
+  const t3 = createTracker();
+  recordAnswer(t3, 'w', true, { responseMs: 6000 }); // "good" tier -> mastery ~0.6
+  const learning = serveCooldown(getRecord(t3, 'w'));
+  assert.ok(learning < once, `a learning word should rest less than a mastered one (${learning} vs ${once})`);
+});
+
+test('isEligible: a just-mastered word is NOT eligible immediately, but is after it rests', () => {
+  const t = createTracker();
+  recordAnswer(t, 'mined', true, { responseMs: 400 }); // mastered on one perfect answer
+  assert.equal(isEligible(t, 'mined'), false, 'should rest right after being mastered');
+  // simulate many other words being practiced (ticks advance past its cooldown)
+  const cd = serveCooldown(getRecord(t, 'mined'));
+  for (let i = 0; i < cd; i++) recordAnswer(t, `other_${i}`, true, { responseMs: 1500 });
+  assert.equal(isEligible(t, 'mined'), true, 'eligible again once enough words have passed');
+});
+
+test('isEligible: an unseen word is always eligible; a shaky word stays eligible', () => {
+  const t = createTracker();
+  assert.equal(isEligible(t, 'fresh'), true);
+  recordAnswer(t, 'shaky', false, { responseMs: 5000 });
+  recordAnswer(t, 'other', true, { responseMs: 1500 }); // advance the tick by one
+  assert.equal(isEligible(t, 'shaky'), true, 'a missed word remains eligible to come back');
+});
+
+test('serveOverdue is negative while resting and rises as the word waits', () => {
+  const t = createTracker();
+  recordAnswer(t, 'w', true, { responseMs: 400 });
+  assert.ok(serveOverdue(t, 'w') < 0, 'a just-seen mastered word is not yet due');
+  const cd = serveCooldown(getRecord(t, 'w'));
+  for (let i = 0; i < cd + 3; i++) recordAnswer(t, `o_${i}`, true, { responseMs: 1500 });
+  assert.ok(serveOverdue(t, 'w') >= 0, 'past its cooldown it is overdue (due for a confirming revisit)');
+  assert.equal(serveOverdue(t, 'unseen'), Infinity, 'an unseen word is maximally "due"');
 });

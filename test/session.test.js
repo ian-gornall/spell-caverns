@@ -22,6 +22,7 @@ import {
   tierToPrior,
   getRecord,
   summary,
+  isEligible,
 } from '../src/engine/progress.js';
 import {
   DIFFICULTY_PRESETS,
@@ -151,11 +152,14 @@ test('hard interleaves patterns (adjacent words usually differ)', () => {
 });
 
 // ------------------------------------------------------------------- review
-test('a session opens with previously-seen words (mixed review first)', () => {
+test('a session opens with previously-seen words that are DUE for review', () => {
   const t = createTracker();
   const words = grid(FIVE);
   // make all tier-5 words "seen" — hard (target ~0.5) targets that band
   for (const w of words.filter((w) => w.tier === 5)) recordAnswer(t, w.word, true, { responseMs: 1500 });
+  // Let them REST: play many throwaway words so the seen words pass their spacing
+  // cooldown and become due for a confirming revisit (spacing requirement).
+  for (let i = 0; i < 40; i++) recordAnswer(t, `filler_${i}`, true, { responseMs: 1500 });
   const s = buildSession(t, { difficulty: 'hard', length: 12, rng: mulberry32(5), words });
   const reviewCount = Math.round(12 * 0.3); // REVIEW_FRACTION
   for (let i = 0; i < reviewCount; i++) {
@@ -218,6 +222,54 @@ test('buildReviewSession only repairs — never pulls in brand-new words', () =>
   recordAnswer(t, words[0].word, false, { responseMs: 5000 }); // one cracked word, nothing else seen
   const s = buildReviewSession(t, { length: 6, words, rng: mulberry32(2) });
   assert.deepEqual(s.map((w) => w.word), [words[0].word], 'just the one cracked word, no fresh material');
+});
+
+// --------------------------------------- serve spacing (don't re-serve known words)
+// The user's request: once a word is essentially known (high mastery), don't serve it
+// again immediately — rest it for several sessions while fresh/unknown words fill the
+// gap; revisit known words only over a long horizon. Unknown words must keep recurring.
+test('a freshly-mastered word is not re-served in the very next session', () => {
+  const words = pool([{ pattern: 'short-a', tier: 1, count: 40 }]);
+  const t = createTracker();
+  // master one specific word on a fast-correct answer
+  const target = words[0].word;
+  recordAnswer(t, target, true, { responseMs: 400 });
+  // build several back-to-back sessions; the just-mastered word should rest
+  let served = false;
+  for (let s = 0; s < 2; s++) {
+    const sess = buildSession(t, { difficulty: 'easy', length: 10, rng: mulberry32(100 + s), words });
+    if (sess.some((w) => w.word === target)) served = true;
+  }
+  assert.equal(served, false, 'a just-mastered word must not reappear immediately');
+});
+
+test('an unknown/shaky word keeps coming back session after session', () => {
+  const words = pool([{ pattern: 'short-a', tier: 1, count: 40 }]);
+  const t = createTracker();
+  const target = words[3].word;
+  // the learner keeps missing it -> it must stay in frequent rotation
+  let appearances = 0;
+  for (let s = 0; s < 4; s++) {
+    const sess = buildSession(t, { difficulty: 'easy', length: 10, rng: mulberry32(200 + s), words });
+    if (sess.some((w) => w.word === target)) {
+      appearances += 1;
+      recordAnswer(t, target, false, { responseMs: 5000 }); // miss again
+    } else {
+      // not served this round; still count it as available by recording nothing
+    }
+  }
+  assert.ok(appearances >= 2, `a missed word should recur often, saw it ${appearances}/4 sessions`);
+});
+
+test('a known word becomes eligible again after it has rested (long-horizon revisit)', () => {
+  const words = pool([{ pattern: 'short-a', tier: 1, count: 12 }]);
+  const t = createTracker();
+  const target = words[0].word;
+  recordAnswer(t, target, true, { responseMs: 400 }); // mastered
+  assert.equal(isEligible(t, target), false, 'resting right after mastery');
+  // play enough other words that its cooldown elapses
+  for (let i = 0; i < 40; i++) recordAnswer(t, `filler_${i}`, true, { responseMs: 1500 });
+  assert.equal(isEligible(t, target), true, 'eligible again after a long rest');
 });
 
 // ------------------------------------------------------- real-lexicon smoke

@@ -15,7 +15,15 @@
 // program-driven (the kid never picks words). Imports nothing browser-specific.
 import { byRank } from './lexicon.js';
 import { shuffle } from './distractors.js';
-import { predictedSuccess, tierToPrior, getRecord, knownPeak, lapsedWords } from './progress.js';
+import {
+  predictedSuccess,
+  tierToPrior,
+  getRecord,
+  knownPeak,
+  lapsedWords,
+  isEligible,
+  serveOverdue,
+} from './progress.js';
 
 const MAX_PATTERNS = 5; // patternSpread 1.0 mixes up to this many families
 const REVIEW_FRACTION = 0.3; // share of a session that opens as mixed review
@@ -126,26 +134,36 @@ function choosePatterns(words, psFn, target, n) {
   return chosen;
 }
 
-// Select the session's words: an opening mixed-review of previously-seen words
-// (most overdue first), then new/target-band words drawn ROUND-ROBIN across the
-// chosen patterns (closest to the mastery target first).
+// Select the session's words: an opening mixed-review of previously-seen words that
+// have RESTED long enough (least-recently-seen first), then new/target-band words
+// drawn ROUND-ROBIN across the chosen patterns (closest to the mastery target first).
+//
+// SPACING (the user's requirement): words still resting on their serve cooldown are
+// skipped, so a just-mastered word is never re-served immediately — fresh and
+// long-rested words fill the session instead. A fallback tops up from the most-overdue
+// resting words if eligible material runs out, so a session is never starved (rare on
+// the full 2,900-word lexicon) and long-known words do return for confirmation.
 function selectWords(tracker, words, chosenPatterns, psFn, target, length) {
   const chosen = new Set(chosenPatterns);
   const inPat = words.filter((w) => chosen.has(w.pattern));
 
-  const seen = inPat
-    .filter((w) => (getRecord(tracker, w.word)?.attempts ?? 0) > 0)
+  // Review: previously-seen words that are DUE (past their cooldown), least-recently-
+  // seen first. Resting words are not force-reviewed — that is what spaces out known
+  // words. Never-seen words have no review role (they're new material, below).
+  const seenDue = inPat
+    .filter((w) => (getRecord(tracker, w.word)?.attempts ?? 0) > 0 && isEligible(tracker, w.word))
     .sort((a, b) => getRecord(tracker, a.word).lastSeen - getRecord(tracker, b.word).lastSeen);
-  const reviewCount = Math.min(Math.round(length * REVIEW_FRACTION), seen.length);
-  const reviewWords = seen.slice(0, reviewCount);
+  const reviewCount = Math.min(Math.round(length * REVIEW_FRACTION), seenDue.length);
+  const reviewWords = seenDue.slice(0, reviewCount);
   const reviewSet = new Set(reviewWords.map((w) => w.word));
 
+  const eligible = (w) => !reviewSet.has(w.word) && isEligible(tracker, w.word);
   const byPat = new Map();
   for (const p of chosenPatterns) {
     byPat.set(
       p,
       inPat
-        .filter((w) => w.pattern === p && !reviewSet.has(w.word))
+        .filter((w) => w.pattern === p && eligible(w))
         .sort((a, b) => Math.abs(psFn(a) - target) - Math.abs(psFn(b) - target)),
     );
   }
@@ -163,6 +181,17 @@ function selectWords(tracker, words, chosenPatterns, psFn, target, length) {
       }
     }
     i += 1;
+  }
+
+  // Fallback: not enough eligible material to fill the session → top up with the
+  // most-overdue RESTING words (closest past their cooldown first), so we never starve
+  // and the longest-waiting known words are the ones that come back. Rare in practice.
+  if (mainWords.length < need) {
+    const have = new Set([...reviewWords, ...mainWords].map((w) => w.word));
+    const resting = inPat
+      .filter((w) => !have.has(w.word) && (getRecord(tracker, w.word)?.attempts ?? 0) > 0)
+      .sort((a, b) => serveOverdue(tracker, b.word) - serveOverdue(tracker, a.word));
+    mainWords.push(...resting.slice(0, need - mainWords.length));
   }
   return { reviewWords, mainWords };
 }

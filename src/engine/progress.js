@@ -106,6 +106,65 @@ export function lapsedWords(tracker, { max = 50 } = {}) {
     .map((r) => r.word);
 }
 
+// --- serve spacing -------------------------------------------------------------
+// How long a word should "rest" (in TICKS ≈ answers — one session is ~10) before it
+// is eligible to be served again. The user's requirement: once a word is essentially
+// known, don't serve it again immediately (even after a single correct answer); rest
+// it for several sessions and cover other words first, then revisit known words only
+// over a LONG horizon to confirm retention — while UNKNOWN/shaky words keep recurring
+// on the frequent basis needed to learn them.
+//
+// This is a pure SELECTOR computed from the record's mastery + confirmations + recency
+// — NOT an interval scheduler with stored due-dates (HANDOFF §4 forbids the latter).
+// session.js uses it to skip resting words when filling a session.
+//
+//   - mastery below REST_BAND_LO  → ~0 ticks: shaky/missed words come straight back.
+//   - mastery REST_BAND_LO..1.0   → a quadratic ramp (small until truly "known", then
+//                                    growing): learning words rest briefly, mastered
+//                                    words rest for sessions.
+//   - more confirmations (attempts) → a multiplicative STRETCH so a word confirmed
+//                                    many times rests far longer than one seen once.
+const REST_BAND_LO = 0.6; // below this a word is still being learned → no real rest
+const REST_FLOOR = 2; // ticks at the bottom of the band (borderline word)
+const REST_SPAN = 30; // extra ticks at full mastery (before the confirm stretch)
+const REST_CONFIRM_STEP = 0.5; // each prior sighting stretches the rest by this much…
+const REST_CONFIRM_CAP = 8; // …up to this many sightings
+
+export function serveCooldown(rec) {
+  if (!rec || !rec.attempts) return 0;
+  const m = rec.mastery;
+  if (m < REST_BAND_LO) return 0;
+  const band = Math.min(1, (m - REST_BAND_LO) / (1 - REST_BAND_LO));
+  const base = REST_FLOOR + band * band * REST_SPAN; // quadratic: stays small until high mastery
+  const stretch = 1 + Math.min(rec.attempts - 1, REST_CONFIRM_CAP) * REST_CONFIRM_STEP;
+  return Math.round(base * stretch);
+}
+
+// Ticks elapsed since the word was last practiced (Infinity if never seen).
+export function ticksSinceSeen(tracker, word) {
+  const rec = tracker.records.get(word);
+  if (!rec || !rec.lastSeen) return Infinity;
+  return tracker.tick - rec.lastSeen;
+}
+
+// Is `word` eligible to be served right now? Never-seen and shaky words always are;
+// a recently-practiced known word rests until its cooldown elapses.
+export function isEligible(tracker, word) {
+  const rec = tracker.records.get(word);
+  if (!rec || !rec.attempts) return true;
+  return ticksSinceSeen(tracker, word) >= serveCooldown(rec);
+}
+
+// How far PAST its cooldown a word is: ≥0 means due (rested long enough), <0 means
+// still resting. Infinity for never-seen. The session builder orders its "revisit a
+// long-known word" fallback by this (most overdue first), so confirming revisits come
+// back in the right order without any stored schedule.
+export function serveOverdue(tracker, word) {
+  const rec = tracker.records.get(word);
+  if (!rec || !rec.attempts) return Infinity;
+  return ticksSinceSeen(tracker, word) - serveCooldown(rec);
+}
+
 // Observed difficulty (1 - mastery), blended with the cold-start `prior` by
 // confidence: no data → pure prior; high confidence → pure observed.
 export function effectiveDifficulty(tracker, word, prior) {
