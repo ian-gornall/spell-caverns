@@ -224,6 +224,10 @@ button {
   border-color: transparent;
   box-shadow: 0 16px 40px -12px #6a5cffaa;
 }
+.menu-card.craft {
+  background: linear-gradient(150deg, #1f6f4a55, #20285a);
+  border-color: #2bb67366;
+}
 .menu-card.soon {
   opacity: 0.7;
 }
@@ -423,6 +427,102 @@ button {
 }
 .tiles.locked .tile {
   pointer-events: none;
+}
+
+/* ------- puzzle (build-the-word) mode ------- */
+.puzzle {
+  gap: 10px;
+}
+.slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  padding: 4px 6px;
+}
+.slot {
+  width: clamp(48px, 13vw, 72px);
+  height: clamp(58px, 15vw, 84px);
+  border-radius: 16px;
+  font-size: clamp(1.6rem, 6vw, 2.4rem);
+  font-weight: 800;
+  text-transform: lowercase;
+  background: rgba(0, 0, 0, 0.22);
+  border: 2px dashed var(--panel-border);
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.slot.filled {
+  background: linear-gradient(160deg, #243164, #1b2350);
+  border-style: solid;
+  border-color: var(--accent);
+}
+.slot.filled:active {
+  transform: scale(0.94);
+}
+.slot.locked {
+  background: linear-gradient(160deg, #1f6f4a, #2bb673);
+  border-color: var(--emerald);
+  border-style: solid;
+}
+.slots.shake {
+  animation: shake 0.4s ease;
+}
+@keyframes shake {
+  10%, 90% { transform: translateX(-3px); }
+  30%, 70% { transform: translateX(6px); }
+  50% { transform: translateX(-8px); }
+}
+
+.tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  padding: 10px 6px 4px;
+}
+.tray-tile {
+  width: clamp(52px, 14vw, 76px);
+  height: clamp(52px, 14vw, 76px);
+  border-radius: 16px;
+  font-size: clamp(1.6rem, 6vw, 2.4rem);
+  font-weight: 800;
+  text-transform: lowercase;
+  background: linear-gradient(160deg, #2c3a72, #20285a);
+  border: 2px solid var(--panel-border);
+  box-shadow: 0 8px 22px -10px #000a;
+  touch-action: none; /* let pointer-drag own the gesture */
+  transition: transform 0.1s ease, opacity 0.15s ease;
+}
+.tray-tile:active {
+  transform: scale(0.92);
+}
+.tray-tile.used {
+  visibility: hidden;
+  pointer-events: none;
+}
+.tray-tile.drag-ghost {
+  position: fixed;
+  z-index: 60;
+  transform: translate(-50%, -50%) scale(1.1);
+  pointer-events: none;
+  box-shadow: 0 12px 30px -8px #000c;
+  border-color: var(--cyan);
+}
+.puzzle-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 2px 6px;
+}
+.btn.ghost {
+  min-height: 52px;
+  padding: 10px 22px;
+  font-size: 1.05rem;
+  opacity: 0.92;
 }
 
 /* ------- wave-complete reward ------- */

@@ -18,6 +18,13 @@ export function homeScreen(ctx) {
     ),
     el(
       'button',
+      { class: 'menu-card craft', onClick: () => ctx.nav('puzzle') },
+      el('span', { class: 'ic' }, '🔨'),
+      el('span', { class: 'lbl' }, 'Craft'),
+      el('span', { class: 'desc' }, 'Build words from letter tiles'),
+    ),
+    el(
+      'button',
       { class: 'menu-card soon', onClick: () => toast('Crystal Lab coming soon! 🔮') },
       el('span', { class: 'ic' }, '🔮'),
       el('span', { class: 'lbl' }, 'Crystal Lab'),

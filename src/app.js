@@ -11,6 +11,7 @@ import { homeScreen } from './screens/home.js';
 import { settingsScreen } from './screens/settings.js';
 import { progressScreen } from './screens/progress.js';
 import { startRhythm } from './modes/rhythm.js';
+import { startPuzzle } from './modes/puzzle.js';
 import { summary } from './engine/progress.js';
 
 const routes = {
@@ -18,6 +19,7 @@ const routes = {
   settings: settingsScreen,
   progress: progressScreen,
   rhythm: startRhythm,
+  puzzle: startPuzzle,
 };
 
 let ctx = null;

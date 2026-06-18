@@ -150,6 +150,40 @@ try {
   if (/^ok:/.test(clipOk)) ok(`generated TTS clip loads + decodes in-browser (${clipOk})`);
   else fail(`TTS clip did not load: ${clipOk}`);
 
+  // --- puzzle (build-the-word) mode: hear -> build from tiles -> gems + advance ---
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.click('.menu-card.craft');
+  await page.waitForSelector('.puzzle .slot', { timeout: 5000 });
+  const slotCount = await page.locator('.puzzle .slot').count();
+  ok(`puzzle rendered ${slotCount} letter slots`);
+  const pcur = await page.evaluate(() => window.__puzzleCurrent || null);
+  if (!pcur || !pcur.word) fail('puzzle test hook (window.__puzzleCurrent) missing');
+  const trayCount = await page.locator('.puzzle .tray-tile').count();
+  if (pcur && trayCount >= pcur.word.length) ok(`tray has ${trayCount} tiles for "${pcur.word}"`);
+  else fail(`tray too small: ${trayCount} tiles for "${pcur && pcur.word}"`);
+
+  const pGemsBefore = await gemText();
+  // Tap tray tiles in the word's letter order -> fills slots left-to-right; when the
+  // last slot fills it auto-checks. Picking the first un-used tile per letter handles
+  // repeated letters (the placed tile becomes .used and drops out of the selector).
+  for (const ch of pcur.word) {
+    await page.locator(`.puzzle .tray-tile:not(.used)[data-letter="${ch}"]`).first().click({ timeout: 2000 });
+    await page.waitForTimeout(80);
+  }
+  await page.waitForFunction(
+    (prev) => parseInt(document.querySelector('.gem-count')?.textContent || '0', 10) > prev,
+    pGemsBefore,
+    { timeout: 4000 },
+  );
+  const pGemsAfter = await gemText();
+  ok(`built "${pcur.word}" from tiles -> gems mined (${pGemsBefore} -> ${pGemsAfter})`);
+  await page.waitForFunction(
+    (prev) => (window.__puzzleCurrent && window.__puzzleCurrent.index > prev) || !!document.querySelector('.reward'),
+    pcur.index,
+    { timeout: 4000 },
+  );
+  ok('puzzle advanced to the next word after a correct build');
+
   await page.screenshot({ path: 'scripts/smoke.png', fullPage: false });
   ok('screenshot saved to scripts/smoke.png');
 } catch (e) {
