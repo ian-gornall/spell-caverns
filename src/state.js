@@ -29,6 +29,7 @@ function defaultSettings() {
     volume: 0.85, // 0..1
     voiceName: null, // chosen speechSynthesis voice (null = auto-pick English)
     themeColor: '#7AA2FF',
+    readableText: false, // accessibility: extra letter-spacing/line-height on spelling text
     dailyGoalGems: 80, // a TINY daily target (one short dig clears it) — momentum, not pressure
   };
 }

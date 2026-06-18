@@ -56,6 +56,16 @@ export function applyTheme(color) {
   }
 }
 
+// Accessibility: toggle "easy-read" text (extra letter-spacing + line-height on the
+// spelling-critical text) for struggling readers. A class on <html> drives the CSS.
+export function applyReadable(on) {
+  try {
+    document.documentElement.classList.toggle('readable', !!on);
+  } catch {
+    /* ignore (no DOM) */
+  }
+}
+
 // Geo — the friendly crystal guide (mascot). A procedural gem "character" (no art
 // assets) with a speech bubble; used on first-run onboarding (research Tier 2 #9:
 // a named guide supports autonomy/competence). `text` is also a good thing to speak.

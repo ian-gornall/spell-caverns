@@ -1620,6 +1620,23 @@ select {
   justify-content: center;
 }
 
+/* ------- accessibility: easy-read text ------- */
+/* Extra letter-spacing + line-height on the spelling-critical text, to help a
+   struggling reader discriminate similar spellings (e.g. free / freu / frree).
+   Scoped to those elements so it never reflows the chrome; modest values so the
+   existing overflow-wrap/clamp guards on tiles still hold. */
+html.readable .sentence {
+  letter-spacing: 0.03em;
+  line-height: 1.65;
+}
+html.readable .tile,
+html.readable .tray-tile,
+html.readable .slot,
+html.readable .lab-word,
+html.readable .crystal-name {
+  letter-spacing: 0.06em;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001s !important;

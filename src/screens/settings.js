@@ -4,7 +4,7 @@
 // learner name, and data export/import/reset. Harder difficulties show LOCKED
 // until mastery unlocks them (HANDOFF §4: unlock, never force) — tapping a locked
 // one explains how to unlock it rather than doing nothing.
-import { el, header, toast, applyTheme } from '../ui.js';
+import { el, header, toast, applyTheme, applyReadable } from '../ui.js';
 import * as audio from '../audio.js';
 import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
@@ -168,6 +168,38 @@ export function settingsScreen(ctx) {
     ),
   );
 
+  // easy-read text toggle (accessibility for struggling readers)
+  const readableSeg = el(
+    'div',
+    { class: 'seg' },
+    el(
+      'button',
+      {
+        class: s.readableText ? 'on' : '',
+        onClick: () => {
+          s.readableText = true;
+          applyReadable(true);
+          apply();
+          ctx.nav('settings');
+        },
+      },
+      '🅰️ On',
+    ),
+    el(
+      'button',
+      {
+        class: !s.readableText ? 'on' : '',
+        onClick: () => {
+          s.readableText = false;
+          applyReadable(false);
+          apply();
+          ctx.nav('settings');
+        },
+      },
+      'Off',
+    ),
+  );
+
   // voice picker (best-effort; may be empty before voices load)
   const voices = audio.listVoices();
   const voicePicker = el(
@@ -284,6 +316,7 @@ export function settingsScreen(ctx) {
         el('h3', {}, 'You'),
         el('div', { class: 'field' }, el('label', {}, 'Your explorer name'), nameInput),
         el('div', { class: 'field' }, el('label', {}, 'Crystal colour'), colourRow),
+        el('div', { class: 'field' }, el('label', {}, 'Easy-read text'), readableSeg),
       ),
       el(
         'div',

@@ -6,7 +6,7 @@
 // screen factories; each factory returns a DOM node that `render()` mounts.
 import * as store from './state.js';
 import * as audio from './audio.js';
-import { setRoot, render, toast, applyTheme } from './ui.js';
+import { setRoot, render, toast, applyTheme, applyReadable } from './ui.js';
 import { homeScreen } from './screens/home.js';
 import { onboardingScreen } from './screens/onboarding.js';
 import { settingsScreen } from './screens/settings.js';
@@ -69,6 +69,7 @@ function boot() {
   const state = store.load();
   audio.configure(state.settings);
   applyTheme(state.settings.themeColor); // restore the miner's chosen crystal colour
+  applyReadable(state.settings.readableText); // restore the easy-read preference
 
   ctx = {
     state,
