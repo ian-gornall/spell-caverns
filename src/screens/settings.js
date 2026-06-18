@@ -200,7 +200,9 @@ export function settingsScreen(ctx) {
     ),
   );
 
-  // voice picker (best-effort; may be empty before voices load)
+  // voice picker (best-effort; may be empty before voices load) + a "test" button so a
+  // parent can audition the device voices and pick the clearest one (the best lever on
+  // perceived dictation quality without generating any audio clips).
   const voices = audio.listVoices();
   const voicePicker = el(
     'select',
@@ -208,12 +210,18 @@ export function settingsScreen(ctx) {
       onChange: (e) => {
         s.voiceName = e.target.value || null;
         apply();
+        audio.say('Hello! Ready to spell some words?'); // preview the chosen voice
       },
     },
     el('option', { value: '' }, 'Auto (default English)'),
     ...voices.map((v) =>
       el('option', { value: v.name, selected: s.voiceName === v.name }, `${v.name} (${v.lang})`),
     ),
+  );
+  const testVoiceBtn = el(
+    'button',
+    { class: 'btn ghost', style: { marginTop: '10px' }, onClick: () => audio.say('Hello! Ready to spell some words?') },
+    '🔊 Test voice',
   );
 
   // export / import / reset
@@ -308,7 +316,7 @@ export function settingsScreen(ctx) {
         el('h3', {}, 'Sound'),
         el('div', { class: 'field' }, el('label', {}, 'Spoken voice'), voiceSeg),
         el('div', { class: 'field' }, el('label', {}, 'Volume'), vol),
-        el('div', { class: 'field' }, el('label', {}, 'Voice choice'), voicePicker),
+        el('div', { class: 'field' }, el('label', {}, 'Voice choice'), voicePicker, testVoiceBtn),
       ),
       el(
         'div',
