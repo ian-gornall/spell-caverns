@@ -2,13 +2,12 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with
 > no prior context) can pick up and build the game without re-deriving any decisions.
-> Project root: `C:\Users\iango\spell`  •  Last updated 2026-06-17 after **ALL THREE play
-> surfaces (rhythm + puzzle + Crystal Lab), the feedback screen, the PWA packaging
-> (manifest/service-worker/icons), the README, and the praise-clipping bug fix were built
-> & verified**. `npm test` green (**101 tests**); UI smoke-tested with Playwright
-> (`npm run smoke`) across every mode. **The game is FEATURE-COMPLETE and installable.**
-> **⚠️ Read §13 (latest SESSION UPDATE) for the current state; audio generation is the
-> only parked item.** §12 has the audio status + history.
+> Project root: `C:\Users\iango\spell`  •  Last updated 2026-06-18. The game is
+> **FEATURE-COMPLETE and installable** (all three play surfaces + feedback + progress +
+> settings + PWA). `npm test` green (**101 tests**); smoke-tested with Playwright across
+> every mode; an exploratory pass found **no console/JS errors**.
+> **⭐ NEXT: the user wants an EXPLORATORY VISUAL QA-AND-FIX pass — read §14 FIRST** (method +
+> `scripts/qa.mjs` harness + seeded issue backlog I1–I8). §13 = what's built; §12 = audio status.
 
 ---
 
@@ -44,13 +43,20 @@
     errors). Run: `npm start` then `node scripts/smoke.mjs`. (Playwright installed `--no-save`, so
     `package.json` stays dependency-free; `node_modules` + `scripts/smoke.png` are git-ignored.)
 
-**→ NEXT ACTION — the game is now FEATURE-COMPLETE. ⇒ Read §13 (latest session update)
-for exactly what's built and the small/optional items left.** In short: all three play
-surfaces (rhythm/puzzle/lab), feedback, progress (with specimen gallery), settings, and
-the PWA packaging are done and smoke-verified; the praise-clipping bug is fixed. The only
-real parked item is **bulk audio generation** (Gemini free-tier daily cap — §12; the
-device voice covers everything meanwhile; run only with the user's awareness). Remaining
-work is **polish, not new surfaces** — see §13's "What's LEFT".
+**→ NEXT ACTION — ⭐ run the EXPLORATORY VISUAL QA-AND-FIX LOOP in §14.** The user
+play-tested and reports the app "doesn't seem to be working" — multiple UX/visual issues
+(they didn't enumerate them). Automated checks are green and there are NO console/JS errors,
+so the problems are visual/layout/UX/behavioral. §14 has the full method (drive the live app
+with Playwright + monitoring hooks, screenshot frequently and **analyze each visually**,
+document + FIX each, re-verify visually — NOT new persistent tests), the `scripts/qa.mjs`
+harness, and a **seeded issue backlog** (I1–I8: rhythm/puzzle layout balance, Lab emitting
+real words like "greet", low-contrast Play card, engagement-timing tuning, economy sanity,
+device/touch-drag checks, …). Keep finding the ones the user didn't list.
+
+The game is otherwise FEATURE-COMPLETE (all three play surfaces + feedback + progress +
+settings + PWA, all smoke-verified; see §13). Only parked build item is **bulk audio
+generation** (Gemini free-tier cap — §12; device voice covers it meanwhile; run only with
+the user's awareness).
 
 Build **test-first where it's pure**, keep `npm test` green (the **test gate hook runs `npm test`
 before every `git commit`**), **verify UI changes with `scripts/smoke.mjs`**, and **commit per milestone**.
@@ -713,3 +719,91 @@ live). Modes cross-link from their reward/finish screens.
   Craft (production), but real-world transfer testing is still unbuilt.
 - If picking up: the engine + all UI are done and verified — focus is polish + audio, not
   new surfaces. Keep `npm test` green, verify UI with `npm run smoke`, commit per milestone.
+
+---
+
+## 14. QA & ITERATION PROCESS — ⭐ DO THIS NEXT (the user's current priority)
+
+The user play-tested and reports the app "doesn't seem to be working" — **a number of
+UX/visual issues, not one crash.** Automated proof points are GREEN (101 node tests + the
+Playwright smoke pass; an exploratory pass found **zero console / pageerror / network
+errors**). So the remaining problems are **visual / layout / UX / behavioral** — precisely
+what pass/fail tests miss. **The next session's job is an exploratory, visual QA-and-FIX
+loop — NOT writing more persistent tests.** Fixes are applied directly and re-verified by
+looking at screenshots. (The existing tests/smoke stay as the regression net; add a new
+persistent assertion ONLY if a specific fix is subtle and regression-prone.)
+
+### How to QA (every pass)
+1. **Drive the LIVE app with Playwright** (`npm start`, then a scratch script). Do NOT trust
+   the smoke's synthetic happy-path. Behave like a real kid: wrong answers, idling, long
+   sentences, every mode + screen, edge cases, repeated waves.
+2. **Attach + watch monitoring hooks** each pass: `console` (error+warning), `pageerror`,
+   `requestfailed`. (`scripts/qa.mjs` already wires these and prints a summary.)
+3. **Screenshot FREQUENTLY and read EACH PNG, judging it like a human:** layout balance,
+   overflow/clipping, content jammed at edges, contrast/legibility, alignment, stuck or
+   replayed animation states, broken art, off-screen content — things that look wrong even
+   when no error fired. The bar is "does it look right to a person," not "did the selector
+   resolve."
+4. **Probe with measurements** when a screenshot is ambiguous (`getBoundingClientRect()` vs
+   `innerHeight` to prove overflow, etc.). Test **several viewports** (iPad-10.2 810×1080,
+   mini 744×1133, portrait + landscape) AND a **reduced height** (simulate Safari's toolbar
+   in not-installed mode) AND **touch emulation** (`hasTouch:true` + real pointer drags) —
+   the smoke only taps, so touch-DRAG in puzzle/lab is essentially untested.
+5. Where possible, sanity-check on a **real iPad** (audio quality + dictation timing, touch
+   drag, safe-area / home-indicator) — headless can't judge those.
+
+### The harness — `scripts/qa.mjs` (committed; its `scripts/qa/` output is git-ignored)
+`node scripts/qa.mjs` drives home→rhythm→puzzle→lab→progress→settings→feedback, screenshots
+every state into `scripts/qa/NN-*.png`, and prints a console/error/network summary.
+`VIEW=landscape node scripts/qa.mjs` for landscape. **It is a SCRATCH tool — extend it freely
+as you probe; do not treat its output as a regression gate.**
+
+### The fix loop (per issue)
+**(a)** reproduce + screenshot → **(b)** form a root-cause hypothesis, naming the suspect
+file/CSS → **(c)** fix in code → **(d)** re-drive + re-screenshot and **confirm visually** →
+**(e)** mark it in the backlog (✅/notes). Commit per fix or per small cluster. Keep
+`npm test` + `npm run smoke` green throughout.
+
+### ISSUE BACKLOG — seeded from the 2026-06-18 exploratory pass (verify · fix · extend)
+Screenshot refs `NN-*` are from that pass; re-run `qa.mjs` to regenerate them.
+
+- **I1 — Rhythm & Puzzle vertical balance (MED).** Big empty void mid-screen with the
+  tiles/slots/tray jammed ~14px from the bottom (measured: last answer tile sits only 14px
+  above the viewport on iPad-10.2 / portrait / mini). Not a hard clip on those heights —
+  the `flex:1` `.prompt`/`.lab-stage` absorbs the slack — but it looks bottom-heavy and
+  leaves no breathing room under any browser chrome / the home-indicator. Fix idea: cap the
+  prompt's growth, pull the answer area toward center, add real bottom padding. Suspect:
+  `styles.css` `.prompt`, `.tiles`, `.puzzle`, `.lab-stage`. Refs: 02/03/04 (rhythm), 06/07 (puzzle).
+- **I2 — Crystal Lab emits REAL words as "nonsense" (MED-HIGH).** The pass generated
+  **"greet"** and presented it as a brand-new crystal to spell + name. Real-word leakage:
+  `makeNonsenseWord` only excludes `REAL_WORDS` (the 2,919-word dataset), so common real
+  words outside it slip through. Wrong/confusing for a spelling game. Fix: exclude against a
+  larger bundled English word list (or post-filter candidates). Suspect: `src/engine/nonsense.js`,
+  `src/engine/lexicon.js`. Refs: 12/13.
+- **I3 — Home "Play" card description is low-contrast (LOW).** The "…spelling the words you
+  hear" subtext is barely legible on the purple gradient. Suspect: `.menu-card .desc` vs
+  `.menu-card.play` bg in `styles.css`. Ref: 01.
+- **I4 — Engagement timings may feel wrong for a weak speller (NEEDS USER DECISION).** A 26s
+  idle→"Paused" overlay can fire while a kid is legitimately thinking about a hard word (reads
+  as broken); the 18s home/reward auto-launch can feel like the app "does things on its own."
+  Re-tune (longer thresholds? nudge-only while actively thinking?). This was just added — it
+  may BE part of what the user means by "not working." Confirm intended feel with the user.
+  Files: `ui.js` defaults + per-screen overrides in `home/rhythm/puzzle`, `lab.js` draw caps.
+- **I5 — Economy / progression sanity (LOW).** ~380 gems for one perfect-speed wave is very
+  high — consider scaling. After one full wave, **0 words show "Mastered"** (mastery needs ≥2
+  exposures: confidence = 1−0.5^attempts = 0.5 after one). Verify difficulty UNLOCK thresholds
+  are reachable in real play and that the kid visibly progresses. Files: `engine/praise.js`
+  (points), `engine/progress.js` (mastery/confidence), `engine/session.js` (UNLOCK_THRESHOLDS).
+- **I6 — DEVICE / TOUCH-ONLY checks (MUST do via touch-emu and/or a real iPad).** Audio
+  quality + dictation timing; **puzzle/lab touch-DRAG** (smoke only taps — drag is untested in
+  a real touch context); safe-area / home-indicator layout; "Hear it again" actually replays.
+  Use Playwright `hasTouch:true` + real `mouse`/touch drags; a real iPad where possible.
+- **I7 — Known content nit (LOW, see §3).** 7/2829 sentences don't contain their exact word
+  (3 off-topic: playstation/blonde/concerning) → blanked-sentence context degrades there. Fix
+  at source (`curated.js` / the chunk) + `node scripts/merge.mjs`.
+- **I8 — Minor polish.** Puzzle Hint/Clear stay visible after solve (harmless — consider
+  hiding on solve). Add more as found.
+
+⚠️ The list above is a SEED, not the full set — the user expects the next session to keep
+exploring and **find the issues they didn't bother to enumerate.** Re-run `qa.mjs`, read the
+screenshots, and add what you see.
