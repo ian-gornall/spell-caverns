@@ -6,12 +6,14 @@
 > **The game is FEATURE-COMPLETE, DEPLOYED, and MULTI-USER.** Live (HTTPS, installable
 > PWA) at **https://spell-caverns.netlify.app/**, auto-deployed by Netlify from
 > **github.com/ian-gornall/spell-caverns** on every push to `main`. `npm test` green
-> (**172 tests**); `npm run smoke` green; sw **csc-v13**.
-> **➡️ START AT §0 (current state) then §20 (latest session).** The newest work — the
-> target-words learning algorithm, multi-profile (siblings), family-password cloud sync,
-> and configurable voice speed — is summarized in **§20**, which also lists the **DEFERRED**
-> items (the next job): the kid-lock setter UI, the parent-password zone, and the
-> snapshot-rollback UI (all have data + tested helpers; only the screens are unbuilt).
+> (**180 tests**); `npm run smoke` green; sw **csc-v15**.
+> **➡️ START AT §0 (current state) then §22 (latest session).** §22 shipped the §21
+> backlog: **mastery = CRAFTING not mining** (recognition ≠ production), **chosen-level-led
+> sessions**, the **first-wave-ignores-level bug fix**, **9 levels** (one per tier), and a
+> **Settings "Starting level" control**. Earlier work (§20): target-words algorithm, multi-
+> profile, family-password sync, voice speed. Still **DEFERRED** (data + tested helpers
+> exist, screens unbuilt): the kid-lock setter UI, the parent-password zone, and the
+> snapshot-rollback UI.
 > Older sections are reference: §4/§7/§8 = design decisions (don't relitigate); §16 =
 > Catalog/onboarding/Geode-Boss; §17 = the (now-DONE) polish/economy/deploy backlog;
 > §18–18b = backup + cloud-sync design; §19 = deploy bring-up; §12 = audio (722/2949 clips).
@@ -26,17 +28,20 @@
 - **https://spell-caverns.netlify.app/** — installable PWA, offline-capable, HTTPS.
 - Auto-deploys from **github.com/ian-gornall/spell-caverns** (`main`) via Netlify CD (build =
   `node scripts/build_deploy.mjs` → publishes `deploy/`; functions in `netlify/functions`).
-- `npm test` = **172 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
-  `node scripts/qa.mjs` = 0 console/JS errors. sw VERSION **csc-v13** (bump on any precached change).
+- `npm test` = **180 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
+  `node scripts/qa.mjs` = 0 console/JS errors. sw VERSION **csc-v15** (bump on any precached change).
+- ⚠️ **UNPUSHED**: §22 (this session) is committed locally but NOT yet pushed. `git push` to deploy.
 
 **What exists**
 - **Data:** `data/words.js` = 2,919 frequency-ordered words (ages 5–13), 63 pattern families;
   rebuild via `node scripts/merge.mjs`. (§3)
 - **Pure engine** (`src/engine/`, all unit-tested): `lexicon · distractors · praise · assessment ·
   progress · session · nonsense · puzzle · streak · quests · catalog · narrative · backup ·
-  cloudsync · profiles`. Learning model: CONTINUOUS mastery (accuracy-driven — speed no longer
-  affects mastery), TARGET-WORDS selection (lead with ~10 missed-recently words, park
-  correct-first-time, introduce new words progressively from the profile's start tier). (§4, §20)
+  cloudsync · profiles`. Learning model: CONTINUOUS mastery, established ONLY by CRAFTING
+  (production) — MINING (recognition) drives speed/gems/engagement but never mastery or
+  targets (§22). CHOSEN-LEVEL-LED session selection: lead with fresh words at/above the
+  picked start tier, RESERVE a share for craft-missed targets (repair), park correct ones.
+  `buildFirstWave` gives a guaranteed-win first wave AT the chosen level. (§4, §20, §22)
 - **UI** (`src/`): `app.js` (boot/router/ctx + family sync), `state.js` (MULTI-PROFILE container —
   see below), `audio.js` (clip/Web-Speech dictation + synth SFX; configurable voice speed), `ui.js`.
   Screens: `home · onboarding · profiles ("who's playing") · settings · progress · feedback ·
@@ -1218,7 +1223,8 @@ green**, smoke green; sw **csc-v12**):
 
 ## 21. NEXT-SESSION BACKLOG — level select + the mastery-source fix (user 2026-06-18)
 
-Recorded verbatim-intent; NOT yet implemented. Roughly priority order.
+✅ **ALL FOUR DONE in §22** (A, B, C, D). The verbatim intent is kept below for reference;
+see §22 for exactly how each was implemented + tested.
 
 ### A. Mastery = CRAFTING (production), NOT MINING (recognition) — the big learning-model fix
 The user's rule: **a word is only "known"/mastered when spelled correctly in CRAFTING** (the
@@ -1257,3 +1263,45 @@ With ~3,000 words across 9 tiers, the 5 current presets (tiers 1/3/5/7/9 in `onb
 are too coarse. Expand to finer granularity — e.g. one level per tier (9), or sub-tier bands —
 each still showing example words so a grown-up can gauge it. Shared by onboarding + the new
 Settings level control (B).
+
+---
+
+## 22. SESSION UPDATE — 2026-06-18 (§21 backlog A/B/C/D shipped) — READ FIRST
+
+All four §21 items done, **test-first** where pure, **committed locally** (2 commits), smoke +
+qa green, **180 tests**. **NOT pushed yet** — `git push` to deploy (sw **csc-v15**).
+
+- **A — Mastery = CRAFTING, not mining.** `progress.recordAnswer(tracker, word, correct, opts)`
+  gained an `opts.source` flag. `source:'mine'` records ONLY a speed reading (`recentMs`) on an
+  *already-tracked* word and touches nothing else — so a word the kid has only MINED stays
+  untracked/unknown and can never become "known" or a target from recognition. `'craft'` /
+  `'assess'` / **default** keep the mastery-bearing path (assessment + every existing test
+  unchanged). `modes/rhythm.js` (mining) now calls with `source:'mine'`; `modes/puzzle.js`
+  (crafting) with `source:'craft'` — crafting is the sole source of truth (clean build = known,
+  missed/assisted = target). Mining still drives gems/praise/combo + lifetime stats as before.
+- **A — chosen-level-led `buildSession`.** Rewritten: LEADS with fresh words at/above the start
+  tier (so the picked level drives content) while RESERVING up to half the session (capped by
+  how many targets exist) for craft-missed targets so repair is never crowded out; patterns are
+  seeded from the chosen level + the missed words. *Interpretation note:* §21-A said "chosen
+  level THEN missed"; implemented as level-led + a guaranteed target reserve so repair survives.
+  (With mining no longer creating targets, early sessions are naturally level-dominated anyway.)
+- **C — first-wave-ignores-level bug FIXED.** New pure `session.buildFirstWave(words,{startTier,
+  length,rng})` picks the easiest spellable words in the easiest TWO tiers at/above the chosen
+  level. `rhythm` firstRun uses it (distractors still forced obvious → still a guaranteed win).
+  Verified end-to-end: at "Expert" (tier 9) the first wave serves tier-9 words (festival, premium,
+  …), not tier-1 baby words. Root cause was the old hard-coded `tier ≤2` first wave.
+- **D — 9 levels.** `onboarding.LEVELS` went 5→9 (one per tier, ages 5–13) with example words;
+  `.level-grid` is now a 2-column CSS grid so 9 cards stay compact. Extracted a shared
+  `onboarding.levelGrid(selected, onSelect)` helper.
+- **B — Settings "Starting level".** A per-profile control in the Adventure panel (reuses the
+  level cards) writes `state.startLevel`; the next session reflects it immediately. Lets a parent
+  re-aim where new words start at any time.
+- **Tests:** +8 (`progress.test.js`: mine-vs-craft source semantics; `session.test.js`:
+  chosen-level-led ordering, target reserve, `buildFirstWave` level + starvation). New probe
+  `scripts/qa_levels.mjs` (9-level select + first-wave level + Settings control) kept as a
+  regression check; screenshots in `scripts/qa/levels-*.png`.
+
+### Still DEFERRED (unchanged from §20 — the next job)
+Kid-lock setter UI, parent-password zone, snapshot-rollback UI (all have data + tested helpers;
+only the screens are unbuilt). Then: wire `profiles.mergeFamily` into the sync function, web-push,
+regenerate 722 audio clips, rotate the Gemini key.
