@@ -9,7 +9,7 @@
 // (recall ≠ recognition, the §12 pedagogy concern). A clean build earns full
 // speed/combo gems; a build that needed help still earns a small "you crafted it"
 // reward (positive reinforcement, never shaming). UI module — verified with Playwright.
-import { el, header, burst } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard } from '../ui.js';
 import { buildSession } from '../engine/session.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { gradeAnswer, GENTLE_PHRASES } from '../engine/praise.js';
@@ -99,6 +99,24 @@ export function startPuzzle(ctx) {
     trayEl.style.display = 'none';
     return screen;
   }
+
+  // Keep the crafter on task: nudge + re-dictate if they stall, pause overlay if they
+  // fully blank out. Resuming restarts the speed clock so the idle gap isn't penalised.
+  const guard = createIdleGuard({
+    onNudge: () => {
+      if (locked) return;
+      audio.say(target);
+      toast('✨ Tap a letter to keep building!');
+      trayEl.classList.add('nudge');
+      setTimeout(() => trayEl.classList.remove('nudge'), 1300);
+    },
+    onResume: () => {
+      if (locked) return;
+      startTime = performance.now();
+      audio.say(target);
+    },
+  });
+  ctx.onLeave(() => guard.stop());
 
   function renderDots() {
     dots.replaceChildren(
@@ -406,6 +424,7 @@ export function startPuzzle(ctx) {
   }
 
   function finish() {
+    guard.stop(); // crafting reward is a menu, not active play
     ctx.store.recordSessionPlayed();
     ctx.save();
     const grade = earned >= length * 18 ? '🏆' : earned > 0 ? '💎' : '⛏️';

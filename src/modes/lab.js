@@ -13,7 +13,7 @@
 //              (nonsense words aren't real words, so they must not touch mastery).
 //
 // UI module — verified with Playwright, never imported by `node --test`.
-import { el, header, burst } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard } from '../ui.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { makeNonsenseWord, NONSENSE_PATTERNS } from '../engine/nonsense.js';
 import { scrambleTray, gradeBuild } from '../engine/puzzle.js';
@@ -21,6 +21,10 @@ import { getWord, REAL_WORDS } from '../engine/lexicon.js';
 
 // Gems for crafting a whole specimen (positive reinforcement; mastery is untouched).
 const SPECIMEN_GEMS = 15;
+// Drawing is open-ended, so cap it: nudge to wrap up at SOFT, auto-advance at HARD
+// (so a child can't draw "forever and a day" — they're gently moved to naming).
+const DRAW_SOFT_MS = 25000;
+const DRAW_HARD_MS = 50000;
 // Friendly cold-start patterns when the learner hasn't practised enough yet.
 const SEED_PATTERNS = ['silent-e-a', 'ee-ea', 'ight', 'short-a', 'oo', 'ai-ay'].filter((p) =>
   NONSENSE_PATTERNS.includes(p),
@@ -58,6 +62,20 @@ export function startLab(ctx) {
   let word = '';
   let imageData = null; // PNG dataURL of the drawing (or null)
 
+  // One idle guard + step timers at a time. Every step calls resetStep() first so the
+  // previous step's guard/timers are torn down; nav() also runs it via ctx.onLeave.
+  let guard = null;
+  let stepTimers = [];
+  function resetStep() {
+    if (guard) {
+      guard.stop();
+      guard = null;
+    }
+    stepTimers.forEach(clearTimeout);
+    stepTimers = [];
+  }
+  ctx.onLeave(resetStep);
+
   function setHook(step) {
     try {
       window.__labCurrent = { step, word, specimens: state.specimens.length };
@@ -74,8 +92,17 @@ export function startLab(ctx) {
     gemCountEl.classList.add('bump');
   }
 
+  // a gentle pulse on the current step's primary button (used by idle nudges)
+  function pulseGo() {
+    const go = body.querySelector('.lab-go');
+    if (!go) return;
+    go.classList.add('pulse');
+    setTimeout(() => go.classList.remove('pulse'), 1300);
+  }
+
   // ---- step: invent --------------------------------------------------------
   function invent() {
+    resetStep();
     const avoid = new Set(state.specimens.map((s) => s.word));
     word = '';
     for (const p of candidatePatterns(state.tracker)) {
@@ -107,10 +134,19 @@ export function startLab(ctx) {
     );
     // say it once on arrival (nav() stopped any prior speech first)
     audio.say(word);
+    guard = createIdleGuard({
+      onNudge: () => {
+        audio.say(word);
+        toast('🔊 Tap “Let’s build it!” to start');
+        pulseGo();
+      },
+      onResume: () => audio.say(word),
+    });
   }
 
   // ---- step: spell (unscramble the nonsense word) --------------------------
   function spell() {
+    resetStep();
     setHook('spell');
     const target = word;
     const letters = scrambleTray(target, { extra: 0, rng });
@@ -245,10 +281,23 @@ export function startLab(ctx) {
         trayEl,
       ),
     );
+    guard = createIdleGuard({
+      onNudge: () => {
+        if (locked) return;
+        audio.say(target);
+        toast('👂 Build the crystal’s name');
+        trayEl.classList.add('nudge');
+        setTimeout(() => trayEl.classList.remove('nudge'), 1300);
+      },
+      onResume: () => {
+        if (!locked) audio.say(target);
+      },
+    });
   }
 
   // ---- step: draw the meaning ---------------------------------------------
   function draw() {
+    resetStep();
     setHook('draw');
     const size = Math.max(220, Math.min((window.innerWidth || 420) - 40, 440));
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -336,6 +385,24 @@ export function startLab(ctx) {
       '🧽 Erase',
     );
 
+    // Save the drawing (downscaled to keep localStorage small) and advance to naming.
+    // Runs once — whether the child taps "Name it" or the hard time cap fires.
+    let advanced = false;
+    const commitAndName = () => {
+      if (advanced) return;
+      advanced = true;
+      try {
+        const off = document.createElement('canvas');
+        off.width = 220;
+        off.height = 220;
+        off.getContext('2d').drawImage(canvas, 0, 0, 220, 220);
+        imageData = off.toDataURL('image/png');
+      } catch {
+        imageData = null;
+      }
+      name();
+    };
+
     body.replaceChildren(
       el(
         'div',
@@ -344,32 +411,30 @@ export function startLab(ctx) {
         el('p', { class: 'lab-lead' }, 'Draw its made-up meaning!'),
         canvas,
         el('div', { class: 'palette' }, ...swatches, eraser, el('button', { class: 'btn ghost', onClick: clear }, '↺ Clear')),
-        el(
-          'button',
-          {
-            class: 'btn primary lab-go',
-            onClick: () => {
-              // downscale the drawing to keep localStorage small
-              try {
-                const off = document.createElement('canvas');
-                off.width = 220;
-                off.height = 220;
-                off.getContext('2d').drawImage(canvas, 0, 0, 220, 220);
-                imageData = off.toDataURL('image/png');
-              } catch {
-                imageData = null;
-              }
-              name();
-            },
-          },
-          'Name it ✏️',
-        ),
+        el('button', { class: 'btn primary lab-go', onClick: commitAndName }, 'Name it ✏️'),
       ),
+    );
+
+    // Keep them moving: idle nudge to wrap up, a soft "ready?" nudge, and a HARD cap
+    // that auto-advances to naming — so the drawing step can't run forever.
+    guard = createIdleGuard({
+      onNudge: () => {
+        toast('✏️ Keep drawing — or tap “Name it” when you’re ready');
+        pulseGo();
+      },
+    });
+    stepTimers.push(
+      setTimeout(() => {
+        toast('✨ Your crystal looks amazing! Tap “Name it” when ready');
+        pulseGo();
+      }, DRAW_SOFT_MS),
+      setTimeout(commitAndName, DRAW_HARD_MS),
     );
   }
 
   // ---- step: name + save ---------------------------------------------------
   function name() {
+    resetStep();
     setHook('name');
     const suggestion = word.charAt(0).toUpperCase() + word.slice(1);
     const input = el('input', {
@@ -406,10 +471,17 @@ export function startLab(ctx) {
     } catch {
       /* ignore */
     }
+    guard = createIdleGuard({
+      onNudge: () => {
+        toast('💎 Tap “Save specimen” when you’re ready');
+        pulseGo();
+      },
+    });
   }
 
   // ---- step: saved confirmation -------------------------------------------
   function saved(specimenName) {
+    resetStep(); // terminal menu — no idle guard needed
     setHook('saved');
     body.replaceChildren(
       el(

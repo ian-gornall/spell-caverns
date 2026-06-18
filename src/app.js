@@ -27,12 +27,24 @@ const routes = {
 };
 
 let ctx = null;
+let leaveHandlers = []; // teardown fns the current screen registered (idle guards, timers)
 
 function nav(name, params = {}) {
   const factory = routes[name];
   if (!factory) {
     toast('Coming soon! ✨');
     return;
+  }
+  // Run the leaving screen's teardown (idle guards, pending timers) before we drop
+  // its DOM, so nothing keeps running in the background after we navigate away.
+  const handlers = leaveHandlers;
+  leaveHandlers = [];
+  for (const fn of handlers) {
+    try {
+      fn();
+    } catch {
+      /* ignore */
+    }
   }
   // Stop any in-flight speech from the screen we're leaving FIRST — then build the
   // next screen, so its on-mount dictation (rhythm) survives and is actually heard.
@@ -51,7 +63,17 @@ function boot() {
   const state = store.load();
   audio.configure(state.settings);
 
-  ctx = { state, store, audio, nav, toast, depth, save: store.save };
+  ctx = {
+    state,
+    store,
+    audio,
+    nav,
+    toast,
+    depth,
+    save: store.save,
+    // a screen registers teardown here; nav() runs them when leaving the screen
+    onLeave: (fn) => leaveHandlers.push(fn),
+  };
 
   setRoot(document.getElementById('app'));
 

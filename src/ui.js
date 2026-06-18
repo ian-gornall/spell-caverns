@@ -91,6 +91,96 @@ export function toast(msg, ms = 1900) {
   }, ms);
 }
 
+// A big blocking "Paused — tap to resume" modal. The idle guard shows this when a
+// child fully blanks out mid-game so they can't just sit there indefinitely; it
+// clears on tap and calls `onResume`. Returns the overlay node.
+export function pauseOverlay({ onResume } = {}) {
+  const resume = () => {
+    overlay.remove();
+    if (onResume) onResume();
+  };
+  const overlay = el(
+    'div',
+    { class: 'pause-overlay', onPointerdown: (e) => { if (e.target === overlay) resume(); } },
+    el(
+      'div',
+      { class: 'pause-box' },
+      el('div', { class: 'pause-emoji' }, '⏸️'),
+      el('h2', {}, 'Paused'),
+      el('p', {}, 'Still exploring? Tap to jump back in!'),
+      el('button', { class: 'btn primary', onClick: resume }, '▶️ Resume'),
+    ),
+  );
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+// Keep a child ENGAGED. Watches document-wide pointer/key activity; after `nudgeMs`
+// of NO activity it fires `onNudge` (a gentle prompt / re-dictate), and after
+// `pauseMs` it shows the blocking pause overlay (`onPause` when it appears,
+// `onResume` when the child taps to resume). Self-manages its listeners + overlay —
+// call `.stop()` on leaving the screen (register it via ctx.onLeave). `.poke()`
+// resets the timer manually. Thresholds scale by window.__idleTest (smoke testing).
+export function createIdleGuard({ nudgeMs = 12000, pauseMs = 26000, onNudge, onPause, onResume } = {}) {
+  const scale = (typeof window !== 'undefined' && Number(window.__idleTest)) || 1;
+  nudgeMs *= scale;
+  pauseMs *= scale;
+  let nudgeT = 0;
+  let pauseT = 0;
+  let stopped = false;
+  let overlay = null;
+  let last = 0;
+
+  const clearTimers = () => {
+    clearTimeout(nudgeT);
+    clearTimeout(pauseT);
+  };
+  const arm = () => {
+    clearTimers();
+    if (stopped || overlay) return;
+    if (onNudge) nudgeT = setTimeout(() => { if (!stopped && !overlay) onNudge(); }, nudgeMs);
+    pauseT = setTimeout(() => {
+      if (stopped || overlay) return;
+      if (onPause) onPause();
+      overlay = pauseOverlay({
+        onResume: () => {
+          overlay = null;
+          arm();
+          if (onResume) onResume();
+        },
+      });
+    }, pauseMs);
+  };
+  const poke = () => {
+    if (stopped || overlay) return;
+    const now = typeof performance !== 'undefined' ? performance.now() : 0;
+    if (now - last < 300) return; // throttle the high-frequency pointermove
+    last = now;
+    arm();
+  };
+  const onAct = () => poke();
+  document.addEventListener('pointerdown', onAct, true);
+  document.addEventListener('pointermove', onAct, true);
+  document.addEventListener('keydown', onAct, true);
+  arm();
+
+  return {
+    poke,
+    pausedNow: () => !!overlay,
+    stop() {
+      stopped = true;
+      clearTimers();
+      document.removeEventListener('pointerdown', onAct, true);
+      document.removeEventListener('pointermove', onAct, true);
+      document.removeEventListener('keydown', onAct, true);
+      if (overlay) {
+        overlay.remove();
+        overlay = null;
+      }
+    },
+  };
+}
+
 // A little particle burst at (x,y) — used when a gem is mined.
 export function burst(x, y, color = '#36F1CD', n = 14) {
   for (let i = 0; i < n; i++) {

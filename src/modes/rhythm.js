@@ -17,7 +17,7 @@
 // The session's words come from session.buildSession (the two-axis level builder).
 // Distractor similarity adapts per word from predicted success. UI module — verified
 // with Playwright, not node.
-import { el, header, burst } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard } from '../ui.js';
 import { buildSession, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { buildOptions, mulberry32 } from '../engine/distractors.js';
 import { gradeAnswer, projectedScore } from '../engine/praise.js';
@@ -100,6 +100,7 @@ export function startRhythm(ctx) {
   let earned = 0; // gems earned this wave (for the reward screen)
   let startTime = 0; // 0 = clock not started yet (still in the read window)
   let locked = false;
+  let paused = false; // true while the idle pause overlay is up (freeze the clock)
   let rafId = 0;
   let graceTimer = 0;
   let praiseDone = Promise.resolve(); // resolves when the last spoken praise finishes
@@ -115,6 +116,28 @@ export function startRhythm(ctx) {
     speedMeter.style.display = 'none';
     return screen;
   }
+
+  // Keep the miner on task: if they stall, re-dictate + a gentle nudge; if they fully
+  // blank out, a blocking "Paused — tap to resume" overlay (can't just zone out).
+  const guard = createIdleGuard({
+    onNudge: () => {
+      if (locked) return; // mid-feedback / advancing — don't nag
+      audio.say(session[index]?.word);
+      toast('👂 Tap the word you heard!');
+      tilesEl.classList.add('nudge');
+      setTimeout(() => tilesEl.classList.remove('nudge'), 1300);
+    },
+    onPause: () => {
+      paused = true; // freeze the speed clock while the overlay is up
+      cancelAnimationFrame(rafId);
+      clearTimeout(graceTimer);
+    },
+    onResume: () => {
+      if (locked || index >= session.length) return;
+      armAndDictate(session[index]); // fresh read window so the pause isn't penalised
+    },
+  });
+  ctx.onLeave(() => guard.stop());
 
   function renderDots() {
     dots.replaceChildren(
@@ -161,7 +184,7 @@ export function startRhythm(ctx) {
   // to be fast). Uses the exact scoring the award uses (projectedScore). Only runs
   // once the clock has started (startTime set, i.e. after the read window).
   function meterLoop() {
-    if (locked || !startTime) return;
+    if (locked || paused || !startTime) return;
     const elapsed = performance.now() - startTime;
     const proj = projectedScore({ responseMs: elapsed, combo: combo + 1 });
     potentialEl.textContent = `💎 +${proj.points}`;
@@ -234,15 +257,24 @@ export function startRhythm(ctx) {
       /* ignore */
     }
 
-    // Dictate, then hold the meter FULL (armed) until the word is fully spoken AND a
-    // grace window passes — only THEN does the speed clock start ticking down.
+    armAndDictate(entry);
+  }
+
+  // Dictate the word and hold the meter FULL (armed) until it's fully spoken AND a
+  // grace window passes — only THEN does the speed clock start. Also used to RESUME
+  // after an idle pause (fresh read window + clock, so the pause isn't penalised).
+  function armAndDictate(entry) {
+    paused = false;
+    startTime = 0;
+    clearTimeout(graceTimer);
+    cancelAnimationFrame(rafId);
     armMeter();
     audio.say(entry.word, {
       onDone: () => {
-        if (locked) return;
+        if (locked || paused) return;
         clearTimeout(graceTimer);
         graceTimer = setTimeout(() => {
-          if (locked) return;
+          if (locked || paused) return;
           startTime = performance.now(); // the speed clock starts now
           speedMeter.classList.remove('armed');
           cancelAnimationFrame(rafId);
@@ -319,6 +351,7 @@ export function startRhythm(ctx) {
   }
 
   function finish() {
+    guard.stop(); // wave reward is a menu, not active play
     cancelAnimationFrame(rafId);
     ctx.store.recordSessionPlayed();
     ctx.save();

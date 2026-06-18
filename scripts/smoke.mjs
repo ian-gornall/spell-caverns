@@ -262,6 +262,25 @@ try {
   if (pwa.sw) ok('service worker registered (offline cache active on localhost/HTTPS)');
   else fail(`service worker did not register: ${JSON.stringify(pwa)}`);
 
+  // --- engagement: idle with no interaction -> nudge -> "Paused" overlay ---
+  // Scale the idle thresholds way down (window.__idleTest) so this is quick. Use a
+  // SEPARATE page so it doesn't perturb the main flow's default timings.
+  const idlePage = await browser.newPage({ viewport: { width: 820, height: 1180 } });
+  idlePage.on('pageerror', (e) => errors.push('pageerror(idle): ' + e.message));
+  await idlePage.addInitScript(() => {
+    window.__idleTest = 0.03; // 12s nudge -> ~360ms, 26s pause -> ~780ms
+  });
+  await idlePage.goto(URL, { waitUntil: 'networkidle' });
+  await idlePage.click('.menu-card.play');
+  await idlePage.waitForSelector('.rhythm .tile', { timeout: 5000 });
+  // deliberately do NOT interact -> the pause overlay must appear on its own
+  await idlePage.waitForSelector('.pause-overlay', { timeout: 4000 });
+  ok('idle with no interaction -> "Paused" overlay appeared (keeps kids on task)');
+  await idlePage.click('.pause-overlay .btn.primary'); // Resume
+  await idlePage.waitForSelector('.pause-overlay', { state: 'detached', timeout: 4000 });
+  ok('tapping Resume dismissed the pause overlay');
+  await idlePage.close();
+
   await page.screenshot({ path: 'scripts/smoke.png', fullPage: false });
   ok('screenshot saved to scripts/smoke.png');
 } catch (e) {
