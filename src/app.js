@@ -13,6 +13,7 @@ import { settingsScreen } from './screens/settings.js';
 import { progressScreen } from './screens/progress.js';
 import { feedbackScreen } from './screens/feedback.js';
 import { catalogScreen } from './screens/catalog.js';
+import { bossScreen } from './screens/boss.js';
 import { startRhythm } from './modes/rhythm.js';
 import { startPuzzle } from './modes/puzzle.js';
 import { startLab } from './modes/lab.js';
@@ -28,6 +29,7 @@ const routes = {
   feedback: feedbackScreen,
   catalog: catalogScreen,
   onboarding: onboardingScreen,
+  boss: bossScreen,
 };
 
 let ctx = null;

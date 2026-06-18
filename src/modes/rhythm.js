@@ -375,10 +375,13 @@ export function startRhythm(ctx, params = {}) {
     cancelAnimationFrame(rafId);
     ctx.store.recordSessionPlayed();
     ctx.store.noteWaveEarned(earned); // personal best ("beat your best")
-    // Reaching a NEW cavern depth gifts the next catalog mineral free (endowed-
-    // progress milestone — research Tier 2 #6/#7). Idempotent per depth.
-    const grantedCrystal = ctx.store.grantMilestoneCrystal(ctx.depth());
     ctx.save();
+    // Broke through to a new cavern depth? Hand off to the GEODE BOSS milestone
+    // (named-zone celebration + the free catalog mineral). Pending until cracked, so
+    // leaving early never skips it. Otherwise show the normal wave reward.
+    if (ctx.depth() > ctx.store.lastMilestoneDepth()) {
+      return ctx.nav('boss', { depth: ctx.depth(), earned, from: 'rhythm' });
+    }
 
     const cur = typeof settings.difficulty === 'string' ? settings.difficulty : null;
     const unlockedNow = unlockedDifficulties(state.tracker);
@@ -424,14 +427,6 @@ export function startRhythm(ctx, params = {}) {
             )
           : el('div', { class: 'unlock-banner' }, '🌟 All depths unlocked — you’re a master miner!');
 
-    const crystalBanner =
-      grantedCrystal &&
-      el(
-        'button',
-        { class: 'crystal-grant', onClick: () => ctx.nav('catalog') },
-        `💠 New mineral discovered: ${grantedCrystal.name}! Tap to see your Catalog →`,
-      );
-
     const reward = el(
       'div',
       { class: 'reward' },
@@ -439,7 +434,6 @@ export function startRhythm(ctx, params = {}) {
       el('h2', {}, 'Wave complete!'),
       el('div', { class: 'earned' }, `+${earned} gems mined`),
       progressLine,
-      crystalBanner,
       el('p', { style: { color: 'var(--ink-dim)' } }, `Total: 💎 ${state.gems || 0}  ·  Depth ⛏️ ${ctx.depth()}`),
       el('div', { class: 'row' }, ...buttons),
     );

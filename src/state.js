@@ -199,6 +199,13 @@ export function ownedCrystals() {
   return ensureCatalog().owned;
 }
 
+// The deepest cavern depth whose Geode-Boss milestone has been cracked. A wave that
+// pushes the live depth past this has a PENDING boss (the modes route to it). Stays
+// pending until the boss is actually cracked, so leaving early never skips it.
+export function lastMilestoneDepth() {
+  return ensureCatalog().milestoneDepth || 1;
+}
+
 // Buy a crystal with gems (the spend sink). Pure transaction in engine/catalog.js;
 // here we apply + persist. Returns { ok, reason?, species? } for the screen to react.
 export function purchaseCrystal(id) {

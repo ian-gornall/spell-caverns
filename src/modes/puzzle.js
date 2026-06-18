@@ -439,8 +439,11 @@ export function startPuzzle(ctx, params = {}) {
     guard.stop(); // crafting reward is a menu, not active play
     ctx.store.recordSessionPlayed();
     ctx.store.noteWaveEarned(earned); // personal best ("beat your best")
-    const grantedCrystal = ctx.store.grantMilestoneCrystal(ctx.depth()); // milestone mineral gift
     ctx.save();
+    // Broke through to a new cavern depth? Hand off to the GEODE BOSS milestone.
+    if (ctx.depth() > ctx.store.lastMilestoneDepth()) {
+      return ctx.nav('boss', { depth: ctx.depth(), earned, from: 'puzzle' });
+    }
     const grade = earned >= length * 18 ? '🏆' : earned > 0 ? '💎' : '⛏️';
     const moreToRepair = review && lapsedWords(state.tracker).length > 0;
     const primary = moreToRepair
@@ -452,12 +455,6 @@ export function startPuzzle(ctx, params = {}) {
       el('div', { class: 'big' }, review && !moreToRepair ? '✨' : grade),
       el('h2', {}, review ? (moreToRepair ? 'Crystals repaired!' : 'All crystals sparkling!') : 'Crafting complete!'),
       el('div', { class: 'earned' }, `+${earned} gems crafted`),
-      grantedCrystal &&
-        el(
-          'button',
-          { class: 'crystal-grant', onClick: () => ctx.nav('catalog') },
-          `💠 New mineral discovered: ${grantedCrystal.name}! Tap to see your Catalog →`,
-        ),
       el('p', { style: { color: 'var(--ink-dim)' } }, `Total: 💎 ${state.gems || 0}  ·  Depth ⛏️ ${ctx.depth()}`),
       el(
         'div',
