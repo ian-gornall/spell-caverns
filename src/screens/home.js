@@ -44,6 +44,13 @@ export function homeScreen(ctx) {
       el('span', { class: 'lbl' }, 'Settings'),
       el('span', { class: 'desc' }, 'Difficulty, voice & more'),
     ),
+    el(
+      'button',
+      { class: 'menu-card feedback', onClick: () => ctx.nav('feedback') },
+      el('span', { class: 'ic' }, '💬'),
+      el('span', { class: 'lbl' }, 'Feedback'),
+      el('span', { class: 'desc' }, 'Tell us what you think'),
+    ),
   ];
 
   return el(

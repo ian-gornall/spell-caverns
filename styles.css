@@ -232,6 +232,16 @@ button {
   background: linear-gradient(150deg, #6a3ca855, #20285a);
   border-color: #9d8df166;
 }
+.menu-card.feedback {
+  grid-column: 1 / -1;
+  min-height: 84px;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+}
+.menu-card.feedback .ic {
+  font-size: 2rem;
+}
 .menu-card.soon {
   opacity: 0.7;
 }
@@ -800,6 +810,60 @@ select {
 .big-num {
   font-size: 2.4rem;
   font-weight: 800;
+}
+
+/* ------- feedback ------- */
+.rating-row {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.rating {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--tap-min);
+  padding: 10px 4px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  transition: transform 0.1s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.rating:active {
+  transform: scale(0.94);
+}
+.rating.on {
+  background: linear-gradient(150deg, #5f7bff, #8a5cff);
+  border-color: transparent;
+}
+.rating-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+.rating-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink-dim);
+}
+.rating.on .rating-label {
+  color: var(--ink);
+}
+.feedback-note {
+  width: 100%;
+  border-radius: 14px;
+  border: 2px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 1.1rem;
+  padding: 12px 14px;
+  resize: vertical;
+}
+.feedback-send {
+  width: 100%;
+  margin-bottom: 16px;
 }
 
 /* ------- toast + particles ------- */

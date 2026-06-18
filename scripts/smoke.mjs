@@ -219,6 +219,22 @@ try {
   await page.waitForSelector('.specimen-grid .specimen', { timeout: 4000 });
   ok('specimen appears in the Progress collection');
 
+  // --- feedback: rate + send (state.addFeedback) ---
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.click('.menu-card.feedback');
+  await page.waitForSelector('.rating-row .rating', { timeout: 4000 });
+  await page.locator('.rating-row .rating').nth(4).click(); // 🤩
+  await page.locator('.seg button', { hasText: 'Just right' }).click();
+  await page.fill('.feedback-note', 'Smoke test note');
+  const fbLen = () =>
+    page.evaluate(() => JSON.parse(localStorage.getItem('crystal-spell-caverns:v1') || '{}').feedback?.length || 0);
+  const fbBefore = await fbLen();
+  await page.click('.feedback-send');
+  await page.waitForSelector('.menu-card.play', { timeout: 4000 }); // returns home
+  const fbAfter = await fbLen();
+  if (fbAfter > fbBefore) ok(`feedback recorded to the log (${fbBefore} -> ${fbAfter})`);
+  else fail(`feedback was not recorded (${fbBefore} -> ${fbAfter})`);
+
   await page.screenshot({ path: 'scripts/smoke.png', fullPage: false });
   ok('screenshot saved to scripts/smoke.png');
 } catch (e) {
