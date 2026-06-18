@@ -23,20 +23,46 @@ export function catalogScreen(ctx) {
   const sum = catalogSummary(owned);
   const pct = Math.round((sum.owned / sum.total) * 100);
 
-  // Buy a crystal, then re-render so gems + the unlocked art refresh.
-  const buy = (species, cell) => {
+  // Buy a crystal, then re-render so gems + the unlocked art refresh. Burst from
+  // screen centre (called from the detail overlay, not a specific cell).
+  const buy = (species) => {
     const res = ctx.store.purchaseCrystal(species.id);
-    if (!res.ok) {
-      if (res.reason === 'insufficient') {
-        toast(`💎 ${cost(species) - gems} more gems to unlock ${species.name}`);
-      }
-      return;
-    }
-    const r = cell.getBoundingClientRect();
-    burst(r.left + r.width / 2, r.top + r.height / 2, RARITIES[species.rarity].glow, 22);
+    if (!res.ok) return res;
+    burst(window.innerWidth / 2, window.innerHeight / 2, RARITIES[species.rarity].glow, 24);
     ctx.audio.sfx(species.rarity === 'legendary' || species.rarity === 'epic' ? 'combo' : 'gem');
     toast(`✨ Unlocked ${species.name}! ${species.fact}`, 2600);
     ctx.nav('catalog');
+    return res;
+  };
+
+  // Tap a crystal → a detail card: a big preview + its real-world fact, and a
+  // DELIBERATE unlock button (no accidental spends; a nicer way to admire owned
+  // crystals too). Locked-but-unaffordable shows how many more gems are needed.
+  const showDetail = (species) => {
+    const have = isOwned(owned, species.id);
+    const price = cost(species);
+    const affordable = !have && gems >= price;
+    const close = () => overlay.remove();
+    const cta = have
+      ? el('div', { class: 'detail-cta owned' }, '✓ Collected')
+      : affordable
+        ? el('button', { class: 'btn primary', onClick: () => { close(); buy(species); } }, `💠 Unlock for 💎 ${price}`)
+        : el('div', { class: 'detail-cta need' }, `💎 ${price - gems} more gems to unlock`);
+    const overlay = el(
+      'div',
+      { class: 'crystal-detail-overlay', onPointerdown: (e) => { if (e.target === overlay) close(); } },
+      el(
+        'div',
+        { class: 'crystal-detail ' + species.rarity },
+        el('div', { class: 'crystal-art big', html: crystalSvg(species, { size: 140 }) }),
+        el('div', { class: 'crystal-detail-name' }, species.name),
+        el('div', { class: 'crystal-rarity' }, RARITIES[species.rarity].label + (have ? '' : ` · 💎 ${price}`)),
+        el('p', { class: 'crystal-detail-fact' }, species.fact),
+        cta,
+        el('button', { class: 'btn ghost', onClick: close }, 'Close'),
+      ),
+    );
+    document.body.appendChild(overlay);
   };
 
   const grid = el(
@@ -46,7 +72,7 @@ export function catalogScreen(ctx) {
       const have = isOwned(owned, species.id);
       const price = cost(species);
       const affordable = !have && gems >= price;
-      const cell = el(
+      return el(
         'button',
         {
           class:
@@ -54,18 +80,14 @@ export function catalogScreen(ctx) {
             species.rarity +
             (have ? ' owned' : ' locked') +
             (affordable ? ' affordable' : ''),
-          onClick: () => {
-            if (have) toast(`💎 ${species.name}: ${species.fact}`, 2600);
-            else buy(species, cell);
-          },
+          onClick: () => showDetail(species),
         },
         el('div', { class: 'crystal-art', html: crystalSvg(species, { size: 96 }) }),
-        el('div', { class: 'crystal-name' }, have ? species.name : species.name),
+        el('div', { class: 'crystal-name' }, species.name),
         have
           ? el('div', { class: 'crystal-rarity' }, RARITIES[species.rarity].label)
           : el('div', { class: 'crystal-price' + (affordable ? ' can' : '') }, `💎 ${price}`),
       );
-      return cell;
     }),
   );
 

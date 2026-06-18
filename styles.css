@@ -1346,6 +1346,61 @@ select {
 .crystal-grant:active {
   transform: scale(0.97);
 }
+/* tap-a-crystal detail card (preview + fact + deliberate unlock) */
+.crystal-detail-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(7, 10, 28, 0.72);
+  backdrop-filter: blur(3px);
+  animation: fade-in 0.2s ease;
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.crystal-detail {
+  width: min(360px, 90vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  border-radius: 24px;
+  text-align: center;
+  background: linear-gradient(160deg, var(--bg-2), var(--bg-1));
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.8);
+  animation: pop 0.5s ease;
+}
+.crystal-detail .crystal-art.big {
+  width: 140px;
+  height: 140px;
+}
+.crystal-detail-name {
+  font-size: 1.7rem;
+  font-weight: 800;
+}
+.crystal-detail-fact {
+  color: var(--ink-dim);
+  margin: 0;
+  font-size: 1.05rem;
+}
+.detail-cta {
+  font-weight: 800;
+  font-size: 1.1rem;
+  padding: 10px 0;
+}
+.detail-cta.owned {
+  color: var(--emerald);
+}
+.detail-cta.need {
+  color: var(--ink-dim);
+}
 
 /* ------- first-run onboarding + Geo the mascot ------- */
 .onboarding {

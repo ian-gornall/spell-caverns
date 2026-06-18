@@ -33,23 +33,28 @@ try {
   await page.waitForTimeout(400);
   await shot('grid-locked');
 
-  // buy the first affordable crystal
+  // tap an affordable crystal -> detail overlay -> unlock
   const affordable = page.locator('.crystal-cell.affordable');
   const n = await affordable.count();
   console.log(`  affordable crystals: ${n}`);
   if (n > 0) {
     await affordable.first().click();
+    await page.waitForSelector('.crystal-detail');
+    await page.waitForTimeout(300);
+    await shot('detail-unlock'); // the detail card with an "Unlock for 💎N" button
+    await page.click('.crystal-detail .btn.primary');
     await page.waitForTimeout(600);
     await shot('after-buy');
   }
   const ownedCount = await page.locator('.crystal-cell.owned').count();
   console.log(`  owned after buy: ${ownedCount}`);
 
-  // tap an owned crystal -> fact toast
+  // tap an owned crystal -> detail card (collected)
   if (ownedCount > 0) {
     await page.locator('.crystal-cell.owned').first().click();
+    await page.waitForSelector('.crystal-detail');
     await page.waitForTimeout(300);
-    await shot('owned-fact');
+    await shot('owned-detail');
   }
 } catch (e) {
   console.log('❌ threw: ' + (e?.stack || e));
