@@ -137,6 +137,11 @@ button {
   width: var(--tap-min);
   height: var(--tap-min);
   border-radius: 50%;
+  /* center the chevron glyph exactly, not just by line-height (which left it
+     sitting a hair high/left in the circle) — shared centering token (§17.B) */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 2.4rem;
   line-height: 1;
   background: var(--panel);
@@ -146,12 +151,24 @@ button {
   transform: scale(0.92);
 }
 
+/* SHARED button token (§17.B app-store-consistency pass): every pill/box button
+   centers its content the SAME way — flex centering instead of relying on the
+   browser's default button baseline (which leaves emoji+text and wrapped labels
+   misaligned, and differs across fonts/platforms — the iPad uses Apple emoji + a
+   fallback font). `gap` evenly spaces an icon from its text where they're separate
+   nodes; line-height keeps a single label vertically centered in the fixed height. */
 .btn {
   min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
   border-radius: var(--radius);
   padding: 16px 26px;
   font-size: 1.2rem;
   font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
   background: var(--panel);
   border: 1px solid var(--panel-border);
   transition: transform 0.1s ease;
@@ -657,6 +674,12 @@ button {
   /* scale with viewport height so two rows of tiles still fit (and stay off the
      bottom edge) on short screens — landscape / pre-install Safari chrome (QA I1) */
   min-height: clamp(84px, 11vh, 116px);
+  /* center the spelling option in the tile (a wrapped long word stays centered as a
+     block, not top-aligned) — shared centering token (§17.B) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   border-radius: var(--radius);
   /* smaller max + wrap-anywhere so a long word (e.g. "communications", 14ch) shrinks
      and breaks instead of clipping at the tile edge — there's no space to wrap on */
@@ -757,9 +780,14 @@ button {
 .tray-tile {
   width: clamp(50px, min(14vw, 11vh), 76px);
   height: clamp(50px, min(14vw, 11vh), 76px);
+  /* center the letter in the square (matches .slot, which already centers) */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 16px;
   font-size: clamp(1.6rem, 6vw, 2.4rem);
   font-weight: 800;
+  line-height: 1;
   text-transform: lowercase;
   background: linear-gradient(160deg, #2c3a72, #20285a);
   border: 2px solid var(--panel-border);
@@ -990,9 +1018,16 @@ button {
   flex: 1;
   min-width: 90px;
   min-height: var(--tap-min);
+  /* center label + any lock/emoji as a unit, vertically and horizontally (§17.B) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
   border-radius: 16px;
   font-weight: 800;
   font-size: 1.1rem;
+  line-height: 1.15;
+  text-align: center;
   background: var(--panel);
   border: 2px solid var(--panel-border);
 }
