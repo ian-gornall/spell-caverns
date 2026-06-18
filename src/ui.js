@@ -5,6 +5,8 @@
 // `toast()` and `burst()` provide light feedback flourishes. UI module — never
 // imported by `node --test` (those cover the pure engine).
 
+import { PICTURES, PICTURE_CODE_LEN, picturesToCode } from './engine/picturecode.js';
+
 // el('button', { class:'tile', onClick: fn }, 'text', childNode, [more, nodes])
 // - on* keys become event listeners; `style`/`dataset` accept objects; falsy
 //   children are skipped (so `cond && el(...)` works inline).
@@ -37,6 +39,49 @@ function appendChildren(node, children) {
       typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c,
     );
   }
+}
+
+// A kid-friendly "picture password" picker (the family-sync code as pictures, so a
+// 5-year-old can use it). Tap PICTURE_CODE_LEN pictures — order matters, repeats allowed.
+// Calls onComplete(code, picked[]) once full. Returns { node, reset } so the caller can
+// clear it (e.g. on a wrong/taken code). Shared by onboarding + Settings.
+export function picturePicker(onComplete) {
+  const picked = [];
+  const slots = el('div', { class: 'pic-chosen' });
+  const renderSlots = () =>
+    slots.replaceChildren(
+      ...Array.from({ length: PICTURE_CODE_LEN }, (_, i) =>
+        el('span', { class: 'pic-slot' + (picked[i] ? ' filled' : '') }, picked[i] ? picked[i].emoji : '·'),
+      ),
+    );
+  const grid = el(
+    'div',
+    { class: 'pic-grid' },
+    ...PICTURES.map((p) =>
+      el(
+        'button',
+        {
+          class: 'pic-btn',
+          'aria-label': p.name,
+          onClick: () => {
+            if (picked.length >= PICTURE_CODE_LEN) return;
+            picked.push(p);
+            renderSlots();
+            if (picked.length === PICTURE_CODE_LEN) {
+              onComplete(picturesToCode(picked.map((x) => x.id)), picked.slice());
+            }
+          },
+        },
+        p.emoji,
+      ),
+    ),
+  );
+  const reset = () => {
+    picked.length = 0;
+    renderSlots();
+  };
+  renderSlots();
+  return { node: el('div', { class: 'pic-picker' }, slots, grid), reset };
 }
 
 let root = null;

@@ -18,7 +18,9 @@
 // v8: optional Google-Drive auto-sync (engine/cloudsync.js + cloud_drive.js).
 // v9: family-sync backend — Drive OAuth replaced by a sync code + serverless function
 //     (cloud_sync_backend.js). Per-device OAuth removed.
-const VERSION = 'csc-v9';
+// v10: kid-friendly PICTURE password (engine/picturecode.js) + family sync moved into
+//      first-run onboarding.
+const VERSION = 'csc-v10';
 
 const CORE = [
   '/',
@@ -46,6 +48,7 @@ const CORE = [
   '/src/engine/narrative.js',
   '/src/engine/backup.js',
   '/src/engine/cloudsync.js',
+  '/src/engine/picturecode.js',
   '/src/cloud_sync_backend.js',
   '/src/modes/rhythm.js',
   '/src/modes/puzzle.js',

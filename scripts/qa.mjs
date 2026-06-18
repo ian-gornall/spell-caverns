@@ -92,7 +92,9 @@ try {
   await page.waitForSelector('.colour-grid .colour-swatch');
   await page.locator('.colour-swatch').nth(1).click();
   await shot('onboard-colour');
-  await page.click('.onboard-go'); // -> ready
+  await page.click('.onboard-go'); // -> family-sync step
+  await page.waitForSelector('.onboarding .onboard-go');
+  await page.click('text=Just this one'); // skip sync -> ready
   await page.waitForSelector('.onboard-go.big');
   await shot('onboard-ready');
   await page.click('.onboard-go.big'); // -> guaranteed-win first wave

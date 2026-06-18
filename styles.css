@@ -181,6 +181,10 @@ button {
   border-color: transparent;
   box-shadow: 0 10px 30px -8px #5f7bff88;
 }
+.btn[disabled] {
+  opacity: 0.4;
+  pointer-events: none;
+}
 
 /* ------- home ------- */
 .home {
@@ -1133,6 +1137,58 @@ select {
   border-radius: 14px;
   padding: 12px;
   user-select: all;
+}
+
+/* picture password — kid-friendly sync code (tap pictures, no typing) */
+.pic-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  max-width: 460px;
+  margin: 0 auto;
+}
+@media (max-width: 560px) {
+  .pic-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+.pic-btn {
+  aspect-ratio: 1 / 1;
+  font-size: clamp(1.8rem, 8vw, 2.6rem);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  transition: transform 0.1s ease, border-color 0.12s ease;
+}
+.pic-btn:active {
+  transform: scale(0.9);
+  border-color: var(--accent);
+}
+.pic-chosen {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.pic-slot {
+  width: clamp(46px, 12vw, 64px);
+  height: clamp(46px, 12vw, 64px);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1.6rem, 7vw, 2.3rem);
+  background: rgba(0, 0, 0, 0.22);
+  border: 2px dashed var(--panel-border);
+  color: var(--ink-dim);
+}
+.pic-slot.filled {
+  border-style: solid;
+  border-color: var(--gold);
+  background: rgba(255, 210, 63, 0.12);
 }
 
 /* mastery spectrum bar (progress screen) */

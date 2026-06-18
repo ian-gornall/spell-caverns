@@ -43,7 +43,9 @@ try {
   await page.click('.onboard-go'); // -> colour
   await page.waitForSelector('.colour-grid .colour-swatch', { timeout: 4000 });
   await page.locator('.colour-swatch').nth(1).click();
-  await page.click('.onboard-go'); // -> ready
+  await page.click('.onboard-go'); // -> family-sync step
+  await page.waitForSelector('.onboarding .onboard-go', { timeout: 4000 });
+  await page.click('text=Just this one'); // skip sync -> ready
   await page.waitForSelector('.onboard-go.big', { timeout: 4000 });
   await page.click('.onboard-go.big'); // -> guaranteed-win first wave (rhythm firstRun)
   await page.waitForSelector('.rhythm .tile', { timeout: 5000 });
