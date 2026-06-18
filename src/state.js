@@ -42,6 +42,7 @@ function defaults() {
     specimens: [], // Crystal Lab collection: { ts, word, name, image(dataURL) }
     stats: { sessionsPlayed: 0, answers: 0, correct: 0, byDay: {} },
     streak: defaultStreak(), // daily-play streak (the "glowing vein")
+    records: { bestCombo: 0, bestWaveGems: 0 }, // personal bests ("beat your best")
     tracker: createTracker(), // LIVE tracker (Map); serialized on save()
   };
 }
@@ -67,6 +68,7 @@ export function load() {
       settings: { ...base.settings, ...(data.settings || {}) },
       stats: { ...base.stats, ...(data.stats || {}) },
       streak: { ...base.streak, ...(data.streak || {}) },
+      records: { ...base.records, ...(data.records || {}) },
       tracker: deserializeTracker(data.tracker),
     };
   } else {
@@ -116,10 +118,16 @@ function dayBucket() {
   return state.stats.byDay[k] || (state.stats.byDay[k] = { answers: 0, correct: 0 });
 }
 
-// Best combo reached today (drives the combo daily quest). Called by the play modes.
+// Best combo reached today (drives the combo daily quest) + the all-time record.
 export function recordCombo(n) {
   const d = dayBucket();
   d.bestCombo = Math.max(d.bestCombo || 0, n || 0);
+  state.records.bestCombo = Math.max(state.records.bestCombo || 0, n || 0);
+}
+
+// Update the personal best for gems mined in a single wave ("beat your best").
+export function noteWaveEarned(gems) {
+  state.records.bestWaveGems = Math.max(state.records.bestWaveGems || 0, gems || 0);
 }
 
 // Today's snapshot for the daily quests (read-only; never creates a bucket).

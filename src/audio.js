@@ -289,9 +289,25 @@ function tone(freq, startAt, dur, type = 'sine', gain = 0.2) {
   o.stop(t0 + dur + 0.03);
 }
 
+// Subtle haptic to pair with the SFX (research Tier 3 #12). The target is iPad
+// Safari, which has NO Vibration API, so this is a silent no-op there — it only
+// adds a light buzz on Android/Chromebook (the audience spans ages 5-13 / devices).
+// Independent of the audio context, so it works even if Web Audio failed to init.
+const HAPTIC = { perfect: 18, amazing: 14, great: 12, good: 10, combo: [10, 30, 12, 30, 22], miss: 30, gem: 8 };
+function haptic(type) {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.vibrate && HAPTIC[type] != null) {
+      navigator.vibrate(HAPTIC[type]);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 // Distinct, pleasant cues per outcome. `miss` is gentle + low — never a harsh
 // buzzer (HANDOFF §4: wrong answers stay encouraging).
 export function sfx(type) {
+  haptic(type);
   if (!actx) return;
   try {
     switch (type) {

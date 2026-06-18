@@ -14,8 +14,10 @@ export function progressScreen(ctx) {
   const { known, learning, shaky, tracked } = sum.counts;
   const total = Math.max(1, tracked);
   const pct = (n) => `${(n / total) * 100}%`;
-  const cracked = lapsedWords(ctx.state.tracker).length;
+  const crackedWords = lapsedWords(ctx.state.tracker);
+  const cracked = crackedWords.length;
   const streak = ctx.state.streak || {};
+  const records = ctx.state.records || {};
 
   const spectrum = el(
     'div',
@@ -96,10 +98,38 @@ export function progressScreen(ctx) {
         legend,
         cracked > 0 &&
           el(
+            'div',
+            { class: 'tricky' },
+            ...crackedWords.slice(0, 12).map((w) => el('span', { class: 'tricky-word' }, w)),
+            cracked > 12 && el('span', { class: 'tricky-word more' }, `+${cracked - 12}`),
+          ),
+        cracked > 0 &&
+          el(
             'button',
             { class: 'btn', style: { marginTop: '14px', width: '100%' }, onClick: () => ctx.nav('puzzle', { review: true }) },
             `🔧 Repair ${cracked} cracked crystal${cracked === 1 ? '' : 's'}`,
           ),
+      ),
+      el(
+        'div',
+        { class: 'panel' },
+        el('h3', {}, 'Personal bests'),
+        el(
+          'div',
+          { class: 'seg' },
+          el(
+            'div',
+            { class: 'stat', style: { flexDirection: 'column' } },
+            el('span', { class: 'big-num' }, `⚡ ${records.bestCombo || 0}`),
+            el('span', { style: { color: 'var(--ink-dim)' } }, 'best combo'),
+          ),
+          el(
+            'div',
+            { class: 'stat', style: { flexDirection: 'column' } },
+            el('span', { class: 'big-num' }, `🏆 ${records.bestWaveGems || 0}`),
+            el('span', { style: { color: 'var(--ink-dim)' } }, 'best haul'),
+          ),
+        ),
       ),
       el('div', { class: 'panel' }, el('h3', {}, 'Recent digs'), daysRow),
       specimenPanel(ctx),

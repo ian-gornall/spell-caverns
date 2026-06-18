@@ -362,6 +362,7 @@ export function startRhythm(ctx) {
     guard.stop(); // wave reward is a menu, not active play
     cancelAnimationFrame(rafId);
     ctx.store.recordSessionPlayed();
+    ctx.store.noteWaveEarned(earned); // personal best ("beat your best")
     ctx.save();
 
     const cur = typeof settings.difficulty === 'string' ? settings.difficulty : null;

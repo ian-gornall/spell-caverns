@@ -438,6 +438,7 @@ export function startPuzzle(ctx, params = {}) {
   function finish() {
     guard.stop(); // crafting reward is a menu, not active play
     ctx.store.recordSessionPlayed();
+    ctx.store.noteWaveEarned(earned); // personal best ("beat your best")
     ctx.save();
     const grade = earned >= length * 18 ? '🏆' : earned > 0 ? '💎' : '⛏️';
     const moreToRepair = review && lapsedWords(state.tracker).length > 0;

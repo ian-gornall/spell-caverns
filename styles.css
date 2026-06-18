@@ -978,6 +978,24 @@ select {
   margin-right: 6px;
   vertical-align: -1px;
 }
+/* "tricky words" chips — the actual cracked-crystal words, for the kid + parent */
+.tricky {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.tricky-word {
+  background: rgba(108, 122, 137, 0.18);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.tricky-word.more {
+  color: var(--ink-dim);
+}
 .big-num {
   font-size: 2.4rem;
   font-weight: 800;
