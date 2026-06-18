@@ -6,6 +6,7 @@
 // one explains how to unlock it rather than doing nothing.
 import { el, header, toast, applyTheme, applyReadable } from '../ui.js';
 import * as audio from '../audio.js';
+import * as cloud from '../cloud_drive.js';
 import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
 import { COLOURS } from './onboarding.js';
@@ -314,6 +315,101 @@ export function settingsScreen(ctx) {
     '🗑️ Delete all data',
   );
 
+  // --- Optional: auto-sync to the PARENT's own Google Drive (no backend) ----------
+  // Stays compliant: the backup lives in the parent's Drive appDataFolder; we never see
+  // it. Dormant until a Google OAuth Client ID is pasted in (see CLOUD_SYNC_SETUP.md).
+  const getLocal = () => JSON.parse(ctx.store.exportData());
+  const applyRemote = (envel) => ctx.store.importData(JSON.stringify(envel));
+  const afterPull = () => {
+    audio.configure(ctx.state.settings);
+    applyTheme(ctx.state.settings.themeColor);
+    applyReadable(ctx.state.settings.readableText);
+  };
+  const runSync = async (interactive) => {
+    try {
+      const { action } = await cloud.syncNow({
+        clientId: s.cloudClientId,
+        getLocal,
+        applyRemote,
+        interactive,
+      });
+      if (action === 'pull') afterPull();
+      s.cloudConnected = true;
+      ctx.save();
+      toast(
+        action === 'pull'
+          ? 'Synced from your Drive! ✨'
+          : action === 'push'
+            ? 'Backed up to your Drive! ☁️'
+            : 'Already in sync ✓',
+      );
+      ctx.nav('settings');
+    } catch {
+      toast('Could not reach Google Drive. Check the setup + your connection. 😕');
+    }
+  };
+
+  const clientIdInput = el('input', {
+    type: 'text',
+    value: s.cloudClientId || '',
+    placeholder: 'Google OAuth Client ID',
+    spellcheck: 'false',
+    onChange: (e) => {
+      s.cloudClientId = e.target.value.trim() || null;
+      s.cloudConnected = false;
+      ctx.save();
+      ctx.nav('settings');
+    },
+  });
+
+  const cloudSyncBlock = el(
+    'div',
+    { class: 'cloud-sync' },
+    el('h4', { class: 'cloud-title' }, '☁️ Auto-sync to your Google Drive (optional)'),
+    s.cloudClientId
+      ? el(
+          'div',
+          { class: 'data-actions' },
+          el(
+            'p',
+            { class: 'backup-status' },
+            s.cloudConnected ? 'Drive sync is on for this device.' : 'Ready to connect.',
+          ),
+          el(
+            'button',
+            { class: 'btn primary', onClick: () => runSync(true) },
+            s.cloudConnected ? '🔄 Sync now' : '🔗 Connect Google Drive',
+          ),
+          el(
+            'button',
+            {
+              class: 'btn ghost',
+              onClick: () => {
+                cloud.disconnect();
+                s.cloudConnected = false;
+                s.cloudClientId = null;
+                ctx.save();
+                toast('Disconnected from Drive.');
+                ctx.nav('settings');
+              },
+            },
+            'Disconnect',
+          ),
+        )
+      : el(
+          'div',
+          { class: 'field' },
+          el('label', {}, 'Paste your Google OAuth Client ID to turn on auto-sync'),
+          clientIdInput,
+          el(
+            'p',
+            { class: 'field-hint' },
+            'Free, ~5 min, one-time. Steps in CLOUD_SYNC_SETUP.md. Your progress syncs to a ' +
+              'hidden folder in YOUR Google Drive — we never see it.',
+          ),
+        ),
+  );
+
   const dataPanel = el(
     'div',
     { class: 'data-actions' },
@@ -329,6 +425,7 @@ export function settingsScreen(ctx) {
         'Back up to keep a copy in your own iCloud/Drive or move progress to another iPad; ' +
         'delete any time. See PRIVACY.md for details.',
     ),
+    cloudSyncBlock,
   );
 
   return el(

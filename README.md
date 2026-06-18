@@ -145,6 +145,19 @@ caching now works because it's HTTPS.
 > GitHub **project** page (`username.github.io/repo/`) serves under a subpath and would
 > 404 those paths — prefer the zero-config root hosts above.
 
+### Data, backup & cross-device sync (privacy-first)
+
+All progress lives in `localStorage` **on the device** — no backend, no accounts, no
+tracking (see `PRIVACY.md`). To keep it safe and move it between devices:
+
+- **Manual backup/restore (always on):** Settings → Parents & privacy → **Back up
+  progress** downloads a file to keep in your own iCloud/Drive (and **Restore** loads it
+  on another device). The app nudges a backup when one is overdue.
+- **Optional auto-sync to your own Google Drive:** turn it on by pasting a free Google
+  OAuth Client ID — progress then syncs through a hidden folder in **your** Drive, with
+  **no server we operate** ever holding the data (the COPPA-minimizing design). Setup is a
+  one-time ~5-minute task in **`CLOUD_SYNC_SETUP.md`**.
+
 ### Re-engagement ("it's been a while" nudge)
 
 - **Shipping now (no backend):** an in-app **welcome-back** moment — open the app after

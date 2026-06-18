@@ -15,7 +15,8 @@
 // v6: session/progress spacing, economy rebalance (praise/catalog/state), shared
 // button-centering tokens (styles.css), contextual welcome-back greeting (home).
 // v7: parent-controlled backup/restore (engine/backup.js, Parents & Privacy panel).
-const VERSION = 'csc-v7';
+// v8: optional Google-Drive auto-sync (engine/cloudsync.js + cloud_drive.js).
+const VERSION = 'csc-v8';
 
 const CORE = [
   '/',
@@ -42,6 +43,8 @@ const CORE = [
   '/src/engine/catalog.js',
   '/src/engine/narrative.js',
   '/src/engine/backup.js',
+  '/src/engine/cloudsync.js',
+  '/src/cloud_drive.js',
   '/src/modes/rhythm.js',
   '/src/modes/puzzle.js',
   '/src/modes/lab.js',

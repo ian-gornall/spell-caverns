@@ -36,6 +36,13 @@ In **Settings → Parents & privacy**:
   and moved to another device. **The parent controls this file; we never receive it.**
 - **Restore from backup** — loads a backup file on any device.
 - **Delete all data** — erases everything on the device immediately.
+- **Auto-sync to your Google Drive (optional, off by default)** — if the parent turns it
+  on (Settings → Parents & privacy → pasting their own Google OAuth Client ID; see
+  `CLOUD_SYNC_SETUP.md`), the backup is read/written directly from the browser to a
+  **hidden, per-app folder in the parent's own Google Drive** (the minimal `drive.appdata`
+  scope — the app cannot see any other Drive files). **No server we operate receives the
+  data**; the access token is held in memory only (no secret, no backend). The parent can
+  disconnect, or revoke access at myaccount.google.com/permissions, at any time.
 
 ## Why this is COPPA-compliant (and why the design is what it is)
 

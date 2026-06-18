@@ -92,6 +92,34 @@ function boot() {
   // First run → the mascot-guided onboarding (name + crystal colour + a guaranteed-
   // win first wave); afterwards, straight to home.
   nav(state.profile.onboarded ? 'home' : 'onboarding');
+
+  // Best-effort SILENT cloud sync on open, only if the parent already connected Drive
+  // on this device. Pulls newer/more-advanced progress before they start playing. Fully
+  // optional, lazy-loaded, and non-blocking: any failure (no token, offline) is ignored
+  // and play continues on the local data. (Compliant: parent's own Drive — see PRIVACY.md.)
+  if (state.settings.cloudConnected && state.settings.cloudClientId) {
+    import('./cloud_drive.js')
+      .then((cloud) =>
+        cloud.syncNow({
+          clientId: state.settings.cloudClientId,
+          getLocal: () => JSON.parse(store.exportData()),
+          applyRemote: (envel) => store.importData(JSON.stringify(envel)),
+          interactive: false, // silent — never pop a Google dialog on launch
+        }),
+      )
+      .then((res) => {
+        if (res && res.action === 'pull') {
+          audio.configure(ctx.state.settings);
+          applyTheme(ctx.state.settings.themeColor);
+          applyReadable(ctx.state.settings.readableText);
+          if (ctx.route === 'home') nav('home'); // re-render with the pulled progress
+          toast('Synced your latest progress ✨');
+        }
+      })
+      .catch(() => {
+        /* offline / token needs a tap — silent; the parent can Sync now in Settings */
+      });
+  }
 }
 
 boot();

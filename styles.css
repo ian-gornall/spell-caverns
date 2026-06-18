@@ -1092,6 +1092,16 @@ select {
   color: var(--ink-dim);
   font-size: 0.9rem;
 }
+.cloud-sync {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--panel-border);
+}
+.cloud-title {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
 
 /* mastery spectrum bar (progress screen) */
 .spectrum {
