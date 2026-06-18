@@ -217,6 +217,13 @@ button {
   color: var(--ink-dim);
   font-size: 1rem;
 }
+/* On the saturated gradient cards (Play/Craft/Lab) the dim slate desc is
+   near-invisible — use a bright near-white instead (QA I3). */
+.menu-card.play .desc,
+.menu-card.craft .desc,
+.menu-card.lab .desc {
+  color: rgba(255, 255, 255, 0.86);
+}
 .menu-card.play {
   grid-column: 1 / -1;
   min-height: 160px;
@@ -249,6 +256,33 @@ button {
 /* ------- rhythm mode ------- */
 .rhythm {
   gap: 10px;
+}
+
+/* Shared play layout (rhythm + puzzle): split the area below the header into an
+   upper PROMPT zone (the dictated word / sentence + verdict, vertically centered)
+   and a lower ANSWER zone (tiles / slots+tray, vertically centered). Each half
+   centers its own content, so nothing is jammed against an edge and the
+   whitespace reads as deliberate framing — not a bottom-heavy void (QA I1). */
+.play-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: clamp(12px, 3vh, 40px);
+  /* Auto margins on the children center the prompt+answer pair on tall screens but
+     collapse to 0 when space is tight, so content packs from the top and can scroll
+     instead of clipping on short screens (reduced-height Safari chrome). */
+  overflow-y: auto;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+.answer-zone {
+  flex: 0 1 auto;
+  margin-bottom: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  min-height: 0;
 }
 .dots {
   display: flex;
@@ -293,12 +327,13 @@ button {
 }
 
 .prompt {
-  flex: 1;
+  flex: 0 1 auto;
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: clamp(10px, 2vh, 18px);
   min-height: 0;
 }
 .hear-again {
@@ -413,7 +448,9 @@ button {
   padding-top: 6px;
 }
 .tile {
-  min-height: 110px;
+  /* scale with viewport height so two rows of tiles still fit (and stay off the
+     bottom edge) on short screens — landscape / pre-install Safari chrome (QA I1) */
+  min-height: clamp(84px, 11vh, 116px);
   border-radius: var(--radius);
   font-size: clamp(1.6rem, 6vw, 2.4rem);
   font-weight: 800;
@@ -455,8 +492,8 @@ button {
   padding: 4px 6px;
 }
 .slot {
-  width: clamp(48px, 13vw, 72px);
-  height: clamp(58px, 15vw, 84px);
+  width: clamp(46px, 13vw, 72px);
+  height: clamp(54px, min(15vw, 12vh), 84px);
   border-radius: 16px;
   font-size: clamp(1.6rem, 6vw, 2.4rem);
   font-weight: 800;
@@ -499,8 +536,8 @@ button {
   padding: 10px 6px 4px;
 }
 .tray-tile {
-  width: clamp(52px, 14vw, 76px);
-  height: clamp(52px, 14vw, 76px);
+  width: clamp(50px, min(14vw, 11vh), 76px);
+  height: clamp(50px, min(14vw, 11vh), 76px);
   border-radius: 16px;
   font-size: clamp(1.6rem, 6vw, 2.4rem);
   font-weight: 800;

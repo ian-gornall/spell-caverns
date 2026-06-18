@@ -61,6 +61,7 @@ export function startPuzzle(ctx) {
   );
   const hintBtn = el('button', { class: 'btn ghost', onClick: hint }, '💡 Hint');
   const clearBtn = el('button', { class: 'btn ghost', onClick: clearAll }, '↺ Clear');
+  const controlsEl = el('div', { class: 'puzzle-controls' }, hintBtn, clearBtn);
 
   const hdr = header(ctx, { title: 'Crafting', onBack: () => ctx.nav('home') });
   const gemCountEl = hdr.querySelector('.gem-count');
@@ -72,10 +73,12 @@ export function startPuzzle(ctx) {
     dots,
     el('div', { class: 'combo-wrap' }, comboFill),
     comboLabel,
-    el('div', { class: 'prompt' }, hearBtn, sentenceEl, verdictEl, verdictChip),
-    slotsEl,
-    el('div', { class: 'puzzle-controls' }, hintBtn, clearBtn),
-    trayEl,
+    el(
+      'div',
+      { class: 'play-body' },
+      el('div', { class: 'prompt' }, hearBtn, sentenceEl, verdictEl, verdictChip),
+      el('div', { class: 'answer-zone' }, slotsEl, controlsEl, trayEl),
+    ),
   );
 
   // --- per-session state ----------------------------------------------------
@@ -341,6 +344,7 @@ export function startPuzzle(ctx) {
 
   function solve() {
     locked = true;
+    controlsEl.style.display = 'none'; // Hint/Clear are meaningless once solved (QA I8)
     const responseMs = startTime ? performance.now() - startTime : 0;
     // honest mastery signal: only a clean first try is a real RECALL success
     recordAnswer(state.tracker, target, firstTry, { responseMs });
@@ -390,6 +394,7 @@ export function startPuzzle(ctx) {
     locked = false;
     firstTry = true;
     startTime = 0;
+    controlsEl.style.display = ''; // restore Hint/Clear for the new word (QA I8)
     clearTimeout(graceTimer);
     const entry = session[index];
     target = entry.word.toLowerCase();

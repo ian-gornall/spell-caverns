@@ -89,9 +89,12 @@ export function startRhythm(ctx) {
     dots,
     el('div', { class: 'combo-wrap' }, comboFill),
     comboLabel,
-    el('div', { class: 'prompt' }, hearBtn, sentenceEl, verdictEl, verdictChip),
-    speedMeter,
-    tilesEl,
+    el(
+      'div',
+      { class: 'play-body' },
+      el('div', { class: 'prompt' }, hearBtn, sentenceEl, verdictEl, verdictChip),
+      el('div', { class: 'answer-zone' }, speedMeter, tilesEl),
+    ),
   );
 
   // --- per-session state -----------------------------------------------------
