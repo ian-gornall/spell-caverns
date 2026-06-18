@@ -3,13 +3,14 @@
 > Read this top-to-bottom before continuing. It is written so a fresh session (with
 > no prior context) can pick up and build the game without re-deriving any decisions.
 > Project root: `C:\Users\iango\spell`  •  Last updated 2026-06-18. The game is
-> **FEATURE-COMPLETE and installable** (all three play surfaces + feedback + progress +
-> settings + PWA). `npm test` green (**123 tests**); smoke-tested with Playwright across
-> every mode; exploratory visual QA found **no console/JS errors**.
-> **✅ The §14 QA-AND-FIX pass is DONE (I1–I8 + extras) AND a round of research-backed
-> improvements is DONE — read §15 FIRST** (it summarizes everything this session changed and
-> lists the deferred nice-to-haves). §14 = the QA method + (now-resolved) backlog. §13 = what's
-> built; §12 = audio status (still the only parked build item).
+> **FEATURE-COMPLETE** (all play surfaces + catalog + onboarding + boss + feedback +
+> progress + settings + PWA). `npm test` green (**134 tests**); smoke + multi-viewport
+> visual QA found **no console/JS errors**.
+> **➡️ START AT §17 — the NEXT-SESSION BACKLOG** (the user's 2026-06-18 review: installable-
+> app-on-iPad + deployment, app-store-quality UI polish, an audio volume bug, re-engagement
+> alerts, and economy rebalancing). §16 = what the last session shipped (all deferred
+> nice-to-haves: Catalog, onboarding+mascot, Geode Boss+narrative, a11y). §15/§14 = the
+> earlier QA + research rounds. §12 = audio status (722/2949 word clips generated so far).
 
 ---
 
@@ -596,8 +597,10 @@ real-voice TTS pipeline and surfaced the next priorities. Git: several commits p
 ### Audio — current state & the PLAN (voice exploration is TABLED; stick with Kore)
 - **Voice = "Kore"** via Gemini model **`gemini-3.1-flash-tts-preview`**. Decided to **stick with
   Kore for now** — do NOT keep auditioning voices (user tabled it to make game progress).
-- **What's generated:** **242 word clips (top-242 by frequency) + 28 praise/gentle phrases**, in
-  `audio/` (git-ignored), listed in `audio/manifest.json`. **2,677 words still pending.**
+- **What's generated (updated 2026-06-18):** **722 word clips (top-722 by frequency) + 28 praise/
+  gentle phrases**, in `audio/` (git-ignored), listed in `audio/manifest.json`. **~2,227 words still
+  pending.** (+480 generated this session before the daily cap; re-run `npm run gen:audio` another day
+  to continue — but FIRST add the fail-fast guard, see §17.C: it loops forever on a per-minute 429.)
 - **Runtime (`src/audio.js`) plays `/audio/{words,phrases}/<slug>.mp3` when present, else Web Speech.**
   So uncovered words use the browser voice until their clip exists. `server.js` serves `.mp3`.
 - **Generation = `scripts/gen_audio.mjs`** (`GEMINI_API_KEY=… npm run gen:audio`). It BATCHES ~30
@@ -952,8 +955,92 @@ New engine modules precached by `sw.js` (VERSION **csc-v5**): `catalog.js`, `nar
 `qa_catalog.mjs`, `qa_boss.mjs`, `qa_readable.mjs`, `qa_home_repair.mjs`.
 
 ### ▶️ What's LEFT
-- **Audio generation** remains the ONLY parked build item (Gemini free-tier daily cap — §12; device
-  voice + the new "Sound it out" cover dictation meanwhile). Run only with the user's awareness
-  ([[approval-before-consuming-limits]]). ⚠️ Still remind the user to **rotate the Gemini API key**.
-- Everything else (engine + all UI + the full deferred list) is built, tested, and visually QA'd. Next
-  pickup is polish/audio, not new surfaces. Keep `npm test` green, verify UI with `npm run smoke`.
+- See **§17 — the prioritized NEXT-SESSION backlog** (the user's 2026-06-18 review): cross-device +
+  deployment + installable-app-on-iPad, UI polish consistency (app-store quality), an audio volume
+  inconsistency, re-engagement alerts, and economy rebalancing. **Start there next session.**
+- **Audio generation** stays partial: **722/2949 word clips + 28 phrases now exist** (Kore voice;
+  +480 generated this session, most-common-first). Device voice covers the rest. Run only with the
+  user's awareness ([[approval-before-consuming-limits]]). ⚠️ Still **rotate the Gemini API key**.
+
+---
+
+## 17. NEXT-SESSION BACKLOG — the path to "a real app on the iPad" (read FIRST next session)
+
+The game is feature-complete and QA-clean in the dev browser, but the user's 2026-06-18
+play-test review surfaced the work needed to make it feel like a **store-quality app the
+kid taps into anytime**. Tackle these next (the user explicitly deferred them to a fresh
+session). Roughly priority-ordered; each has pointers to where to look.
+
+### A. Make it an installable app on the iPad (the headline goal)
+The end state: **an app icon on the iPad home screen** the kid opens any time (offline-capable),
+**plus a gentle re-engagement alert** when they haven't played in ~a day.
+- **This IS achievable with the PWA** — no app store needed. iOS Safari → Share → **Add to Home
+  Screen** places a full-screen icon (we already ship `manifest.webmanifest` display:standalone +
+  the `apple-mobile-web-app-*` meta + `icons/`). VERIFY the installed launch looks right (icon,
+  splash, no Safari chrome, safe-area). To skip the App Store entirely is fine for one kid; a true
+  App Store listing would need a native wrapper (Capacitor/PWABuilder) — only if the user wants store
+  distribution later.
+- **Deployment (prereq for the icon + offline + alerts):** the app is a static site (no build step),
+  so host it over **HTTPS** (GitHub Pages / Netlify / Cloudflare Pages / Vercel — drag-and-drop or a
+  repo connect). HTTPS is REQUIRED for the service worker to cache offline (today it only works on
+  localhost — README §Offline) and for web push. A stable hosted URL also fixes "works on other
+  devices" (any device just opens the URL). `server.js` stays as the local-dev server only.
+- **Re-engagement alerts ("it's been > a day"):** iOS supports **Web Push for INSTALLED PWAs since
+  iOS 16.4** (must be added to home screen + user grants permission). BUT web push needs a push
+  service → a tiny backend/serverless endpoint, which breaks the current "no backend" constraint —
+  raise the tradeoff with the user (a minimal serverless push fn, or a managed service like
+  OneSignal, vs. keeping it in-app-only). Pure local scheduled notifications are NOT reliably
+  available to iOS PWAs in the background. MVP fallback: an in-app "welcome back, it's been N days!"
+  moment (we already track `streak.lastPlayedDate` + `stats.byDay`) — no push, just a warm nudge on
+  next open. Decide scope with the user.
+
+### B. UI polish — consistency to "would pass app-store review" (HIGH; user's biggest concern)
+Symptom (user): "text inside a box misaligned in some instances," inconsistent **vertical alignment
+inside buttons**, inconsistent **padding**, general inconsistent polish.
+- Do a **systematic pass over every interactive surface**: `.btn` / `.btn.primary` / `.btn.ghost`,
+  `.tile`, `.tray-tile`, `.slot`, `.menu-card`, `.seg button`, `.hear-again`, `.rating`, the chips
+  (`.streak-chip`, `.rarity-chip`), `.crystal-cell`. Likely root causes to hunt in `styles.css`:
+  emoji-vs-text baseline misalignment in labels (emoji sit low → use `line-height`/flex
+  `align-items:center` consistently), mixed `padding` units, buttons sized by content vs. a shared
+  min-height, text not centered in fixed-height boxes. Establish a few shared button tokens and apply
+  them everywhere rather than per-component one-offs.
+- QA method is in §14: drive live with Playwright, screenshot EACH state across iPad-10.2 / mini /
+  landscape / **reduced-height** (`W=/H=` now supported in `qa.mjs`), and judge each PNG like a
+  reviewer. Pay attention to the NEW screens (catalog cells, boss, onboarding, detail overlay).
+
+### C. Audio volume inconsistency (MED; user noticed)
+Symptom (user): "volume seems to change with different voices or something." Almost certainly the
+**pre-generated MP3 clips aren't loudness-normalized** (and differ from Web-Speech loudness), so
+perceived volume jumps between a clip word, a Web-Speech word, and praise.
+- Fix at generation: normalize each clip's PCM (peak or RMS) before MP3 encode in
+  `scripts/gen_audio.mjs` (`pcmToMp3`) so all clips sit at a consistent level; consider matching the
+  Web-Speech baseline. Re-generate (cheap to re-run; it's resumable). Also check `src/audio.js`
+  `playClip` vs `speakTTS` apply the same `settings.volume`.
+- **Also fix the `gen_audio.mjs` STUCK-LOOP bug found this session:** when the daily cap is reported
+  as a plain HTTP 429 *without* the "per day" wording, the script treats it as a per-minute limit and
+  **waits 30s forever** (it looped ~115×/~1hr before I killed it). Add a fail-fast: stop after N (e.g.
+  3-5) consecutive rate-limit waits with no successful batch (HANDOFF §12 already recommended this).
+
+### D. Economy rebalancing (MED; user noticed)
+Symptom (user): "daily targets too easily [hit], too easy to buy all the gems."
+- **Daily goal** `dailyGoalGems` default = **80** in `src/state.js` — one short wave clears it.
+  Raise it / scale to session length, or make it a streak-aware moving target.
+- **Per-answer gems** are generous (a perfect-speed wave mines ~380): `engine/praise.js`
+  `BASE_POINTS` + speed/combo mults. **Catalog costs** (`engine/catalog.js` `RARITIES`: 100/280/650/
+  1400) + the **boss bonus** (`40 + depth*10`) + **quest/geode** payouts (`engine/quests.js`).
+  Rebalance so the full 24-mineral catalog is a multi-WEEK goal, not a day — either lower gem income
+  or raise sinks. Keep it non-punitive (guardrails: no FOMO/loss), just slower-earned.
+- Confirm difficulty UNLOCK thresholds + the cavern-depth pace still feel earned after rebalancing.
+
+### E. Cross-device / robustness (MED)
+- Test on **non-iPad devices** (Android tablet/Chromebook, desktop Chrome/Firefox, a phone) — layout,
+  touch-drag, audio, install. The CSS uses `color-mix()` / `clamp()` / `backdrop-filter` (modern, but
+  verify; Geo already has a `color-mix` fallback). Check safe-area insets on notched devices.
+- Re-run `npm test` (134) + `npm run smoke` after any change; both must stay green (test-gate hook).
+
+### Notes for whoever picks this up
+- Engine is pure + tested (`src/engine/`, 134 tests); UI is verified via Playwright (`npm run smoke`)
+  + the scratch `qa*.mjs` probes. Logic↔UI split (§4) — keep new logic pure + test-first.
+- `sw.js` VERSION is **csc-v5** — bump it whenever a precached file changes.
+- The user wants this to FEEL finished and trustworthy (app-store bar), so favor consistency +
+  correctness over new features now. Do NOT add new game surfaces unless asked.
