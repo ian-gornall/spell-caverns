@@ -868,6 +868,9 @@ A full research brief lives in **`RESEARCH.md`** (prioritized, cited). Implement
    the ACTUAL cracked words shown as chips (shared kid+parent transparency, §4); subtle
    `navigator.vibrate()` paired with SFX (no-op on iPad Safari, adds feel on Android/Chromebook).
    `prefers-reduced-motion` was already fully handled.
+6. **Cavern-map depth path + growth-mindset praise** — a visual "you are here + next level"
+   depth strip on Progress (goal-gradient/endowed progress; answers I5 "visibly progresses"), and
+   effort/process phrases ("You worked it out!", "Nice thinking!") mixed into the spoken praise pools.
 
 New pure engine modules are precached by `sw.js` (VERSION **csc-v4**) for offline. New scratch QA
 tools committed: `scripts/qa_probe.mjs` (viewports/overflow/touch-drag), `scripts/qa_probe2.mjs`
@@ -875,11 +878,9 @@ tools committed: `scripts/qa_probe.mjs` (viewports/overflow/touch-drag), `script
 git-ignored.
 
 ### ▶️ Deferred nice-to-haves (from RESEARCH.md — not blockers; pick up anytime)
-- **Cavern-map progress PATH** with "you are here" + endowed progress (goal-gradient motivation).
 - **Crystal Catalog** (extend specimens with milestone-unlocked, procedurally-recoloured crystals).
 - **First-run onboarding** (name + miner-colour choice + a guaranteed-win first wave + a named
   mascot speaking the welcome). NOTE: would change the boot flow — update `scripts/smoke.mjs` too.
 - **Light narrative spine + a "Geode Boss"** milestone wave at each depth gate.
-- **Process/effort praise** phrases ("you worked it out") mixed into `praise.js` pools (growth mindset).
 - **Audio generation** is still the only parked BUILD item (Gemini free-tier daily cap — §12; device
   voice covers it meanwhile). ⚠️ Still remind the user to **rotate the Gemini API key** pasted in chat.

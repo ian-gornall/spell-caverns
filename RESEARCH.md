@@ -50,7 +50,8 @@ confusable patterns is a *desirable difficulty* (Klimovich & Richter 2025) — a
 **Tier 2 — strong, moderate cost**
 6. **Crystal Catalog collection** (Squeebles/Prodigy; endowed-progress, Nunes & Drèze). **[LATER]**
 7. **Cavern-map progress PATH** with "you are here" + endowed progress (Duolingo path;
-   goal-gradient, Hull/Kivetz). **[LATER]** — would best satisfy "kid visibly progresses".
+   goal-gradient, Hull/Kivetz). **[DONE]** — compact depth strip on Progress (current level
+   glows, next level is the visible goal, "master N more to reach Depth X").
 8. **Variable geode reward** (Duolingo chests; variable-ratio reinforcement). **[DONE]** — always
    positive, free, never real-money / FOMO-timer.
 9. **Mascot guide + name/colour personalization on first run** (Khan's Kodi; SDT autonomy,
@@ -66,8 +67,8 @@ confusable patterns is a *desirable difficulty* (Klimovich & Richter 2025) — a
 13. **Re-tune idle thresholds for a thinking weak speller; nudge before any blocking overlay.**
     **[DONE]** — see HANDOFF §15 I4.
 14. **Light narrative spine + a "Geode Boss" milestone wave.** **[LATER]**
-15. **Process/effort praise** ("you worked it out", growth mindset; Khan model). **[LATER]** —
-    mix a few effort phrases into `praise.js` pools.
+15. **Process/effort praise** ("you worked it out", growth mindset; Khan model). **[DONE]** —
+    effort phrases mixed into the `praise.js` good/great tier pools (spoken aloud).
 
 ---
 
