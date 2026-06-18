@@ -5,10 +5,41 @@
 // screen comes later in the build order). Progress + Settings are wired.
 import { el, header, toast, createIdleGuard, pulse } from '../ui.js';
 import { lapsedWords } from '../engine/progress.js';
+import { streakIsLive } from '../engine/streak.js';
 
 export function homeScreen(ctx) {
   const name = ctx.state.profile.name || 'Explorer';
   const cracked = lapsedWords(ctx.state.tracker).length;
+
+  // Daily streak ("glowing vein") + a tiny daily gem goal — guilt-free momentum.
+  const streak = ctx.state.streak || {};
+  const today = new Date().toISOString().slice(0, 10);
+  const live = streakIsLive(streak, today);
+  const goal = ctx.state.settings.dailyGoalGems || 80;
+  const gemsToday = ctx.store.gemsToday();
+  const goalMet = gemsToday >= goal;
+  const goalPct = Math.min(100, Math.round((gemsToday / goal) * 100));
+  const streakStrip = el(
+    'div',
+    { class: 'home-streak' },
+    el(
+      'div',
+      { class: 'streak-row' },
+      streak.count > 0 &&
+        el('div', { class: 'streak-chip' + (live ? ' lit' : '') }, `🔥 ${streak.count}-day streak`),
+      streak.freezes > 0 && el('div', { class: 'streak-chip lantern' }, `🏮 ×${streak.freezes}`),
+    ),
+    el(
+      'div',
+      { class: 'goal' },
+      el('div', { class: 'goal-bar' }, el('div', { class: 'goal-fill', style: { width: goalPct + '%' } })),
+      el(
+        'div',
+        { class: 'goal-label' },
+        goalMet ? "✨ Today's goal done — nice!" : `Today: 💎 ${gemsToday} / ${goal}`,
+      ),
+    ),
+  );
 
   const cards = [
     el(
@@ -74,6 +105,7 @@ export function homeScreen(ctx) {
       { class: 'home-hero' },
       el('h1', { class: 'home-title' }, 'Crystal Spell Caverns'),
       el('p', { class: 'home-sub' }, `Welcome back, ${name}! Ready to mine some gems?`),
+      streakStrip,
     ),
     el('div', { class: 'home-grid' }, ...cards),
   );

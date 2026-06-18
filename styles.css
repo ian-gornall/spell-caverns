@@ -183,6 +183,60 @@ button {
   font-size: 1.15rem;
   margin-top: 8px;
 }
+
+/* daily streak ("glowing vein") + tiny daily gem goal */
+.home-streak {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.streak-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.streak-chip {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--ink-dim);
+}
+.streak-chip.lit {
+  color: var(--gold);
+  border-color: rgba(255, 210, 63, 0.45);
+  box-shadow: 0 0 18px -4px var(--gold);
+}
+.streak-chip.lantern {
+  color: var(--cyan);
+}
+.goal {
+  width: min(420px, 92%);
+}
+.goal-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.goal-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--emerald), var(--cyan), var(--gold));
+  transition: width 0.4s ease;
+}
+.goal-label {
+  text-align: center;
+  margin-top: 5px;
+  font-size: 0.95rem;
+  color: var(--ink-dim);
+  font-weight: 700;
+}
 .home-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

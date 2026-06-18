@@ -12,6 +12,7 @@ import {
   serializeTracker,
   deserializeTracker,
 } from './engine/progress.js';
+import { defaultStreak, updateStreak } from './engine/streak.js';
 
 const KEY = 'crystal-spell-caverns:v1';
 
@@ -27,6 +28,7 @@ function defaultSettings() {
     volume: 0.85, // 0..1
     voiceName: null, // chosen speechSynthesis voice (null = auto-pick English)
     themeColor: '#7AA2FF',
+    dailyGoalGems: 80, // a TINY daily target (one short dig clears it) — momentum, not pressure
   };
 }
 
@@ -39,6 +41,7 @@ function defaults() {
     feedback: [], // { ts, rating, difficulty, note }
     specimens: [], // Crystal Lab collection: { ts, word, name, image(dataURL) }
     stats: { sessionsPlayed: 0, answers: 0, correct: 0, byDay: {} },
+    streak: defaultStreak(), // daily-play streak (the "glowing vein")
     tracker: createTracker(), // LIVE tracker (Map); serialized on save()
   };
 }
@@ -63,6 +66,7 @@ export function load() {
       profile: { ...base.profile, ...(data.profile || {}) },
       settings: { ...base.settings, ...(data.settings || {}) },
       stats: { ...base.stats, ...(data.stats || {}) },
+      streak: { ...base.streak, ...(data.streak || {}) },
       tracker: deserializeTracker(data.tracker),
     };
   } else {
@@ -91,7 +95,18 @@ export function save() {
 
 export function addGems(n) {
   state.gems = Math.max(0, (state.gems || 0) + n);
+  if (n > 0) {
+    const day = new Date().toISOString().slice(0, 10);
+    const d = state.stats.byDay[day] || (state.stats.byDay[day] = { answers: 0, correct: 0 });
+    d.gems = (d.gems || 0) + n; // gems mined today (drives the daily-goal bar)
+  }
   return state.gems;
+}
+
+// Gems mined today (for the daily goal). Pure read of the per-day stats.
+export function gemsToday() {
+  const day = new Date().toISOString().slice(0, 10);
+  return state.stats.byDay[day]?.gems || 0;
 }
 
 // Tally one answer into lifetime + per-day stats (for the progress chart).
@@ -106,6 +121,9 @@ export function recordAnswerStat(correct) {
 
 export function recordSessionPlayed() {
   state.stats.sessionsPlayed += 1;
+  // A completed dig counts as "played today" — extends the daily streak.
+  const today = new Date().toISOString().slice(0, 10);
+  state.streak = updateStreak(state.streak, today);
 }
 
 export function addFeedback(entry) {

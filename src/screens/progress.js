@@ -13,6 +13,7 @@ export function progressScreen(ctx) {
   const total = Math.max(1, tracked);
   const pct = (n) => `${(n / total) * 100}%`;
   const cracked = lapsedWords(ctx.state.tracker).length;
+  const streak = ctx.state.streak || {};
 
   const spectrum = el(
     'div',
@@ -75,6 +76,12 @@ export function progressScreen(ctx) {
             { class: 'stat', style: { flexDirection: 'column' } },
             el('span', { class: 'big-num' }, `⛏️ ${ctx.depth()}`),
             el('span', { style: { color: 'var(--ink-dim)' } }, 'cavern depth'),
+          ),
+          el(
+            'div',
+            { class: 'stat', style: { flexDirection: 'column' } },
+            el('span', { class: 'big-num' }, `🔥 ${streak.count || 0}`),
+            el('span', { style: { color: 'var(--ink-dim)' } }, `day streak${streak.longest ? ` · best ${streak.longest}` : ''}`),
           ),
         ),
       ),
