@@ -224,74 +224,110 @@ export function settingsScreen(ctx) {
     '🔊 Test voice',
   );
 
-  // export / import / reset
-  const dataRow = el(
+  // --- Parents & Privacy: backup / restore / delete + a plain-language data note ---
+  // All data lives on THIS device. A "backup" is a file the PARENT keeps in their own
+  // cloud (iCloud Drive / Google Drive via the Files app), so no server we operate ever
+  // holds the child's data — the COPPA-minimizing design (see PRIVACY.md).
+  const backupDays = ctx.store.lastBackupDays();
+  const backupDue = ctx.store.hasProgress() && backupDays >= 7;
+  const backupStatusText =
+    backupDays === Infinity
+      ? 'Not backed up yet.'
+      : backupDays === 0
+        ? 'Backed up today. ✅'
+        : `Last backup: ${backupDays} day${backupDays === 1 ? '' : 's'} ago.`;
+
+  const backupBtn = el(
+    'button',
+    {
+      class: 'btn' + (backupDue ? ' primary' : ''),
+      onClick: () => {
+        const blob = new Blob([ctx.store.exportData()], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = el('a', {
+          href: url,
+          download: `crystal-spell-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        });
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        ctx.store.markBackedUp();
+        toast('Backup saved! Keep it in Files → iCloud Drive. ☁️');
+        ctx.nav('settings'); // refresh the "last backup" line
+      },
+    },
+    '☁️ Back up progress',
+  );
+
+  const restoreBtn = el(
+    'button',
+    {
+      class: 'btn',
+      onClick: () => {
+        const inp = el('input', {
+          type: 'file',
+          accept: 'application/json',
+          style: { display: 'none' },
+          onChange: (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              try {
+                ctx.store.importData(reader.result);
+                audio.configure(ctx.state.settings);
+                applyTheme(ctx.state.settings.themeColor);
+                applyReadable(ctx.state.settings.readableText);
+                toast('Progress restored! ✨');
+                ctx.nav('settings');
+              } catch {
+                toast('That file is not a Crystal Spell Caverns backup. 😕');
+              }
+            };
+            reader.readAsText(file);
+          },
+        });
+        document.body.appendChild(inp);
+        inp.click();
+        inp.remove();
+      },
+    },
+    '📂 Restore from backup',
+  );
+
+  const deleteBtn = el(
+    'button',
+    {
+      class: 'btn ghost',
+      onClick: () => {
+        if (confirm('Delete ALL progress on this device? This cannot be undone. Back up first if you want to keep it.')) {
+          ctx.store.reset();
+          audio.configure(ctx.state.settings);
+          applyTheme(ctx.state.settings.themeColor);
+          applyReadable(ctx.state.settings.readableText);
+          toast('All data deleted. Fresh start! 🌟');
+          ctx.nav('settings');
+        }
+      },
+    },
+    '🗑️ Delete all data',
+  );
+
+  const dataPanel = el(
     'div',
-    { class: 'seg' },
+    { class: 'data-actions' },
+    el('p', { class: 'backup-status' + (backupDue ? ' due' : '') }, backupStatusText),
+    backupBtn,
+    restoreBtn,
+    deleteBtn,
     el(
-      'button',
-      {
-        onClick: () => {
-          const blob = new Blob([ctx.store.exportData()], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = el('a', {
-            href: url,
-            download: `crystal-spell-${new Date().toISOString().slice(0, 10)}.json`,
-          });
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          URL.revokeObjectURL(url);
-          toast('Saved your data file! 💾');
-        },
-      },
-      '💾 Export',
-    ),
-    el(
-      'button',
-      {
-        onClick: () => {
-          const inp = el('input', {
-            type: 'file',
-            accept: 'application/json',
-            style: { display: 'none' },
-            onChange: (e) => {
-              const file = e.target.files[0];
-              if (!file) return;
-              const reader = new FileReader();
-              reader.onload = () => {
-                try {
-                  ctx.store.importData(reader.result);
-                  audio.configure(ctx.state.settings);
-                  toast('Data loaded! ✨');
-                  ctx.nav('settings');
-                } catch {
-                  toast('That file did not load. 😕');
-                }
-              };
-              reader.readAsText(file);
-            },
-          });
-          document.body.appendChild(inp);
-          inp.click();
-          inp.remove();
-        },
-      },
-      '📂 Import',
-    ),
-    el(
-      'button',
-      {
-        onClick: () => {
-          if (confirm('Start over? This erases gems and progress on this device.')) {
-            ctx.store.reset();
-            audio.configure(ctx.state.settings);
-            toast('Fresh start! 🌟');
-            ctx.nav('settings');
-          }
-        },
-      },
-      '🗑️ Reset',
+      'p',
+      { class: 'privacy-note' },
+      'Everything stays on this device — nothing is sent to us or anyone else. ' +
+        'The “explorer name” is just a nickname (no real names needed). ' +
+        'Back up to keep a copy in your own iCloud/Drive or move progress to another iPad; ' +
+        'delete any time. See PRIVACY.md for details.',
     ),
   );
 
@@ -322,15 +358,21 @@ export function settingsScreen(ctx) {
         'div',
         { class: 'panel' },
         el('h3', {}, 'You'),
-        el('div', { class: 'field' }, el('label', {}, 'Your explorer name'), nameInput),
+        el(
+          'div',
+          { class: 'field' },
+          el('label', {}, 'Your explorer name'),
+          nameInput,
+          el('p', { class: 'field-hint' }, 'A nickname is perfect — no real name needed.'),
+        ),
         el('div', { class: 'field' }, el('label', {}, 'Crystal colour'), colourRow),
         el('div', { class: 'field' }, el('label', {}, 'Easy-read text'), readableSeg),
       ),
       el(
         'div',
         { class: 'panel' },
-        el('h3', {}, 'Your data'),
-        dataRow,
+        el('h3', {}, 'Parents & privacy'),
+        dataPanel,
       ),
     ),
   );

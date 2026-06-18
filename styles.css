@@ -1063,6 +1063,36 @@ select {
   padding: 0 12px;
 }
 
+/* Parents & privacy: backup/restore/delete actions + notes */
+.data-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.data-actions .btn {
+  width: 100%;
+}
+.backup-status {
+  margin: 0 0 2px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--ink-dim);
+}
+.backup-status.due {
+  color: var(--gold);
+}
+.privacy-note {
+  margin: 8px 2px 0;
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.field-hint {
+  margin: 6px 2px 0;
+  color: var(--ink-dim);
+  font-size: 0.9rem;
+}
+
 /* mastery spectrum bar (progress screen) */
 .spectrum {
   display: flex;

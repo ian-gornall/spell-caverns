@@ -14,6 +14,7 @@ import {
 } from './engine/progress.js';
 import { defaultStreak, updateStreak } from './engine/streak.js';
 import { purchaseResult, nextFreeCrystal } from './engine/catalog.js';
+import { wrapBackup, readBackup } from './engine/backup.js';
 
 const KEY = 'crystal-spell-caverns:v1';
 
@@ -46,6 +47,7 @@ function defaults() {
     streak: defaultStreak(), // daily-play streak (the "glowing vein")
     records: { bestCombo: 0, bestWaveGems: 0 }, // personal bests ("beat your best")
     catalog: { owned: [], milestoneDepth: 1 }, // Crystal Catalog: collected mineral ids + last depth that granted a free crystal
+    lastBackupAt: 0, // ms of the last parent backup (0 = never) — drives the backup reminder
     tracker: createTracker(), // LIVE tracker (Map); serialized on save()
   };
 }
@@ -244,15 +246,40 @@ export function grantMilestoneCrystal(currentDepth) {
   return species;
 }
 
-// --- export / import (data leaves/returns via a JSON file) -------------------
+// --- backup / restore (parent-controlled; data leaves/returns via a JSON file) ----
+// All data stays on-device; a "backup" is a file the PARENT keeps in their OWN cloud
+// (iCloud Drive / Google Drive via Files), so no server we operate ever holds the
+// child's data — the COPPA-minimizing design (see PRIVACY.md / engine/backup.js).
 
+// Whole days since the last parent backup (Infinity if never). For the reminder.
+export function lastBackupDays() {
+  const last = state.lastBackupAt || 0;
+  if (!last) return Infinity;
+  return Math.max(0, Math.floor((Date.now() - last) / 86400000));
+}
+
+// Is there progress worth backing up yet? (played at least one word, or earned gems)
+export function hasProgress() {
+  return (state.stats?.answers || 0) > 0 || (state.gems || 0) > 0 || state.tracker.records.size > 0;
+}
+
+// Mark that the parent just took a backup (resets the reminder clock).
+export function markBackedUp() {
+  state.lastBackupAt = Date.now();
+  save();
+  return state.lastBackupAt;
+}
+
+// The backup file contents: the full state (tracker serialized) inside a small,
+// identifiable, versioned envelope (marker + version + timestamp only — no new data).
 export function exportData() {
   const data = { ...state, tracker: serializeTracker(state.tracker) };
-  return JSON.stringify(data, null, 2);
+  return JSON.stringify(wrapBackup(data, Date.now()), null, 2);
 }
 
 export function importData(text) {
-  const data = JSON.parse(text);
+  const parsed = JSON.parse(text);
+  const data = readBackup(parsed); // unwrap envelope / accept legacy bare export, else throw
   if (!data || typeof data !== 'object') throw new Error('Not a valid save file.');
   const base = defaults();
   state = {
