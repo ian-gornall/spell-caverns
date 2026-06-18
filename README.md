@@ -94,7 +94,7 @@ changing learning behaviour.
 ## Develop / test
 
 ```
-npm test            # the pure decision engine (Node's test runner) — 134 tests
+npm test            # the pure decision engine (Node's test runner) — 149 tests
 npm start           # serve the app for the iPad / a browser
 node scripts/smoke.mjs   # Playwright UI smoke test of every mode (server must be up)
 ```
@@ -117,6 +117,46 @@ Once installed, the app caches its shell + word data and **works offline**.
 plain `http://` LAN address the app still installs and runs (online), but the
 offline cache won't activate. For true offline on the iPad, serve over HTTPS (e.g. a
 local cert or a tunnel like `cloudflared`/`ngrok`).
+
+---
+
+## Deploy it as a "real app on the iPad" (HTTPS hosting)
+
+The best experience — a permanent home-screen icon that opens full-screen, works
+offline, and is reachable from any device — comes from hosting the (static, no-build)
+site at a **stable HTTPS URL**, then adding it to the home screen once.
+
+**Easiest (recommended): Netlify or Cloudflare Pages — zero config, free, root URL.**
+
+- **Netlify** — drag the project folder onto <https://app.netlify.com/drop>, or
+  "import an existing project" from this repo. A `netlify.toml` is included (no build,
+  publish the root). You get `https://<your-name>.netlify.app`.
+- **Cloudflare Pages / Vercel** — connect the repo; build command **none**, output
+  directory **`/`** (the repo root). Also a root HTTPS URL, no config needed.
+
+Then on the iPad open that HTTPS URL in Safari → **Share → Add to Home Screen**. The
+icon, splash, portrait orientation, and full-screen (no Safari chrome) are already
+configured in `manifest.webmanifest` + the `apple-mobile-web-app-*` meta, and offline
+caching now works because it's HTTPS.
+
+> **Serve at a domain ROOT.** The app uses root-absolute paths (`/src/…`, `/sw.js`,
+> `/manifest.webmanifest`). A root URL (a `*.netlify.app`/`*.pages.dev` subdomain, a
+> custom domain, or a GitHub **user/org** page `username.github.io`) works as-is. A
+> GitHub **project** page (`username.github.io/repo/`) serves under a subpath and would
+> 404 those paths — prefer the zero-config root hosts above.
+
+### Re-engagement ("it's been a while" nudge)
+
+- **Shipping now (no backend):** an in-app **welcome-back** moment — open the app after
+  a day or more away and the home screen greets the learner by name with how long it's
+  been, streak-aware and never guilt-trippy (driven by `streak.lastPlayedDate`).
+- **A true push notification** ("come back!" while the app is closed) is possible on
+  iOS **only for an installed PWA on iOS 16.4+**, and needs a **push service → a small
+  backend / serverless function**, which breaks the app's current no-backend design.
+  Options if you want it later: a minimal serverless push endpoint, or a managed
+  service like **OneSignal**. **This is a product decision** — left out for now; the
+  in-app welcome-back covers the common case without any server. (See `HANDOFF.md`
+  §17.A.)
 
 ---
 

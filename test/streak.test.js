@@ -3,7 +3,13 @@
 // missed day; everything is guilt-free (a lapse just resets to 1).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dayDiff, defaultStreak, updateStreak, streakIsLive } from '../src/engine/streak.js';
+import {
+  dayDiff,
+  defaultStreak,
+  updateStreak,
+  streakIsLive,
+  daysSinceLastPlayed,
+} from '../src/engine/streak.js';
 
 test('dayDiff counts whole calendar days', () => {
   assert.equal(dayDiff('2026-06-18', '2026-06-18'), 0);
@@ -66,4 +72,14 @@ test('streakIsLive: lit today or yesterday, cold after that', () => {
   assert.ok(streakIsLive(s, '2026-06-19'));
   assert.ok(!streakIsLive(s, '2026-06-21'));
   assert.ok(!streakIsLive(defaultStreak(), '2026-06-18'));
+});
+
+test('daysSinceLastPlayed drives the in-app "welcome back" nudge (§17.A)', () => {
+  const s = updateStreak(defaultStreak(), '2026-06-18');
+  assert.equal(daysSinceLastPlayed(s, '2026-06-18'), 0, 'played today');
+  assert.equal(daysSinceLastPlayed(s, '2026-06-19'), 1, 'one day away');
+  assert.equal(daysSinceLastPlayed(s, '2026-06-25'), 7, 'a week away');
+  // never played -> Infinity (no nudge), and a clock anomaly never goes negative
+  assert.equal(daysSinceLastPlayed(defaultStreak(), '2026-06-18'), Infinity);
+  assert.equal(daysSinceLastPlayed(s, '2026-06-17'), 0, 'clock skew clamps to 0, never negative');
 });

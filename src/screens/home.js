@@ -5,7 +5,7 @@
 // screen comes later in the build order). Progress + Settings are wired.
 import { el, header, toast, createIdleGuard, pulse } from '../ui.js';
 import { lapsedWords } from '../engine/progress.js';
-import { streakIsLive } from '../engine/streak.js';
+import { streakIsLive, daysSinceLastPlayed } from '../engine/streak.js';
 import { dailyQuests, questProgress } from '../engine/quests.js';
 import { catalogSummary, affordableLocked } from '../engine/catalog.js';
 
@@ -20,7 +20,23 @@ export function homeScreen(ctx) {
   const streak = ctx.state.streak || {};
   const today = new Date().toISOString().slice(0, 10);
   const live = streakIsLive(streak, today);
-  const goal = ctx.state.settings.dailyGoalGems || 80;
+  const awayDays = daysSinceLastPlayed(streak, today);
+
+  // In-app re-engagement (§17.A MVP — no backend / push): a warm, contextual welcome
+  // line that recognises a returning learner. Streak-aware and never guilt-trippy.
+  let greeting = `Welcome back, ${name}! Ready to mine some gems?`;
+  if (awayDays >= 1 && awayDays !== Infinity) {
+    if (awayDays === 1) {
+      greeting = `Welcome back, ${name}! A new day of digging awaits. 💎`;
+    } else if (streak.freezes > 0 && awayDays === 2) {
+      greeting = `Welcome back, ${name}! It's been ${awayDays} days — a 🏮 lantern is keeping your streak glowing. Let's dig!`;
+    } else if (awayDays <= 7) {
+      greeting = `Welcome back, ${name}! It's been ${awayDays} days — let's get back to mining. ⛏️`;
+    } else {
+      greeting = `Welcome back, ${name}! It's been a while — the caverns missed you. Let's dig! ⛏️`;
+    }
+  }
+  const goal = ctx.state.settings.dailyGoalGems || 250;
   const gemsToday = ctx.store.gemsToday();
   const goalMet = gemsToday >= goal;
   const goalPct = Math.min(100, Math.round((gemsToday / goal) * 100));
@@ -126,7 +142,7 @@ export function homeScreen(ctx) {
       'div',
       { class: 'home-hero' },
       el('h1', { class: 'home-title' }, 'Crystal Spell Caverns'),
-      el('p', { class: 'home-sub' }, `Welcome back, ${name}! Ready to mine some gems?`),
+      el('p', { class: 'home-sub' }, greeting),
       streakStrip,
     ),
     el('div', { class: 'home-grid' }, ...cards),

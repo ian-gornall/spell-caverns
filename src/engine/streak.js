@@ -59,3 +59,14 @@ export function streakIsLive(streak, todayISO) {
   const diff = dayDiff(streak.lastPlayedDate, todayISO);
   return Number.isFinite(diff) && diff >= 0 && diff <= 1;
 }
+
+// Whole days since the learner last played, as of `todayISO`. Infinity if they've
+// never played; 0 means they already played today; never negative (clock skew clamps
+// to 0). Drives the in-app "welcome back, it's been N days" re-engagement nudge on the
+// home screen (§17.A MVP) — no backend / web-push needed, just a warm prompt on open.
+export function daysSinceLastPlayed(streak, todayISO) {
+  if (!streak || !streak.lastPlayedDate) return Infinity;
+  const diff = dayDiff(streak.lastPlayedDate, todayISO);
+  if (!Number.isFinite(diff)) return Infinity;
+  return Math.max(0, diff);
+}
