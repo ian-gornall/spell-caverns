@@ -15,3 +15,6 @@ tools/
 scripts/oneshot.mjs
 # Secrets — Gemini API key etc. NEVER commit.
 .env
+
+# Clean deploy bundle (build artifact — regenerate with scripts/build_deploy.mjs)
+deploy/
