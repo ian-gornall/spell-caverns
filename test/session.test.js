@@ -125,12 +125,14 @@ test('patternSpread axis: easy draws one pattern, hard mixes several', () => {
   assert.ok(distinctPatterns(hard) >= 3, `hard should mix patterns, got ${distinctPatterns(hard)}`);
 });
 
-test('masteryTarget axis: easy words are easier (higher predicted success) than hard', () => {
+test('difficulty still nudges word hardness: hard reaches harder new words than easy', () => {
+  // In the target-first model the START LEVEL is the main difficulty driver, but the
+  // preset still reaches further ahead on "hard" (lower masteryTarget) than on "easy".
   const t = createTracker();
   const words = grid(FIVE);
   const easy = buildSession(t, { difficulty: 'easy', length: 12, rng: mulberry32(2), words });
   const hard = buildSession(t, { difficulty: 'hard', length: 12, rng: mulberry32(2), words });
-  assert.ok(avgPs(t, easy) > avgPs(t, hard) + 0.15, `easy ${avgPs(t, easy)} vs hard ${avgPs(t, hard)}`);
+  assert.ok(avgPs(t, easy) > avgPs(t, hard) + 0.05, `easy ${avgPs(t, easy)} vs hard ${avgPs(t, hard)}`);
 });
 
 test('buildSession returns exactly `length` words', () => {
@@ -151,20 +153,38 @@ test('hard interleaves patterns (adjacent words usually differ)', () => {
   assert.ok(diff > same, `expected mostly interleaved, got diff=${diff} same=${same}`);
 });
 
-// ------------------------------------------------------------------- review
-test('a session opens with previously-seen words that are DUE for review', () => {
+// --------------------------------------------------- target-first session model
+test('the session leads with TARGET words (the ones missed recently)', () => {
+  const words = pool([{ pattern: 'short-a', tier: 1, count: 40 }]);
   const t = createTracker();
-  const words = grid(FIVE);
-  // make all tier-5 words "seen" — hard (target ~0.5) targets that band
-  for (const w of words.filter((w) => w.tier === 5)) recordAnswer(t, w.word, true, { responseMs: 1500 });
-  // Let them REST: play many throwaway words so the seen words pass their spacing
-  // cooldown and become due for a confirming revisit (spacing requirement).
-  for (let i = 0; i < 40; i++) recordAnswer(t, `filler_${i}`, true, { responseMs: 1500 });
-  const s = buildSession(t, { difficulty: 'hard', length: 12, rng: mulberry32(5), words });
-  const reviewCount = Math.round(12 * 0.3); // REVIEW_FRACTION
-  for (let i = 0; i < reviewCount; i++) {
-    assert.ok(getRecord(t, s[i].word), `position ${i} should be a seen/review word`);
-  }
+  // miss three specific words -> they become targets
+  const missed = [words[2].word, words[5].word, words[9].word];
+  for (const w of missed) recordAnswer(t, w, false, { responseMs: 5000 });
+  const s = buildSession(t, { difficulty: 'easy', length: 10, rng: mulberry32(5), words });
+  const got = new Set(s.map((w) => w.word));
+  for (const m of missed) assert.ok(got.has(m), `target "${m}" should be in the session`);
+});
+
+test('correct-first-time words are PARKED while there is fresh material to do', () => {
+  const words = pool([{ pattern: 'short-a', tier: 1, count: 40 }]);
+  const t = createTracker();
+  const known = words[0].word;
+  recordAnswer(t, known, true, { responseMs: 500 }); // nailed first try -> parked (not a target)
+  // plenty of never-seen words remain, so the parked word should not be re-served
+  const s = buildSession(t, { difficulty: 'easy', length: 10, rng: mulberry32(6), words });
+  assert.ok(!s.some((w) => w.word === known), 'a parked correct word waits while new words exist');
+  assert.ok(s.every((w) => !getRecord(t, w.word)), 'the session is fresh/new material');
+});
+
+test('known words DO come back once there is nothing new and no targets left', () => {
+  // tiny pool: every word seen + answered correctly (parked), none new, none targets
+  const words = pool([{ pattern: 'short-a', tier: 1, count: 5 }]);
+  const t = createTracker();
+  for (const w of words) recordAnswer(t, w.word, true, { responseMs: 500 });
+  for (let i = 0; i < 40; i++) recordAnswer(t, `filler_${i}`, true, { responseMs: 500 }); // rest them
+  const s = buildSession(t, { difficulty: 'easy', length: 5, rng: mulberry32(7), words });
+  assert.ok(s.length > 0, 'falls back to due/known words rather than an empty session');
+  assert.ok(s.every((w) => getRecord(t, w.word)), 'only the known pool words are available');
 });
 
 // -------------------------------------------------------- confusable patterns

@@ -22,6 +22,15 @@ const CONF_BASE = 0.5;
 // back to here (also the default `knownAt` for summary's known bucket).
 const KNOWN_AT = 0.85;
 
+// "Target" words = the ones the learner truly doesn't know yet, the focus of practice.
+// A word is a target if it's been MISSED at least once within its last TARGET_WINDOW
+// attempts (so a correct-every-recent-time word drops out — it's "parked" for spaced
+// confirmation). The session builder keeps introducing new words until ~TARGET_CAP words
+// are being actively targeted (user 2026-06-18). RECENT_MAX bounds the per-word history.
+const TARGET_WINDOW = 3;
+const RECENT_MAX = 6;
+export const TARGET_CAP = 10;
+
 // Per-answer score for MASTERY. Mastery is about ACCURACY, not speed (user 2026-06-18:
 // "if a child is accurate, the speed really shouldn't matter") — so any correct answer is
 // full credit (1) regardless of how fast it was, and a wrong answer is 0. Speed still
@@ -66,7 +75,7 @@ export function recordAnswer(tracker, word, correct, opts = {}) {
   const s = answerScore({ correct, responseMs: opts.responseMs, fast: opts.fast });
   let rec = tracker.records.get(word);
   if (!rec) {
-    rec = { word, attempts: 0, mastery: 0, confidence: 0, lastSeen: 0, recentMs: null, lapsed: false };
+    rec = { word, attempts: 0, mastery: 0, confidence: 0, lastSeen: 0, recentMs: null, lapsed: false, recent: [] };
     tracker.records.set(word, rec);
   }
   // First answer seeds mastery outright; later answers blend with recency weight.
@@ -74,6 +83,10 @@ export function recordAnswer(tracker, word, correct, opts = {}) {
   rec.attempts += 1;
   rec.confidence = 1 - Math.pow(CONF_BASE, rec.attempts);
   rec.lastSeen = ++tracker.tick;
+  // Bounded recent-attempt history (oldest→newest) — drives target selection.
+  rec.recent = Array.isArray(rec.recent) ? rec.recent : [];
+  rec.recent.push(!!correct);
+  if (rec.recent.length > RECENT_MAX) rec.recent.shift();
   if (Number.isFinite(opts.responseMs)) {
     rec.recentMs =
       rec.recentMs == null ? opts.responseMs : rec.recentMs + ALPHA * (opts.responseMs - rec.recentMs);
@@ -92,6 +105,34 @@ export function recordAnswer(tracker, word, correct, opts = {}) {
 export function lapsedWords(tracker, { max = 50 } = {}) {
   return [...tracker.records.values()]
     .filter((r) => r.lapsed)
+    .sort((a, b) => a.mastery - b.mastery || a.lastSeen - b.lastSeen)
+    .slice(0, max)
+    .map((r) => r.word);
+}
+
+// --- target words (the working set the learner is actively trying to learn) ------
+const recentOf = (rec) => (rec && Array.isArray(rec.recent) ? rec.recent : []);
+
+// Is `word` a current TARGET — seen, and missed at least once within its last `window`
+// attempts (i.e. not yet reliably correct)? A word answered correctly every recent time
+// is NOT a target (it's "parked" for spaced confirmation). Falls back to the `lapsed`
+// flag for legacy records saved before recent-history tracking existed.
+export function isTarget(tracker, word, { window = TARGET_WINDOW } = {}) {
+  const rec = tracker.records.get(word);
+  if (!rec || !rec.attempts) return false;
+  const r = recentOf(rec);
+  return r.length ? r.slice(-window).includes(false) : !!rec.lapsed;
+}
+
+// All current target words, WORST (lowest mastery) then most-overdue first — the order
+// the session builder leads with. `max` caps the scan.
+export function targetWords(tracker, { window = TARGET_WINDOW, max = 100 } = {}) {
+  return [...tracker.records.values()]
+    .filter((rec) => {
+      if (!rec.attempts) return false;
+      const r = recentOf(rec);
+      return r.length ? r.slice(-window).includes(false) : !!rec.lapsed;
+    })
     .sort((a, b) => a.mastery - b.mastery || a.lastSeen - b.lastSeen)
     .slice(0, max)
     .map((r) => r.word);

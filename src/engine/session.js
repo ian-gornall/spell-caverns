@@ -23,10 +23,11 @@ import {
   lapsedWords,
   isEligible,
   serveOverdue,
+  targetWords,
+  TARGET_CAP,
 } from './progress.js';
 
 const MAX_PATTERNS = 5; // patternSpread 1.0 mixes up to this many families
-const REVIEW_FRACTION = 0.3; // share of a session that opens as mixed review
 const BAND = 0.25; // a word counts as "near target" within this predicted-success distance
 
 const clamp01 = (x) => (!Number.isFinite(x) ? 0 : x < 0 ? 0 : x > 1 ? 1 : x);
@@ -134,66 +135,30 @@ function choosePatterns(words, psFn, target, n) {
   return chosen;
 }
 
-// Select the session's words: an opening mixed-review of previously-seen words that
-// have RESTED long enough (least-recently-seen first), then new/target-band words
-// drawn ROUND-ROBIN across the chosen patterns (closest to the mastery target first).
-//
-// SPACING (the user's requirement): words still resting on their serve cooldown are
-// skipped, so a just-mastered word is never re-served immediately — fresh and
-// long-rested words fill the session instead. A fallback tops up from the most-overdue
-// resting words if eligible material runs out, so a session is never starved (rare on
-// the full 2,900-word lexicon) and long-known words do return for confirmation.
-function selectWords(tracker, words, chosenPatterns, psFn, target, length) {
-  const chosen = new Set(chosenPatterns);
-  const inPat = words.filter((w) => chosen.has(w.pattern));
-
-  // Review: previously-seen words that are DUE (past their cooldown), least-recently-
-  // seen first. Resting words are not force-reviewed — that is what spaces out known
-  // words. Never-seen words have no review role (they're new material, below).
-  const seenDue = inPat
-    .filter((w) => (getRecord(tracker, w.word)?.attempts ?? 0) > 0 && isEligible(tracker, w.word))
-    .sort((a, b) => getRecord(tracker, a.word).lastSeen - getRecord(tracker, b.word).lastSeen);
-  const reviewCount = Math.min(Math.round(length * REVIEW_FRACTION), seenDue.length);
-  const reviewWords = seenDue.slice(0, reviewCount);
-  const reviewSet = new Set(reviewWords.map((w) => w.word));
-
-  const eligible = (w) => !reviewSet.has(w.word) && isEligible(tracker, w.word);
-  const byPat = new Map();
-  for (const p of chosenPatterns) {
-    byPat.set(
-      p,
-      inPat
-        .filter((w) => w.pattern === p && eligible(w))
-        .sort((a, b) => Math.abs(psFn(a) - target) - Math.abs(psFn(b) - target)),
-    );
+// Expand a set of seed patterns to `n`, preferring CONFUSABLE cluster-mates (so a wider
+// spread means harder discrimination, not random mixing), then any remaining pattern.
+function expandPatterns(seed, words, n) {
+  const allPats = [...new Set(words.map((w) => w.pattern))];
+  const chosen = [];
+  for (const p of seed) if (chosen.length < n && !chosen.includes(p)) chosen.push(p);
+  while (chosen.length < n) {
+    let next = allPats.find((p) => !chosen.includes(p) && chosen.some((c) => sharesCluster(c, p)));
+    if (!next) next = allPats.find((p) => !chosen.includes(p));
+    if (!next) break;
+    chosen.push(next);
   }
-  const need = length - reviewWords.length;
-  const mainWords = [];
-  let i = 0;
-  let added = true;
-  while (mainWords.length < need && added) {
-    added = false;
-    for (const p of chosenPatterns) {
-      const list = byPat.get(p);
-      if (i < list.length && mainWords.length < need) {
-        mainWords.push(list[i]);
-        added = true;
-      }
-    }
-    i += 1;
-  }
+  return chosen;
+}
 
-  // Fallback: not enough eligible material to fill the session → top up with the
-  // most-overdue RESTING words (closest past their cooldown first), so we never starve
-  // and the longest-waiting known words are the ones that come back. Rare in practice.
-  if (mainWords.length < need) {
-    const have = new Set([...reviewWords, ...mainWords].map((w) => w.word));
-    const resting = inPat
-      .filter((w) => !have.has(w.word) && (getRecord(tracker, w.word)?.attempts ?? 0) > 0)
-      .sort((a, b) => serveOverdue(tracker, b.word) - serveOverdue(tracker, a.word));
-    mainWords.push(...resting.slice(0, need - mainWords.length));
-  }
-  return { reviewWords, mainWords };
+// Order never-seen candidates by an ANCHOR tier so new words come in PROGRESSIVELY from
+// the learner's starting point upward (user 2026-06-18): words at/above the anchor first,
+// lowest first; below-anchor (probably already easy for them) only as a last resort.
+function orderNewByAnchor(list, anchor) {
+  return list.slice().sort((a, b) => {
+    const da = a.tier < anchor ? 1000 + (anchor - a.tier) : a.tier - anchor;
+    const db = b.tier < anchor ? 1000 + (anchor - b.tier) : b.tier - anchor;
+    return da - db || a.rank - b.rank;
+  });
 }
 
 // Order the main words: blocked (grouped by pattern) at low spread, interleaved
@@ -223,26 +188,82 @@ function orderMain(words, spread, rng) {
   return out;
 }
 
-// buildSession(tracker, { difficulty, length, rng, words }) -> ordered word entries.
-// `difficulty` is a preset name or a custom {patternSpread, masteryTarget}. `words`
-// defaults to the full frequency-ordered lexicon.
+// How far above the chosen starting tier to reach when introducing new words. Lower
+// masteryTarget (a "harder" preset) reaches further ahead; "easy" stays at the start.
+const REACH = 3;
+
+// buildSession(tracker, { difficulty, length, rng, words, startTier }) -> ordered words.
+//
+// TARGET-FIRST model (user 2026-06-18): the session leads with the learner's TARGET words
+// — the ones truly not known yet (missed within their last few attempts) — grouped by
+// pattern and interleaved per spread. While fewer than ~TARGET_CAP words are being
+// targeted, it introduces NEW words PROGRESSIVELY from the starting tier upward (to find
+// more of what they don't know). Words answered correctly are PARKED and only resurface
+// for spaced confirmation AFTER the targets are handled. `startTier` (from level-select)
+// anchors where new words begin; difficulty's masteryTarget sets how far above to reach.
 export function buildSession(tracker, opts = {}) {
-  const { difficulty = 'easy', length = 12, rng = Math.random, words = byRank() } = opts;
+  const { difficulty = 'easy', length = 12, rng = Math.random, words = byRank(), startTier = 1 } = opts;
   const { patternSpread, masteryTarget } = resolveDifficulty(difficulty);
   const psFn = (w) => predictedSuccess(tracker, w.word, tierToPrior(w.tier));
+  const anchor = Math.min(9, Math.max(1, Math.round(startTier + (1 - masteryTarget) * REACH)));
+  const byWord = new Map(words.map((w) => [w.word, w]));
+  const rec = (w) => getRecord(tracker, w.word);
 
-  const chosenPatterns = choosePatterns(words, psFn, masteryTarget, patternCount(patternSpread));
-  const { reviewWords, mainWords } = selectWords(
-    tracker,
-    words,
-    chosenPatterns,
-    psFn,
-    masteryTarget,
-    length,
-  );
-  // Mixed review opens the session (spacing); then the main words, ordered by spread.
-  const ordered = [...shuffle(reviewWords, rng), ...orderMain(mainWords, patternSpread, rng)];
-  return ordered.slice(0, length);
+  // 1. Targets present in this dataset, worst-first.
+  const targets = targetWords(tracker).map((w) => byWord.get(w)).filter(Boolean);
+
+  // 2. Seed patterns from the targets (what the learner is struggling with); if none yet,
+  //    from the words at/above the start tier (cold start). Expand by spread.
+  let seed = [...new Set(targets.map((t) => t.pattern))];
+  if (seed.length === 0) {
+    seed = choosePatterns(words.filter((w) => w.tier >= startTier), psFn, masteryTarget, 1);
+  }
+  const chosenPatterns = expandPatterns(seed, words, patternCount(patternSpread));
+  const chosen = new Set(chosenPatterns);
+
+  // 3. Fill to `length`, in priority order.
+  const picked = [];
+  const seen = new Set();
+  const add = (w) => {
+    if (w && !seen.has(w.word) && picked.length < length) {
+      picked.push(w);
+      seen.add(w.word);
+    }
+  };
+
+  // (a) targets lead — those in the chosen patterns first, then any other target.
+  targets.filter((t) => chosen.has(t.pattern)).forEach(add);
+  targets.forEach(add);
+
+  // (b) new material — keep introducing (progressively, from the anchor up) only while
+  //     we have room AND fewer than ~TARGET_CAP active targets (still hunting unknowns).
+  if (picked.length < length && targets.length < TARGET_CAP) {
+    orderNewByAnchor(words.filter((w) => chosen.has(w.pattern) && !rec(w)), anchor).forEach(add);
+  }
+
+  // (c) parked/known words come back only AFTER targets: DUE (rested past cooldown) seen
+  //     words in the chosen patterns, least-recently-seen (most overdue) first.
+  if (picked.length < length) {
+    words
+      .filter((w) => chosen.has(w.pattern) && !seen.has(w.word) && (rec(w)?.attempts ?? 0) > 0 && isEligible(tracker, w.word))
+      .sort((a, b) => rec(a).lastSeen - rec(b).lastSeen)
+      .forEach(add);
+  }
+
+  // (d) never starve: any never-seen word (progressive, ignore pattern), then the
+  //     most-overdue resting words. Rare on the full lexicon; matters for small pools.
+  if (picked.length < length) {
+    orderNewByAnchor(words.filter((w) => !seen.has(w.word) && !rec(w)), anchor).forEach(add);
+  }
+  if (picked.length < length) {
+    words
+      .filter((w) => !seen.has(w.word) && (rec(w)?.attempts ?? 0) > 0)
+      .sort((a, b) => serveOverdue(tracker, b.word) - serveOverdue(tracker, a.word))
+      .forEach(add);
+  }
+
+  // 4. Order blocked → interleaved by spread (targets + similar-pattern words mixed).
+  return orderMain(picked, patternSpread, rng).slice(0, length);
 }
 
 // buildReviewSession(tracker, { length, words, rng }) -> the learner's "cracked

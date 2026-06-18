@@ -29,6 +29,8 @@ import {
   serveCooldown,
   isEligible,
   serveOverdue,
+  isTarget,
+  targetWords,
 } from '../src/engine/progress.js';
 
 // ---------------------------------------------------------------- answerScore
@@ -287,6 +289,38 @@ test('isEligible: an unseen word is always eligible; a shaky word stays eligible
   recordAnswer(t, 'shaky', false, { responseMs: 5000 });
   recordAnswer(t, 'other', true, { responseMs: 1500 }); // advance the tick by one
   assert.equal(isEligible(t, 'shaky'), true, 'a missed word remains eligible to come back');
+});
+
+// ------------------------------------------------ target words (the working set)
+test('a correct-first-time word is NOT a target; a missed word IS', () => {
+  const t = createTracker();
+  recordAnswer(t, 'easy', true, { responseMs: 500 }); // nailed first try -> parked
+  recordAnswer(t, 'hard', false, { responseMs: 5000 }); // missed -> target
+  assert.equal(isTarget(t, 'easy'), false);
+  assert.equal(isTarget(t, 'hard'), true);
+  assert.equal(isTarget(t, 'never-seen'), false);
+  assert.deepEqual(targetWords(t), ['hard']);
+});
+
+test('a target leaves the working set once recent attempts are all clean', () => {
+  const t = createTracker();
+  recordAnswer(t, 'w', false, { responseMs: 5000 }); // miss -> target
+  assert.equal(isTarget(t, 'w'), true);
+  recordAnswer(t, 'w', true, { responseMs: 500 });
+  assert.equal(isTarget(t, 'w'), true, 'one correct after a miss is still within the last-3 window');
+  recordAnswer(t, 'w', true, { responseMs: 500 });
+  recordAnswer(t, 'w', true, { responseMs: 500 }); // now last 3 are all correct
+  assert.equal(isTarget(t, 'w'), false, 'cleared the recent window -> no longer a target');
+});
+
+test('targetWords lists the worst first and survives serialization', () => {
+  const t = createTracker();
+  recordAnswer(t, 'aaa', false, { responseMs: 5000 }); // mastery 0
+  recordAnswer(t, 'bbb', false, { responseMs: 5000 });
+  recordAnswer(t, 'bbb', true, { responseMs: 500 }); // bbb a bit higher, still missed in last 3
+  assert.deepEqual(targetWords(t), ['aaa', 'bbb']);
+  const restored = deserializeTracker(JSON.parse(JSON.stringify(serializeTracker(t))));
+  assert.deepEqual(targetWords(restored), ['aaa', 'bbb'], 'recent history persists');
 });
 
 test('serveOverdue is negative while resting and rises as the word waits', () => {
