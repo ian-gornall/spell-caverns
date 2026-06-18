@@ -8,6 +8,23 @@
 // by the newer timestamp. The Drive plumbing lives in src/cloud_drive.js (UI module);
 // this stays pure + testable.
 
+// --- family sync codes ----------------------------------------------------------
+// Cross-device sync is keyed by an opaque "family sync code": the parent creates one
+// once, then types it on each device once (no OAuth, no accounts). It's a short,
+// case-insensitive, unambiguous string. These helpers are pure (validation/normalize);
+// generation uses the browser's crypto and lives in the UI.
+export const SYNC_CODE_RE = /^[A-Z0-9]{6,12}$/;
+
+// Uppercase + strip anything that isn't A-Z/0-9 + cap length, so a parent can type the
+// code loosely (spaces, dashes, lowercase) and still match.
+export function normalizeSyncCode(input) {
+  return String(input || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+}
+
+export function isValidSyncCode(input) {
+  return SYNC_CODE_RE.test(normalizeSyncCode(input));
+}
+
 // A rough, monotonic-in-real-play measure of how much progress a state blob holds, so
 // sync never overwrites a more-advanced device with a barely-used one. Weighted toward
 // learning history (answers, tracked words, the recency tick) over gems.

@@ -1,69 +1,65 @@
-# Optional: turn on Google Drive auto-sync
+# Family sync — set up cross-device progress sync
 
-Crystal Spell Caverns can automatically sync a child's progress across devices by
-storing a backup in **your own Google Drive** — in a hidden, per-app folder that only
-this app can see. **No server we run ever receives the data** (that's what keeps it
-COPPA-compliant; see `PRIVACY.md`). It's optional: without this, you can still back up
-and restore a file manually (Settings → Parents & privacy).
+Crystal Spell Caverns syncs a child's progress across devices with a simple **family
+code** — no Google sign-in, no OAuth, no accounts. The parent creates a code once and
+types it on each device once. Progress then flows through a tiny serverless function
+(Netlify Function + Netlify Blobs) that we run.
 
-This is a free, one-time, ~5-minute setup. You'll create a Google "OAuth Client ID" and
-paste it into the app.
+> Privacy: the cloud stores only **pseudonymous gameplay data** (the nickname + scores)
+> keyed by your opaque family code — no real name, no email. You can delete it any time
+> (Settings → Delete cloud data). See `PRIVACY.md`.
 
-## Prerequisites
+There are two parts: **(A)** deploy the backend once, then **(B)** turn on sync per device
+(the easy part).
 
-- The app must be served over **HTTPS at a stable URL** (see the Deploy section of
-  `README.md`). Google sign-in won't work from a plain `http://` LAN address. (For local
-  testing, `http://localhost:5173` is allowed by Google.)
-- A Google account (the parent's).
+---
 
-## Steps
+## A. Deploy the backend (one-time, ~10 min)
 
-1. Go to the **Google Cloud Console** → <https://console.cloud.google.com/> and create a
-   project (any name).
-2. **APIs & Services → Library** → enable the **Google Drive API**.
-3. **APIs & Services → OAuth consent screen** (newer consoles call this **Google Auth
-   Platform → Branding / Audience**):
-   - User type **External**, fill the app name + your email.
-   - Add yourself as a **Test user** (your Google account). Leave it in "Testing" mode —
-     fine for personal/family use; no Google verification needed.
-   - **You do NOT need to add a scope here.** The app requests the `drive.appdata` scope
-     **at runtime** (you approve it on the Google popup when you tap Connect), and a test
-     user can grant it without pre-registering it. (Scopes now live under **Data Access**;
-     only touch it if Connect ever complains about a missing scope — then add
-     `.../auth/drive.appdata` there and retry.)
-4. **APIs & Services → Credentials → Create Credentials → OAuth client ID** (this screen
-   has NO scope field — just the origins below; that's expected):
-   - Application type **Web application**.
-   - Under **Authorized JavaScript origins**, add your app's exact origin, e.g.
-     `https://your-app.netlify.app` (and `http://localhost:5173` if you want to test
-     locally). No redirect URI is needed (the app uses the token model).
-   - Create, then **copy the Client ID** (looks like `1234-abc.apps.googleusercontent.com`).
-5. In the app: **Settings → Parents & privacy → Auto-sync to your Google Drive** → paste
-   the Client ID → tap **Connect Google Drive** → choose your Google account.
-   - You'll see **"Google hasn't verified this app"** — that's normal in Testing mode (it's
-     your own app). Tap **Advanced → Go to (app) (unsafe)**, then **Allow** the
-     "see, create, and delete its own configuration data in your Drive" permission.
+The family-sync **function** only ships when Netlify builds the site from your repo (a
+plain drag-and-drop deploy can't bundle a function). So connect the site to GitHub:
 
-That's it. After connecting, the app:
+1. **Put the project on GitHub.** Create a new (private is fine) empty repo at
+   <https://github.com/new>, then from `C:\Users\iango\spell`:
+   ```
+   git remote add origin https://github.com/<you>/spell.git
+   git push -u origin main
+   ```
+2. **Connect it to your existing Netlify site** (`spell-caverns`):
+   - Netlify → your site → **Site configuration → Build & deploy → Link repository** →
+     pick the GitHub repo.
+   - Netlify reads `netlify.toml` automatically: build command `node scripts/build_deploy.mjs`,
+     publish `deploy`, functions in `netlify/functions`. Leave those as detected.
+   - **Deploy.** When it finishes, the function is live at
+     `https://spell-caverns.netlify.app/api/sync`.
+3. **Verify the function** — open `https://spell-caverns.netlify.app/api/sync?code=TESTCODE`
+   in a browser. You should get `null` (not a 404). That means it's deployed and Netlify
+   Blobs is working. (Blobs needs no setup — it's automatic for sites with functions.)
 
-- **pulls** the latest progress when it opens (silently, if your Google session is live),
-- lets you **Sync now** any time from Settings, and
-- keeps the file in your Drive's hidden `appDataFolder` (find it under Drive → Settings →
-  *Manage Apps*; you can delete it there to wipe the cloud copy).
+> Alternative without GitHub: install the Netlify CLI (`npm i -g netlify-cli`),
+> `netlify login`, `netlify link` (to the spell-caverns site), then
+> `netlify deploy --build --prod`. Same result; just no auto-redeploy on future changes.
 
-## How conflicts are handled
+From now on, every `git push` auto-redeploys (the service worker picks up the new version
+on the next visit).
 
-If two devices both have progress, sync keeps the copy with **more learning history**
-(more words answered), breaking ties by which was saved more recently — so it never
-silently throws away the more-advanced device. (Two devices played heavily *offline* at
-the same time is the only lossy case; rare for one learner. The manual file backup is
-always there as a belt-and-braces safety net.)
+## B. Turn on sync (per device, ~20 sec each — no OAuth)
 
-## Privacy
+1. On the **first** device: **Settings → Parents & privacy → Family sync** → tick the
+   **parent-consent** box → tap **✨ Create a family code**. It shows a short code
+   (e.g. `K7QF2M9P`) and immediately syncs this device up.
+2. On **each other** device: same screen → tick consent → type that **same code** into
+   "Enter a family code" → **Use this code**. It pulls the shared progress down.
+3. Done. After that it's automatic: each device **pulls** the latest when the app opens
+   and **pushes** when you switch away / lock it. There's also a manual **🔄 Sync now**.
 
-- Scope is **`drive.appdata` only** — the app cannot see or touch any of your other Drive
-  files, just its own hidden backup.
-- The access token lives in memory only and is never stored; there's no client secret and
-  no backend.
-- Disconnect any time (Settings → Disconnect), or revoke at
-  <https://myaccount.google.com/permissions>.
+## Notes
+
+- **Conflicts never lose progress:** if two devices differ, the one with more learning
+  history wins (ties broken by which synced more recently). The only lossy case is two
+  devices playing *heavily offline at the same time* — rare for one learner, and the
+  manual file backup (same screen) is the safety net.
+- **Delete cloud data** (Settings) wipes the family's stored copy; devices keep their
+  local data. **Stop syncing on this device** just unlinks this device.
+- The code is the only key — anyone with it can read/write that family's progress, so keep
+  it to yourself (it's 8 random characters, not guessable, but not a password).

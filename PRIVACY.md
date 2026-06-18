@@ -36,40 +36,41 @@ In **Settings → Parents & privacy**:
   and moved to another device. **The parent controls this file; we never receive it.**
 - **Restore from backup** — loads a backup file on any device.
 - **Delete all data** — erases everything on the device immediately.
-- **Auto-sync to your Google Drive (optional, off by default)** — if the parent turns it
-  on (Settings → Parents & privacy → pasting their own Google OAuth Client ID; see
-  `CLOUD_SYNC_SETUP.md`), the backup is read/written directly from the browser to a
-  **hidden, per-app folder in the parent's own Google Drive** (the minimal `drive.appdata`
-  scope — the app cannot see any other Drive files). **No server we operate receives the
-  data**; the access token is held in memory only (no secret, no backend). The parent can
-  disconnect, or revoke access at myaccount.google.com/permissions, at any time.
+- **Family sync (optional, off by default)** — if the parent turns it on (Settings →
+  Parents & privacy → Family sync), progress syncs across the family's devices via a short
+  **family code** the parent creates. The data is sent to a small serverless function we
+  operate and stored (in Netlify Blobs) **keyed only by that opaque code** — see the next
+  section for exactly what this means for compliance.
 
-## Why this is COPPA-compliant (and why the design is what it is)
+## Compliance — on-device by default; family sync is opt-in & minimized
 
 The U.S. Children's Online Privacy Protection Act (COPPA) regulates **operators that collect
-personal information from children over the internet**. Because Crystal Spell Caverns keeps
-all data **on the child's own device** and **transmits nothing to a server we run**, we are
-not collecting children's personal information online — which keeps the heaviest obligations
-(verifiable parental consent flows, operator data retention, etc.) from attaching, while still
-giving the parent full control (review via the data, export, and delete). This is the
-**data-minimization-first** approach the FTC and the equivalent EU/UK/California regimes all
-favour.
+personal information from children online**. The equivalent regimes (EU/UK GDPR-K, California
+CCPA/CPRA, the UK Age Appropriate Design Code) share the same core principles: data
+minimization, transparency, parental control, deletion, and security.
 
-If an **automatic cloud-sync backend** is added later (so data syncs across devices without
-the parent moving a file), that is a meaningful change in posture: storing a child's data on a
-service we operate **would** make us an "operator" under COPPA and a "controller" under GDPR.
-That path would require, at minimum:
+**By default, nothing leaves the device.** With family sync OFF (the default), all data stays
+in `localStorage` and is transmitted nowhere — so the heaviest operator obligations don't
+attach, and the parent still has full control (the data is right there to review, plus export
+and delete).
 
-- a clear, child-/parent-facing privacy policy published before collection;
-- **verifiable parental consent** before any child data leaves the device;
-- data **minimization** (store only pseudonymous gameplay data — no real names), purpose
-  limitation, and a defined **retention/deletion** policy with an easy "delete my data" path;
-- reasonable **security** (encryption in transit and at rest, access controls);
-- for the EU/UK: a lawful basis + data-subject/erasure rights; for California: CCPA/CPRA
-  notice + deletion rights.
+**With family sync ON, we do act as an operator, and we hold to those obligations:**
 
-Until/unless that is built and those requirements are met, sync stays **parent-controlled and
-file-based** (above), which needs none of that machinery.
+- **Verifiable parental consent** — sync cannot be enabled without the parent ticking a
+  consent statement confirming they're the parent/guardian and agree to cloud storage.
+- **Data minimization** — only **pseudonymous gameplay data** is sent: the chosen nickname
+  (we explicitly ask for a nickname, not a real name) and scores/progress. **No real name, no
+  email, no contact info, no device/advertising identifiers** are collected or sent. The cloud
+  record is keyed solely by the opaque family code the parent chose.
+- **Deletion & control** — **Delete cloud data** wipes the stored copy immediately; **Stop
+  syncing** unlinks a device; turning consent off stops further syncing. (Right to erasure /
+  CCPA deletion.)
+- **Security** — all transfer is over HTTPS; the code is unguessable; there are no ads, no
+  third-party sharing, and no tracking/profiling beyond what's needed to sync progress.
+- **No conditioning** — the full game works without sync; it's purely an optional convenience.
+
+This is a deliberately small, single-purpose collection (sync, nothing else). The family code
+is the access key, so a parent should keep it private.
 
 ## Contact
 

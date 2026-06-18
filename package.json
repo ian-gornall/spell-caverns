@@ -11,6 +11,9 @@
     "smoke": "node scripts/smoke.mjs",
     "gen:audio": "node scripts/gen_audio.mjs"
   },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  },
   "devDependencies": {
     "@breezystack/lamejs": "^1.2.7",
     "playwright": "^1.61.0"

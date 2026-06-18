@@ -32,8 +32,8 @@ function defaultSettings() {
     themeColor: '#7AA2FF',
     readableText: false, // accessibility: extra letter-spacing/line-height on spelling text
     dailyGoalGems: 250, // a light daily target — ~1.5-2 digs (§17.D: 80 was cleared by one short wave); momentum, not pressure
-    cloudClientId: null, // parent's Google OAuth Client ID for Drive auto-sync (null = off; see CLOUD_SYNC_SETUP.md)
-    cloudConnected: false, // has the parent connected Drive on this device? (drives best-effort sync on open)
+    syncCode: null, // family sync code for cross-device cloud sync (null = off; see CLOUD_SYNC_SETUP.md)
+    syncConsent: false, // parent acknowledged storing the child's progress in the cloud (COPPA)
   };
 }
 

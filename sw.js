@@ -16,7 +16,9 @@
 // button-centering tokens (styles.css), contextual welcome-back greeting (home).
 // v7: parent-controlled backup/restore (engine/backup.js, Parents & Privacy panel).
 // v8: optional Google-Drive auto-sync (engine/cloudsync.js + cloud_drive.js).
-const VERSION = 'csc-v8';
+// v9: family-sync backend — Drive OAuth replaced by a sync code + serverless function
+//     (cloud_sync_backend.js). Per-device OAuth removed.
+const VERSION = 'csc-v9';
 
 const CORE = [
   '/',
@@ -44,7 +46,7 @@ const CORE = [
   '/src/engine/narrative.js',
   '/src/engine/backup.js',
   '/src/engine/cloudsync.js',
-  '/src/cloud_drive.js',
+  '/src/cloud_sync_backend.js',
   '/src/modes/rhythm.js',
   '/src/modes/puzzle.js',
   '/src/modes/lab.js',

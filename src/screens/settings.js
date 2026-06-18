@@ -6,7 +6,8 @@
 // one explains how to unlock it rather than doing nothing.
 import { el, header, toast, applyTheme, applyReadable } from '../ui.js';
 import * as audio from '../audio.js';
-import * as cloud from '../cloud_drive.js';
+import * as sync from '../cloud_sync_backend.js';
+import { isValidSyncCode, normalizeSyncCode } from '../engine/cloudsync.js';
 import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
 import { COLOURS } from './onboarding.js';
@@ -315,9 +316,10 @@ export function settingsScreen(ctx) {
     '🗑️ Delete all data',
   );
 
-  // --- Optional: auto-sync to the PARENT's own Google Drive (no backend) ----------
-  // Stays compliant: the backup lives in the parent's Drive appDataFolder; we never see
-  // it. Dormant until a Google OAuth Client ID is pasted in (see CLOUD_SYNC_SETUP.md).
+  // --- Family sync (cross-device, via a simple code — no OAuth, no accounts) -------
+  // The parent creates a code once, types it on each device once; progress then syncs
+  // through our serverless function. We store only pseudonymous gameplay data keyed by
+  // that code (COPPA: parental consent below + data minimization + delete-from-cloud).
   const getLocal = () => JSON.parse(ctx.store.exportData());
   const applyRemote = (envel) => ctx.store.importData(JSON.stringify(envel));
   const afterPull = () => {
@@ -325,87 +327,123 @@ export function settingsScreen(ctx) {
     applyTheme(ctx.state.settings.themeColor);
     applyReadable(ctx.state.settings.readableText);
   };
-  const runSync = async (interactive) => {
+  const doSyncNow = async () => {
     try {
-      const { action } = await cloud.syncNow({
-        clientId: s.cloudClientId,
-        getLocal,
-        applyRemote,
-        interactive,
-      });
+      const { action } = await sync.syncNow({ code: s.syncCode, getLocal, applyRemote });
       if (action === 'pull') afterPull();
-      s.cloudConnected = true;
       ctx.save();
-      toast(
-        action === 'pull'
-          ? 'Synced from your Drive! ✨'
-          : action === 'push'
-            ? 'Backed up to your Drive! ☁️'
-            : 'Already in sync ✓',
-      );
+      toast(action === 'pull' ? 'Synced — pulled newer progress ✨' : 'Synced to the cloud ☁️');
       ctx.nav('settings');
     } catch {
-      toast('Could not reach Google Drive. Check the setup + your connection. 😕');
+      toast('Could not reach the sync server. Check your connection. 😕');
     }
   };
+  const startSync = async (code) => {
+    const norm = normalizeSyncCode(code);
+    if (!isValidSyncCode(norm)) {
+      toast('That code looks off — 6–12 letters/numbers.');
+      return;
+    }
+    if (!s.syncConsent) {
+      toast('Please tick the parent consent box first.');
+      return;
+    }
+    s.syncCode = norm;
+    ctx.save();
+    await doSyncNow();
+  };
 
-  const clientIdInput = el('input', {
+  let consent = !!s.syncConsent;
+  const consentRow = el(
+    'label',
+    { class: 'consent-row' },
+    el('input', {
+      type: 'checkbox',
+      checked: s.syncConsent ? 'checked' : undefined,
+      onChange: (e) => {
+        consent = e.target.checked;
+        s.syncConsent = consent;
+        ctx.save();
+      },
+    }),
+    el(
+      'span',
+      {},
+      "I'm this child's parent/guardian and I agree to store their game progress in the " +
+        'cloud to sync across devices (a nickname + scores only — no real name or email). ' +
+        'See PRIVACY.md.',
+    ),
+  );
+  const codeEntry = el('input', {
     type: 'text',
-    value: s.cloudClientId || '',
-    placeholder: 'Google OAuth Client ID',
+    placeholder: 'Enter a family code',
     spellcheck: 'false',
-    onChange: (e) => {
-      s.cloudClientId = e.target.value.trim() || null;
-      s.cloudConnected = false;
-      ctx.save();
-      ctx.nav('settings');
-    },
+    autocapitalize: 'characters',
+    style: { textTransform: 'uppercase' },
   });
 
   const cloudSyncBlock = el(
     'div',
     { class: 'cloud-sync' },
-    el('h4', { class: 'cloud-title' }, '☁️ Auto-sync to your Google Drive (optional)'),
-    s.cloudClientId
+    el('h4', { class: 'cloud-title' }, '🔗 Family sync (across devices)'),
+    s.syncCode
       ? el(
           'div',
           { class: 'data-actions' },
-          el(
-            'p',
-            { class: 'backup-status' },
-            s.cloudConnected ? 'Drive sync is on for this device.' : 'Ready to connect.',
-          ),
-          el(
-            'button',
-            { class: 'btn primary', onClick: () => runSync(true) },
-            s.cloudConnected ? '🔄 Sync now' : '🔗 Connect Google Drive',
-          ),
+          el('p', { class: 'backup-status' }, 'Family code:'),
+          el('div', { class: 'sync-code' }, s.syncCode),
+          el('p', { class: 'field-hint' }, 'Type this same code on each device to sync them.'),
+          el('button', { class: 'btn primary', onClick: doSyncNow }, '🔄 Sync now'),
           el(
             'button',
             {
               class: 'btn ghost',
               onClick: () => {
-                cloud.disconnect();
-                s.cloudConnected = false;
-                s.cloudClientId = null;
+                s.syncCode = null;
                 ctx.save();
-                toast('Disconnected from Drive.');
+                toast('Sync turned off on this device.');
                 ctx.nav('settings');
               },
             },
-            'Disconnect',
+            'Stop syncing on this device',
+          ),
+          el(
+            'button',
+            {
+              class: 'btn ghost',
+              onClick: async () => {
+                if (!confirm('Delete the family progress stored in the cloud? Devices keep their local copy.')) return;
+                try {
+                  await sync.remove(s.syncCode);
+                  toast('Cloud data deleted.');
+                } catch {
+                  toast('Could not reach the sync server. 😕');
+                }
+              },
+            },
+            '🗑️ Delete cloud data',
           ),
         )
       : el(
           'div',
           { class: 'field' },
-          el('label', {}, 'Paste your Google OAuth Client ID to turn on auto-sync'),
-          clientIdInput,
+          consentRow,
+          el(
+            'div',
+            { class: 'sync-setup' },
+            el(
+              'button',
+              { class: 'btn primary', onClick: () => startSync(sync.generateSyncCode()) },
+              '✨ Create a family code',
+            ),
+            el('p', { class: 'field-hint' }, '…or enter one from another device:'),
+            codeEntry,
+            el('button', { class: 'btn', onClick: () => startSync(codeEntry.value) }, 'Use this code'),
+          ),
           el(
             'p',
             { class: 'field-hint' },
-            'Free, ~5 min, one-time. Steps in CLOUD_SYNC_SETUP.md. Your progress syncs to a ' +
-              'hidden folder in YOUR Google Drive — we never see it.',
+            'No accounts, no OAuth — just a short code. Setup details in CLOUD_SYNC_SETUP.md.',
           ),
         ),
   );

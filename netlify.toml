@@ -1,16 +1,25 @@
-# Deploy Crystal Spell Caverns as a STATIC site (no build step). Netlify serves the
-# repo root over HTTPS at a stable URL — which is all the PWA needs to (a) install on
-# the iPad home screen and (b) cache offline (the service worker requires HTTPS).
+# Netlify config. The app is a static, no-bundler PWA; this build just COPIES the
+# runtime files into ./deploy (scripts/build_deploy.mjs) and publishes that, plus the
+# serverless family-sync function (netlify/functions). Connect this repo to Netlify
+# ("Add new site → import an existing project") so functions are built + bundled.
 #
-# Drag-and-drop the project folder onto app.netlify.com, OR "Add new site → import an
-# existing project" and point it at this repo. No build command, publish the root.
+# (Pure drag-and-drop of ./deploy still works for the no-backend fallback, but the
+# family-sync backend needs this Git-connected build so the function is deployed.)
 [build]
-  publish = "."
-  command = ""
+  command = "node scripts/build_deploy.mjs"
+  publish = "deploy"
 
-# Always revalidate the service worker + app shell so a redeploy reaches already-
-# installed devices promptly (the SW then swaps in the new precache on its next
-# VERSION bump). Everything else is content-hashed by path and cached by the SW.
+[build.environment]
+  # Install only runtime deps (@netlify/blobs for the function) — skip the heavy
+  # devDeps (playwright/lamejs) that are only for local testing + audio generation.
+  NPM_FLAGS = "--omit=dev"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Always revalidate the service worker + app shell so a redeploy reaches installed
+# devices promptly (the SW then swaps in the new precache on its next VERSION bump).
 [[headers]]
   for = "/sw.js"
   [headers.values]

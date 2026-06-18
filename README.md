@@ -94,7 +94,7 @@ changing learning behaviour.
 ## Develop / test
 
 ```
-npm test            # the pure decision engine (Node's test runner) — 149 tests
+npm test            # the pure decision engine (Node's test runner) — 162 tests
 npm start           # serve the app for the iPad / a browser
 node scripts/smoke.mjs   # Playwright UI smoke test of every mode (server must be up)
 ```
@@ -153,10 +153,13 @@ tracking (see `PRIVACY.md`). To keep it safe and move it between devices:
 - **Manual backup/restore (always on):** Settings → Parents & privacy → **Back up
   progress** downloads a file to keep in your own iCloud/Drive (and **Restore** loads it
   on another device). The app nudges a backup when one is overdue.
-- **Optional auto-sync to your own Google Drive:** turn it on by pasting a free Google
-  OAuth Client ID — progress then syncs through a hidden folder in **your** Drive, with
-  **no server we operate** ever holding the data (the COPPA-minimizing design). Setup is a
-  one-time ~5-minute task in **`CLOUD_SYNC_SETUP.md`**.
+- **Optional family sync (cross-device):** turn it on with a short **family code** — no
+  accounts, no OAuth. Create a code on one device, type it on the others; progress then
+  syncs automatically (pull on open, push when backgrounded) through a small serverless
+  function. Only pseudonymous gameplay data (nickname + scores) is stored, behind a parental
+  consent gate, deletable any time (COPPA — see `PRIVACY.md`). Backend deploy + usage steps
+  are in **`CLOUD_SYNC_SETUP.md`** (it needs a Git-connected Netlify build so the function
+  ships).
 
 ### Re-engagement ("it's been a while" nudge)
 

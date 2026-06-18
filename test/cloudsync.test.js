@@ -4,7 +4,12 @@
 // src/cloud_drive.js). Runs under `node --test`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { progressScore, reconcile } from '../src/engine/cloudsync.js';
+import {
+  progressScore,
+  reconcile,
+  normalizeSyncCode,
+  isValidSyncCode,
+} from '../src/engine/cloudsync.js';
 
 const env = (blob, savedAt) => ({ app: 'crystal-spell-caverns', backupVersion: 1, savedAt, data: blob });
 const blob = ({ answers = 0, tick = 0, records = 0, gems = 0 } = {}) => ({
@@ -52,4 +57,14 @@ test('reconcile always reports which envelope to use + a human reason', () => {
   const r = reconcile(env(blob({ answers: 100 }), 1), env(blob({ answers: 1 }), 2));
   assert.ok(r.use && r.use.data, 'returns the chosen envelope');
   assert.equal(typeof r.reason, 'string');
+});
+
+test('sync codes normalize loosely-typed input and validate the format', () => {
+  assert.equal(normalizeSyncCode(' ab-cd ef '), 'ABCDEF', 'uppercased, stripped');
+  assert.equal(normalizeSyncCode('abcdefghijklmnop'), 'ABCDEFGHIJKL', 'capped at 12');
+  assert.ok(isValidSyncCode('crys7gem'), 'a normal code is valid');
+  assert.ok(isValidSyncCode('ABC123'), 'six chars ok');
+  assert.ok(!isValidSyncCode('abc'), 'too short');
+  assert.ok(!isValidSyncCode(''), 'empty invalid');
+  assert.ok(!isValidSyncCode(null), 'null invalid');
 });
