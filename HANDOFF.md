@@ -1213,3 +1213,47 @@ green**, smoke green; sw **csc-v12**):
 - Per-profile sync currently reconciles the whole family container by SUMMED progress
   (coarse). The tested `profiles.mergeFamily` (true per-profile merge) is ready to wire into
   the serverless function for divergent-multi-device correctness.
+
+---
+
+## 21. NEXT-SESSION BACKLOG — level select + the mastery-source fix (user 2026-06-18)
+
+Recorded verbatim-intent; NOT yet implemented. Roughly priority order.
+
+### A. Mastery = CRAFTING (production), NOT MINING (recognition) — the big learning-model fix
+The user's rule: **a word is only "known"/mastered when spelled correctly in CRAFTING** (the
+puzzle build-from-letters mode). MINING (rhythm multiple-choice) is helpful practice but is
+NOT mastery — recognition ≠ production. Concretely:
+- **Do NOT evaluate ACCURACY from mining — use mining only for SPEED** (gems / praise /
+  engagement). A correct rhythm tap must NOT mark a word "known."
+- **CRAFTING correctness is the source of truth for mastery**: a clean crafted build = known;
+  a missed/assisted craft = a target.
+- **Target-word selection order:** start with words on the learner's CHOSEN LEVEL (start tier),
+  THEN the words MISSED in crafting. (Refines §20's target-first algorithm.)
+- This REFINES §20's "mastery = accuracy, not speed": mining now contributes speed-only and
+  never establishes mastery; crafting accuracy does.
+- Pointers: `progress.recordAnswer` needs a SOURCE flag (mine vs craft); `modes/rhythm.js`
+  (mining) records speed/engagement but NOT mastery-accuracy; `modes/puzzle.js` (crafting)
+  records mastery (correct→known, miss→target). `engine/session.js buildSession` +
+  `progress.targetWords` prioritize chosen-level words then craft-missed words. Update tests.
+
+### B. Change the starting LEVEL in Settings
+Level-select currently only exists in onboarding. Add a per-profile level control to Settings
+(reuse `onboarding.LEVELS` + the level-card UI), writing `state.startLevel`. So a parent can
+re-aim where the engine introduces new words at any time.
+
+### C. BUG — the initial level choice doesn't take effect until a data reset
+Symptom (user): the level picked during onboarding does NOT change what's served — but AFTER
+"reset the data" (and re-picking) it works. So the first-run path isn't applying `startLevel`.
+Likely cause(s) to investigate: the guaranteed-win FIRST wave (`rhythm({firstRun:true})`)
+hand-picks tier ≤2 words and IGNORES `startLevel` by design — so a high level looks ignored at
+first; and/or the freshly-created profile's `startLevel` isn't read by `buildSession` until the
+profile is re-activated. Fix so the chosen level applies immediately after onboarding (e.g. make
+the first wave respect `startLevel` when it's above the easy band, or re-activate the profile so
+`state.startLevel` is live before the first non-first-run session). Repro + add a guard.
+
+### D. More levels to choose from
+With ~3,000 words across 9 tiers, the 5 current presets (tiers 1/3/5/7/9 in `onboarding.LEVELS`)
+are too coarse. Expand to finer granularity — e.g. one level per tier (9), or sub-tier bands —
+each still showing example words so a grown-up can gauge it. Shared by onboarding + the new
+Settings level control (B).
