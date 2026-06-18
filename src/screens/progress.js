@@ -214,11 +214,17 @@ function questsPanel(ctx) {
     ctx.nav('progress'); // re-render (geode now opened)
   };
 
+  // Tapping a quest jumps straight into the activity that works toward it (a specimen
+  // quest -> the Lab; everything else -> Play/rhythm). (User 2026-06-18.)
+  const questNav = { specimens: 'lab' };
   const rows = quests.map((q) => {
     const pr = questProgress(q, day);
     return el(
-      'div',
-      { class: 'quest' + (pr.done ? ' done' : '') },
+      'button',
+      {
+        class: 'quest quest-link' + (pr.done ? ' done' : ''),
+        onClick: () => ctx.nav(questNav[q.metric] || 'rhythm'),
+      },
       el('span', { class: 'quest-ic' }, pr.done ? '✅' : q.icon),
       el(
         'div',
@@ -226,7 +232,7 @@ function questsPanel(ctx) {
         el('div', { class: 'quest-text' }, q.text),
         el('div', { class: 'quest-bar' }, el('div', { class: 'quest-fill', style: { width: pr.pct + '%' } })),
       ),
-      el('span', { class: 'quest-count' }, `${pr.have}/${pr.target}`),
+      el('span', { class: 'quest-count' }, pr.done ? `${pr.have}/${pr.target}` : '▸'),
     );
   });
 

@@ -287,6 +287,24 @@ button {
 .quest + .quest {
   border-top: 1px solid var(--panel-border);
 }
+/* a quest row is a button that launches its activity (tap to "work on it") */
+button.quest {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.quest-link {
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.quest-link:active {
+  transform: scale(0.98);
+}
+.quest-link:not(.done) .quest-count {
+  color: var(--accent);
+  font-size: 1.4rem;
+}
 .quest-ic {
   font-size: 1.6rem;
   width: 1.8rem;
