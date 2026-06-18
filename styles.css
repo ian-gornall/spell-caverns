@@ -481,6 +481,14 @@ button {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px var(--gold) inset, 0 0 24px var(--gold);
 }
+/* After an answer, fade the OTHER (wrong-spelling) tiles so the last thing on
+   screen is the CORRECT spelling — seeing misspellings linger imprints them
+   (Roediger & Marsh 2005), and our learner is a weak speller. */
+.tile.dim-out {
+  opacity: 0.1;
+  filter: blur(1.5px);
+  transition: opacity 0.3s ease 0.15s, filter 0.3s ease 0.15s;
+}
 .tiles.locked .tile {
   pointer-events: none;
 }

@@ -328,10 +328,14 @@ export function startRhythm(ctx) {
       speakPraiseTracked(verdict.phrase); // gentle encouragement (matches the text)
       btn.classList.add('wrong');
       flashVerdict(verdict.phrase, 'The gem was…', verdict.color);
-      [...tilesEl.children].forEach((c) => {
-        if (c.textContent === entry.word) c.classList.add('reveal');
-      });
     }
+    // Spotlight the CORRECT spelling and fade the wrong options, so the last thing
+    // on screen is the right answer — seeing misspellings linger imprints them
+    // (Roediger & Marsh 2005), and our learner is a weak speller.
+    [...tilesEl.children].forEach((c) => {
+      if (c.textContent === entry.word) c.classList.add('reveal');
+      else c.classList.add('dim-out');
+    });
     updateCombo(verdict);
     ctx.save();
 
