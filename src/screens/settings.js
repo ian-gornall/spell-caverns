@@ -329,7 +329,7 @@ export function settingsScreen(ctx) {
   };
   const doSyncNow = async () => {
     try {
-      const { action } = await sync.syncNow({ code: s.syncCode, getLocal, applyRemote });
+      const { action } = await sync.syncNow({ code: ctx.store.syncCode(), getLocal, applyRemote });
       if (action === 'pull') afterPull();
       ctx.save();
       toast(action === 'pull' ? 'Synced — pulled newer progress ✨' : 'Synced to the cloud ☁️');
@@ -344,9 +344,8 @@ export function settingsScreen(ctx) {
       toast('Use at least 4 letters or numbers.');
       return;
     }
-    s.syncCode = code;
-    s.syncConsent = true;
-    ctx.save();
+    ctx.store.setSyncCode(code);
+    ctx.store.setSyncConsent(true);
     try {
       const { action } = await sync.syncNow({ code, getLocal, applyRemote });
       if (action === 'pull') afterPull();
@@ -358,13 +357,13 @@ export function settingsScreen(ctx) {
   };
 
   let cloudSyncBlock;
-  if (s.syncCode) {
+  if (ctx.store.syncCode()) {
     cloudSyncBlock = el(
       'div',
       { class: 'cloud-sync' },
       el('h4', { class: 'cloud-title' }, '🔗 Family sync (across devices)'),
       el('p', { class: 'backup-status' }, 'Family password:'),
-      el('div', { class: 'sync-code' }, s.syncCode),
+      el('div', { class: 'sync-code' }, ctx.store.syncCode()),
       el('p', { class: 'field-hint' }, 'Type this same password on your other tablets to sync them.'),
       el(
         'div',
@@ -375,8 +374,7 @@ export function settingsScreen(ctx) {
           {
             class: 'btn ghost',
             onClick: () => {
-              s.syncCode = null;
-              ctx.save();
+              ctx.store.setSyncCode(null);
               toast('Sync turned off on this device.');
               ctx.nav('settings');
             },
@@ -390,7 +388,7 @@ export function settingsScreen(ctx) {
             onClick: async () => {
               if (!confirm('Delete the family progress stored in the cloud? Devices keep their local copy.')) return;
               try {
-                await sync.remove(s.syncCode);
+                await sync.remove(ctx.store.syncCode());
                 toast('Cloud data deleted.');
               } catch {
                 toast('Could not reach the sync server. 😕');
@@ -420,8 +418,7 @@ export function settingsScreen(ctx) {
         type: 'checkbox',
         onChange: (e) => {
           const on = e.target.checked;
-          s.syncConsent = on;
-          ctx.save();
+          ctx.store.setSyncConsent(on);
           for (const n of [codeInput, goBtn]) on ? n.removeAttribute('disabled') : n.setAttribute('disabled', 'disabled');
         },
       }),
@@ -465,6 +462,29 @@ export function settingsScreen(ctx) {
     cloudSyncBlock,
   );
 
+  // --- Players (multi-user): switch, add, reset this explorer -------------------
+  const resetExplorer = () => {
+    if (confirm(`Reset ${ctx.state.profile.name}'s progress? Keeps their name + colour, clears gems and mastery.`)) {
+      ctx.store.resetActiveProgress();
+      ctx.refreshActive();
+      toast('Progress reset for this explorer.');
+      ctx.nav('settings');
+    }
+  };
+  const playersPanel = el(
+    'div',
+    { class: 'panel' },
+    el('h3', {}, 'Players'),
+    el('p', { class: 'field-hint' }, `Playing now: ${ctx.state.profile.name}. Each explorer keeps their own progress.`),
+    el(
+      'div',
+      { class: 'data-actions' },
+      el('button', { class: 'btn', onClick: () => ctx.nav('profiles') }, '👥 Switch player'),
+      el('button', { class: 'btn', onClick: () => ctx.nav('onboarding') }, '＋ Add explorer'),
+      el('button', { class: 'btn ghost', onClick: resetExplorer }, '↺ Reset this explorer’s progress'),
+    ),
+  );
+
   return el(
     'div',
     { class: 'screen' },
@@ -502,6 +522,7 @@ export function settingsScreen(ctx) {
         el('div', { class: 'field' }, el('label', {}, 'Crystal colour'), colourRow),
         el('div', { class: 'field' }, el('label', {}, 'Easy-read text'), readableSeg),
       ),
+      playersPanel,
       el(
         'div',
         { class: 'panel' },

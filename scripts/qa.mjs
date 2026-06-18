@@ -92,8 +92,10 @@ try {
   await page.waitForSelector('.colour-grid .colour-swatch');
   await page.locator('.colour-swatch').nth(1).click();
   await shot('onboard-colour');
-  await page.click('.onboard-go'); // -> family-sync step
-  await page.waitForSelector('.onboarding .onboard-go');
+  await page.click('.onboard-go'); // -> level select
+  await page.waitForSelector('.level-card');
+  await page.click('.onboard-go'); // "Let's dig!" -> family-sync step
+  await page.waitForSelector('text=Just this one');
   await page.click('text=Just this one'); // skip sync -> ready
   await page.waitForSelector('.onboard-go.big');
   await shot('onboard-ready');

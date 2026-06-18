@@ -25,10 +25,10 @@ export function isContainer(data) {
   return !!data && typeof data === 'object' && data.schema === SCHEMA && Array.isArray(data.profiles);
 }
 
-// A pre-multi-profile save = the bare single blob (settings/tracker, no schema:2).
+// A pre-multi-profile save = the bare single blob (profile/settings/tracker, no schema:2).
 export function isLegacyBlob(data) {
   return !!data && typeof data === 'object' && !isContainer(data) &&
-    ('settings' in data || 'tracker' in data || data.version === 1);
+    ('settings' in data || 'tracker' in data || 'profile' in data || data.version === 1);
 }
 
 // Wrap a legacy single blob as ONE profile so an existing learner keeps everything.
@@ -59,7 +59,7 @@ export function activeProfile(container) {
 export function profileSummaries(container) {
   return (container.profiles || []).map((p) => ({
     id: p.id,
-    name: p.name || 'Explorer',
+    name: (p.profile && p.profile.name) || p.name || 'Explorer',
     themeColor: (p.settings && p.settings.themeColor) || p.themeColor || null,
     locked: !!p.kidLock,
   }));

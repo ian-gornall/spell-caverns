@@ -31,7 +31,8 @@ export function wrapBackup(stateBlob, nowMs) {
 export function readBackup(obj) {
   if (!obj || typeof obj !== 'object') throw new Error('That is not a backup file.');
   if (obj.app === BACKUP_APP && obj.data && typeof obj.data === 'object') return obj.data;
-  // Legacy bare export: the state blob itself, no envelope. Must look like our save.
+  // A bare multi-profile container (schema 2) or a legacy single blob (settings/tracker).
+  if (obj.schema === 2 && Array.isArray(obj.profiles)) return obj;
   if ('settings' in obj || 'tracker' in obj || obj.version === 1) return obj;
   throw new Error('That is not a Crystal Spell Caverns backup.');
 }

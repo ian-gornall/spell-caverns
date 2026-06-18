@@ -1,65 +1,96 @@
-// src/state.js — the app's persistent store (localStorage, single JSON blob).
+// src/state.js — the app's persistent store (localStorage).
 //
-// Holds the learner profile, settings, gem balance, lightweight play stats, the
-// feedback log, and the LIVE continuous mastery tracker (a Map, from the pure
-// engine). The tracker is serialized on save / deserialized on load via the pure
-// helpers in engine/progress.js, so the Map round-trips through JSON. Includes
-// export/import so progress can leave the iPad for a parent/dev (HANDOFF §4).
+// Storage is now a MULTI-PROFILE container (engine/profiles.js, schema 2): siblings can
+// share one device + one family sync password, but each has their OWN progress (the game
+// serves words based on THAT learner's mastery — user 2026-06-18). FAMILY-level fields
+// (sync password/consent, parent admin password) live on the container; everything else
+// is per-profile. To keep every screen unchanged, the module-local `state` is always the
+// ACTIVE profile's working blob (same shape as before, with a LIVE tracker Map); `save()`
+// folds it back into the container. A legacy single-blob save is migrated to one profile.
 //
-// This is a UI module (touches localStorage) — never imported by `node --test`.
-import {
-  createTracker,
-  serializeTracker,
-  deserializeTracker,
-} from './engine/progress.js';
+// UI module (touches localStorage) — never imported by `node --test`.
+import { createTracker, serializeTracker, deserializeTracker } from './engine/progress.js';
 import { defaultStreak, updateStreak } from './engine/streak.js';
 import { purchaseResult, nextFreeCrystal } from './engine/catalog.js';
 import { wrapBackup, readBackup } from './engine/backup.js';
+import {
+  emptyContainer,
+  isContainer,
+  isLegacyBlob,
+  migrateLegacy,
+  getProfile,
+  profileSummaries,
+  pushSnapshot,
+} from './engine/profiles.js';
 
 const KEY = 'crystal-spell-caverns:v1';
 
-// The two kid-facing levers (difficulty + length) plus voice/display prefs. The
-// raw two-axis config (patternSpread×masteryTarget) can override `difficulty`
-// later from an advanced screen; the rhythm/session code already accepts either.
+// Per-profile play/display prefs (sync moved to the FAMILY level — see container fields).
 function defaultSettings() {
   return {
-    difficulty: 'easy', // 'easy' | 'medium' | 'hard'  (or a custom axes object)
-    length: 10, // words per session/wave
-    optionCount: 3, // answer tiles shown (3 or 4)
-    voice: true, // spoken dictation + praise on?
-    volume: 0.85, // 0..1
-    voiceName: null, // chosen speechSynthesis voice (null = auto-pick English)
+    difficulty: 'easy',
+    length: 10,
+    optionCount: 3,
+    voice: true,
+    volume: 0.85,
+    voiceName: null,
     themeColor: '#7AA2FF',
-    readableText: false, // accessibility: extra letter-spacing/line-height on spelling text
-    dailyGoalGems: 250, // a light daily target — ~1.5-2 digs (§17.D: 80 was cleared by one short wave); momentum, not pressure
-    syncCode: null, // family sync code for cross-device cloud sync (null = off; see CLOUD_SYNC_SETUP.md)
-    syncConsent: false, // parent acknowledged storing the child's progress in the cloud (COPPA)
+    readableText: false,
+    dailyGoalGems: 250,
   };
 }
 
-function defaults() {
+// One learner's full game blob (the working `state` shape). `tracker` is a LIVE Map here;
+// it's serialized when folded into the container.
+function defaultProfile(id, over = {}) {
   return {
+    id,
     version: 1,
-    profile: { name: 'Explorer' },
-    settings: defaultSettings(),
+    profile: { name: over.name || 'Explorer', onboarded: !!over.onboarded },
+    settings: { ...defaultSettings(), ...(over.themeColor ? { themeColor: over.themeColor } : {}) },
+    startLevel: over.startLevel || 1, // level-select anchor (per profile)
+    kidLock: over.kidLock || null, // optional per-kid lock (a picture/PIN code) — set later
+    snapshots: [], // dated rollback points for parent revert
     gems: 0,
-    feedback: [], // { ts, rating, difficulty, note }
-    specimens: [], // Crystal Lab collection: { ts, word, name, image(dataURL) }
+    feedback: [],
+    specimens: [],
     stats: { sessionsPlayed: 0, answers: 0, correct: 0, byDay: {} },
-    streak: defaultStreak(), // daily-play streak (the "glowing vein")
-    records: { bestCombo: 0, bestWaveGems: 0 }, // personal bests ("beat your best")
-    catalog: { owned: [], milestoneDepth: 1 }, // Crystal Catalog: collected mineral ids + last depth that granted a free crystal
-    lastBackupAt: 0, // ms of the last parent backup (0 = never) — drives the backup reminder
-    tracker: createTracker(), // LIVE tracker (Map); serialized on save()
+    streak: defaultStreak(),
+    records: { bestCombo: 0, bestWaveGems: 0 },
+    catalog: { owned: [], milestoneDepth: 1 },
+    lastBackupAt: 0,
+    tracker: createTracker(),
   };
 }
 
-let state = null;
+let container = null; // the full multi-profile container (profiles store SERIALIZED trackers)
+let state = null; // the ACTIVE profile's working blob (LIVE tracker Map)
 
-// Read the saved blob (or fresh defaults). Deep-merges saved settings/profile
-// over defaults so a new setting added later still gets a sane value.
-export function load() {
-  const base = defaults();
+const newId = () => 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+
+// Merge a stored profile blob over the per-profile defaults + revive its tracker Map.
+function storedToState(p) {
+  const base = defaultProfile(p.id || newId());
+  return {
+    ...base,
+    ...p,
+    profile: { ...base.profile, onboarded: true, ...(p.profile || {}) },
+    settings: { ...base.settings, ...(p.settings || {}) },
+    stats: { ...base.stats, ...(p.stats || {}) },
+    streak: { ...base.streak, ...(p.streak || {}) },
+    records: { ...base.records, ...(p.records || {}) },
+    catalog: { ...base.catalog, ...(p.catalog || {}) },
+    snapshots: Array.isArray(p.snapshots) ? p.snapshots : [],
+    tracker: deserializeTracker(p.tracker),
+  };
+}
+
+// The JSON-safe form of a working profile blob (serialize the live tracker).
+function stateToStored(s) {
+  return { ...s, tracker: serializeTracker(s.tracker) };
+}
+
+function loadContainer() {
   let data = null;
   try {
     const raw = localStorage.getItem(KEY);
@@ -67,24 +98,31 @@ export function load() {
   } catch {
     data = null;
   }
-  if (data && typeof data === 'object') {
-    state = {
-      ...base,
-      ...data,
-      // A save already exists → this is a RETURNING user; treat them as onboarded so an
-      // upgrade never forces them through first-run onboarding (the field predates it).
-      // A brand-new user has no save at all and falls through to the `else` (onboarding).
-      profile: { ...base.profile, onboarded: true, ...(data.profile || {}) },
-      settings: { ...base.settings, ...(data.settings || {}) },
-      stats: { ...base.stats, ...(data.stats || {}) },
-      streak: { ...base.streak, ...(data.streak || {}) },
-      records: { ...base.records, ...(data.records || {}) },
-      catalog: { ...base.catalog, ...(data.catalog || {}) },
-      tracker: deserializeTracker(data.tracker),
-    };
-  } else {
-    state = base;
+  if (isContainer(data)) container = data;
+  else if (isLegacyBlob(data)) container = migrateLegacy(data, newId());
+  else container = emptyContainer();
+  return container;
+}
+
+function activate(id) {
+  const p = getProfile(container, id);
+  if (!p) {
+    state = null;
+    return null;
   }
+  container.activeId = id;
+  state = storedToState(p);
+  return state;
+}
+
+// Load the container + activate the saved active profile (if any). Returns the active
+// `state` or null when there are no profiles yet (boot then routes to onboarding).
+export function load() {
+  loadContainer();
+  if (container.activeId && getProfile(container, container.activeId)) return activate(container.activeId);
+  // exactly one profile? activate it; otherwise leave null (who's-playing / first-run).
+  if (container.profiles.length === 1) return activate(container.profiles[0].id);
+  state = null;
   return state;
 }
 
@@ -92,16 +130,126 @@ export function get() {
   return state || load();
 }
 
-// Persist everything. The live tracker is converted to its JSON-safe form first.
+// Persist: fold the active working `state` back into the container, then write it all.
 export function save() {
-  if (!state) return null;
-  const data = { ...state, tracker: serializeTracker(state.tracker) };
+  if (state) {
+    const idx = container.profiles.findIndex((p) => p.id === state.id);
+    const stored = stateToStored(state);
+    if (idx >= 0) container.profiles[idx] = stored;
+    else container.profiles.push(stored);
+    container.activeId = state.id;
+  }
   try {
-    localStorage.setItem(KEY, JSON.stringify(data));
+    localStorage.setItem(KEY, JSON.stringify(container));
   } catch {
     /* storage full / disabled — play continues, just unsaved */
   }
-  return data;
+  return container;
+}
+
+// --- profiles ("who's playing?") + family fields ----------------------------
+
+export function profileCount() {
+  return (container?.profiles || []).length;
+}
+export function listProfiles() {
+  return profileSummaries(container || emptyContainer());
+}
+export function activeId() {
+  return container?.activeId || null;
+}
+export function activeName() {
+  return state?.profile?.name || null;
+}
+
+// Create a new explorer (and make it active). `over` = { name, themeColor, startLevel }.
+export function addProfile(over = {}) {
+  if (!container) loadContainer();
+  if (state) save(); // park the current profile first
+  const id = newId();
+  state = defaultProfile(id, { ...over, onboarded: true });
+  container.profiles.push(stateToStored(state));
+  container.activeId = id;
+  save();
+  return id;
+}
+
+export function switchProfile(id) {
+  if (!container) loadContainer();
+  if (state) save();
+  return activate(id);
+}
+
+export function removeProfile(id) {
+  if (!container) return;
+  container.profiles = container.profiles.filter((p) => p.id !== id);
+  if (container.activeId === id) {
+    container.activeId = null;
+    state = null;
+  }
+  save();
+}
+
+// optional per-kid lock (a picture/PIN code on the profile)
+export function getKidLock(id) {
+  return getProfile(container, id)?.kidLock || null;
+}
+export function setKidLock(code) {
+  if (state) {
+    state.kidLock = code || null;
+    save();
+  }
+}
+
+// family-level: the sync password/consent + the parent admin password
+export function syncCode() {
+  return container?.syncCode || null;
+}
+export function setSyncCode(code) {
+  if (container) {
+    container.syncCode = code || null;
+    save();
+  }
+}
+export function syncConsent() {
+  return !!container?.syncConsent;
+}
+export function setSyncConsent(on) {
+  if (container) {
+    container.syncConsent = !!on;
+    save();
+  }
+}
+export function parentPassword() {
+  return container?.parentPassword || null;
+}
+export function setParentPassword(pw) {
+  if (container) {
+    container.parentPassword = pw || null;
+    save();
+  }
+}
+
+// --- snapshots (parent rollback) ---------------------------------------------
+// Capture the active profile's current state as a dated, restorable snapshot.
+export function takeSnapshot(label) {
+  if (!state) return;
+  const entry = { at: Date.now(), label: label || '', data: stateToStored({ ...state, snapshots: [] }) };
+  state.snapshots = pushSnapshot(state.snapshots, entry);
+  save();
+}
+export function listSnapshots() {
+  return (state?.snapshots || []).map((s, i) => ({ index: i, at: s.at, label: s.label }));
+}
+// Roll the active profile back to snapshot `index` (keeps the snapshot ring intact).
+export function rollback(index) {
+  const snap = (state?.snapshots || [])[index];
+  if (!snap) return false;
+  const snaps = state.snapshots;
+  state = storedToState({ ...snap.data, id: state.id });
+  state.snapshots = snaps; // keep the rollback history
+  save();
+  return true;
 }
 
 // --- small mutators the UI uses (each leaves saving to the caller) -----------
@@ -109,39 +257,33 @@ export function save() {
 export function addGems(n) {
   state.gems = Math.max(0, (state.gems || 0) + n);
   if (n > 0) {
-    const day = new Date().toISOString().slice(0, 10);
+    const day = todayKey();
     const d = state.stats.byDay[day] || (state.stats.byDay[day] = { answers: 0, correct: 0 });
-    d.gems = (d.gems || 0) + n; // gems mined today (drives the daily-goal bar)
+    d.gems = (d.gems || 0) + n;
   }
   return state.gems;
 }
 
-// Gems mined today (for the daily goal). Pure read of the per-day stats.
 export function gemsToday() {
-  const day = new Date().toISOString().slice(0, 10);
-  return state.stats.byDay[day]?.gems || 0;
+  return state.stats.byDay[todayKey()]?.gems || 0;
 }
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
-// Get-or-create today's stat bucket (for mutators that count daily activity).
 function dayBucket() {
   const k = todayKey();
   return state.stats.byDay[k] || (state.stats.byDay[k] = { answers: 0, correct: 0 });
 }
 
-// Best combo reached today (drives the combo daily quest) + the all-time record.
 export function recordCombo(n) {
   const d = dayBucket();
   d.bestCombo = Math.max(d.bestCombo || 0, n || 0);
   state.records.bestCombo = Math.max(state.records.bestCombo || 0, n || 0);
 }
 
-// Update the personal best for gems mined in a single wave ("beat your best").
 export function noteWaveEarned(gems) {
   state.records.bestWaveGems = Math.max(state.records.bestWaveGems || 0, gems || 0);
 }
 
-// Today's snapshot for the daily quests (read-only; never creates a bucket).
 export function dayStats() {
   const d = state.stats.byDay[todayKey()] || {};
   return {
@@ -153,7 +295,6 @@ export function dayStats() {
   };
 }
 
-// The daily geode (all-quests-complete bonus) opens once per day.
 export function geodeOpenedToday() {
   return !!(state.stats.byDay[todayKey()] || {}).geodeOpened;
 }
@@ -162,21 +303,23 @@ export function markGeodeOpened() {
   save();
 }
 
-// Tally one answer into lifetime + per-day stats (for the progress chart).
 export function recordAnswerStat(correct) {
   state.stats.answers += 1;
   if (correct) state.stats.correct += 1;
-  const day = new Date().toISOString().slice(0, 10);
-  const d = state.stats.byDay[day] || (state.stats.byDay[day] = { answers: 0, correct: 0 });
+  const d = dayBucket();
   d.answers += 1;
   if (correct) d.correct += 1;
 }
 
 export function recordSessionPlayed() {
   state.stats.sessionsPlayed += 1;
-  dayBucket().digs = (dayBucket().digs || 0) + 1; // digs today (daily quest)
-  // A completed dig counts as "played today" — extends the daily streak.
+  dayBucket().digs = (dayBucket().digs || 0) + 1;
   state.streak = updateStreak(state.streak, todayKey());
+  // Auto-snapshot at the start of each new day's first dig, so the parent always has a
+  // recent restore point (bounded ring) without any extra UI.
+  const last = state.snapshots[state.snapshots.length - 1];
+  const lastDay = last ? new Date(last.at).toISOString().slice(0, 10) : null;
+  if (lastDay !== todayKey()) takeSnapshot('auto');
 }
 
 export function addFeedback(entry) {
@@ -184,38 +327,28 @@ export function addFeedback(entry) {
   save();
 }
 
-// Save a Crystal Lab specimen (with its drawing). Capped so the PNG dataURLs can't
-// grow localStorage without bound — oldest specimens drop off first.
 export function addSpecimen(spec) {
   if (!Array.isArray(state.specimens)) state.specimens = [];
   state.specimens.push({ ts: Date.now(), ...spec });
   if (state.specimens.length > 60) state.specimens = state.specimens.slice(-60);
-  dayBucket().specimens = (dayBucket().specimens || 0) + 1; // specimens today (daily quest)
+  dayBucket().specimens = (dayBucket().specimens || 0) + 1;
   save();
   return state.specimens;
 }
 
-// --- Crystal Catalog (mineral collection; gem spend sink) --------------------
+// --- Crystal Catalog ---------------------------------------------------------
 
 function ensureCatalog() {
   if (!state.catalog || typeof state.catalog !== 'object') state.catalog = { owned: [], milestoneDepth: 1 };
   if (!Array.isArray(state.catalog.owned)) state.catalog.owned = [];
   return state.catalog;
 }
-
 export function ownedCrystals() {
   return ensureCatalog().owned;
 }
-
-// The deepest cavern depth whose Geode-Boss milestone has been cracked. A wave that
-// pushes the live depth past this has a PENDING boss (the modes route to it). Stays
-// pending until the boss is actually cracked, so leaving early never skips it.
 export function lastMilestoneDepth() {
   return ensureCatalog().milestoneDepth || 1;
 }
-
-// Buy a crystal with gems (the spend sink). Pure transaction in engine/catalog.js;
-// here we apply + persist. Returns { ok, reason?, species? } for the screen to react.
 export function purchaseCrystal(id) {
   const cat = ensureCatalog();
   const res = purchaseResult(cat.owned, state.gems || 0, id);
@@ -225,14 +358,6 @@ export function purchaseCrystal(id) {
   save();
   return res;
 }
-
-// Grant the next un-owned crystal FREE for the NEXT uncracked depth gate, when the
-// learner's current depth is past it. Advances catalog.milestoneDepth by EXACTLY ONE
-// level per call (not straight to `currentDepth`), so a wave that jumps several depths
-// still yields one boss + crystal per level over subsequent waves — none is skipped
-// (review finding). Returns the granted species (or null if all collected / not past
-// the next gate). Idempotent: re-calling at the same depth past the gate keeps granting
-// one level at a time until milestoneDepth catches up to currentDepth.
 export function grantMilestoneCrystal(currentDepth) {
   const cat = ensureCatalog();
   const last = cat.milestoneDepth || 1;
@@ -248,59 +373,65 @@ export function grantMilestoneCrystal(currentDepth) {
   return species;
 }
 
-// --- backup / restore (parent-controlled; data leaves/returns via a JSON file) ----
-// All data stays on-device; a "backup" is a file the PARENT keeps in their OWN cloud
-// (iCloud Drive / Google Drive via Files), so no server we operate ever holds the
-// child's data — the COPPA-minimizing design (see PRIVACY.md / engine/backup.js).
+// --- backup / restore (parent-controlled; the WHOLE family in one file) ------
 
-// Whole days since the last parent backup (Infinity if never). For the reminder.
 export function lastBackupDays() {
-  const last = state.lastBackupAt || 0;
+  const last = state?.lastBackupAt || 0;
   if (!last) return Infinity;
   return Math.max(0, Math.floor((Date.now() - last) / 86400000));
 }
-
-// Is there progress worth backing up yet? (played at least one word, or earned gems)
 export function hasProgress() {
-  return (state.stats?.answers || 0) > 0 || (state.gems || 0) > 0 || state.tracker.records.size > 0;
+  return (state?.stats?.answers || 0) > 0 || (state?.gems || 0) > 0 || (state?.tracker?.records?.size || 0) > 0;
 }
-
-// Mark that the parent just took a backup (resets the reminder clock).
 export function markBackedUp() {
-  state.lastBackupAt = Date.now();
+  if (state) state.lastBackupAt = Date.now();
   save();
-  return state.lastBackupAt;
+  return state?.lastBackupAt;
 }
 
-// The backup file contents: the full state (tracker serialized) inside a small,
-// identifiable, versioned envelope (marker + version + timestamp only — no new data).
+// Export the WHOLE container (all profiles + family) so a parent backs up everyone.
 export function exportData() {
-  const data = { ...state, tracker: serializeTracker(state.tracker) };
-  return JSON.stringify(wrapBackup(data, Date.now()), null, 2);
+  if (state) save(); // fold the live profile in first
+  return JSON.stringify(wrapBackup(container, Date.now()), null, 2);
 }
 
+// Import a backup: a multi-profile container, or a legacy single blob (migrated).
 export function importData(text) {
   const parsed = JSON.parse(text);
-  const data = readBackup(parsed); // unwrap envelope / accept legacy bare export, else throw
-  if (!data || typeof data !== 'object') throw new Error('Not a valid save file.');
-  const base = defaults();
-  state = {
-    ...base,
-    ...data,
-    profile: { ...base.profile, ...(data.profile || {}) },
-    settings: { ...base.settings, ...(data.settings || {}) },
-    stats: { ...base.stats, ...(data.stats || {}) },
-    streak: { ...base.streak, ...(data.streak || {}) },
-    records: { ...base.records, ...(data.records || {}) },
-    catalog: { ...base.catalog, ...(data.catalog || {}) },
-    tracker: deserializeTracker(data.tracker),
-  };
-  save();
+  const data = readBackup(parsed);
+  if (isContainer(data)) container = data;
+  else if (isLegacyBlob(data)) container = migrateLegacy(data, newId());
+  else throw new Error('Not a valid Crystal Spell Caverns backup.');
+  try {
+    localStorage.setItem(KEY, JSON.stringify(container));
+  } catch {
+    /* ignore */
+  }
+  // re-activate (the saved active profile, or the first one)
+  state = null;
+  if (container.activeId && getProfile(container, container.activeId)) activate(container.activeId);
+  else if (container.profiles.length) activate(container.profiles[0].id);
   return state;
 }
 
+// Wipe THIS device entirely (all profiles + family). The parent's nuclear option.
 export function reset() {
-  state = defaults();
+  container = emptyContainer();
+  state = null;
+  try {
+    localStorage.setItem(KEY, JSON.stringify(container));
+  } catch {
+    /* ignore */
+  }
+  return container;
+}
+
+// Reset just the ACTIVE profile's game progress (keep the profile + its name/colour).
+export function resetActiveProgress() {
+  if (!state) return;
+  const keep = { id: state.id, name: state.profile.name, themeColor: state.settings.themeColor, startLevel: state.startLevel, kidLock: state.kidLock };
+  state = defaultProfile(keep.id, { name: keep.name, themeColor: keep.themeColor, startLevel: keep.startLevel, onboarded: true });
+  state.kidLock = keep.kidLock;
   save();
   return state;
 }

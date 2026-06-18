@@ -9,6 +9,7 @@ import * as audio from './audio.js';
 import { setRoot, render, toast, applyTheme, applyReadable } from './ui.js';
 import { homeScreen } from './screens/home.js';
 import { onboardingScreen } from './screens/onboarding.js';
+import { profilesScreen } from './screens/profiles.js';
 import { settingsScreen } from './screens/settings.js';
 import { progressScreen } from './screens/progress.js';
 import { feedbackScreen } from './screens/feedback.js';
@@ -29,6 +30,7 @@ const routes = {
   feedback: feedbackScreen,
   catalog: catalogScreen,
   onboarding: onboardingScreen,
+  profiles: profilesScreen,
   boss: bossScreen,
 };
 
@@ -61,67 +63,86 @@ function nav(name, params = {}) {
 
 // Cavern depth = a friendly level number that grows as words are mastered.
 function depth() {
+  if (!ctx.state) return 1;
   const known = summary(ctx.state.tracker).counts.known;
   return 1 + Math.floor(known / 8);
 }
 
-function boot() {
-  const state = store.load();
-  audio.configure(state.settings);
-  applyTheme(state.settings.themeColor); // restore the miner's chosen crystal colour
-  applyReadable(state.settings.readableText); // restore the easy-read preference
+// Load the ACTIVE profile into ctx + apply its audio/theme/easy-read prefs. Called at
+// boot and whenever the profile changes (profile-select / add explorer).
+function refreshActive() {
+  const s = store.get();
+  ctx.state = s;
+  if (s) {
+    audio.configure(s.settings);
+    applyTheme(s.settings.themeColor);
+    applyReadable(s.settings.readableText);
+  }
+  return s;
+}
 
+function boot() {
+  store.load();
   ctx = {
-    state,
+    state: store.get(),
     store,
     audio,
     nav,
     toast,
     depth,
     save: store.save,
-    // a screen registers teardown here; nav() runs them when leaving the screen
     onLeave: (fn) => leaveHandlers.push(fn),
+    refreshActive, // screens call this after switching/creating a profile
   };
 
   setRoot(document.getElementById('app'));
-
-  // Prime audio/speech on the first tap anywhere — iOS unlocks media only inside
-  // a user gesture (HANDOFF §4). `{ once:true }` removes the listener after.
+  // Prime audio/speech on the first tap anywhere — iOS unlocks media only inside a user
+  // gesture (HANDOFF §4). `{ once:true }` removes the listener after.
   window.addEventListener('pointerdown', () => audio.prime(), { once: true });
 
-  // First run → the mascot-guided onboarding (name + crystal colour + a guaranteed-
-  // win first wave); afterwards, straight to home.
-  nav(state.profile.onboarded ? 'home' : 'onboarding');
-
-  // Family sync (cross-device): if a sync code is set on this device, pull + merge the
-  // latest progress on open, and push when the app is backgrounded/closed (common on
-  // iPad). Non-blocking + lazy-loaded; any failure (offline) is ignored and play
-  // continues on local data. Conflict resolution never loses progress (engine/cloudsync).
-  if (state.settings.syncCode) {
-    const localEnv = () => JSON.parse(store.exportData());
-    const adopt = (envel) => store.importData(JSON.stringify(envel));
-    import('./cloud_sync_backend.js').then((sync) => {
-      // pull + merge on open
-      sync
-        .syncNow({ code: state.settings.syncCode, getLocal: localEnv, applyRemote: adopt })
-        .then((res) => {
-          if (res && res.action === 'pull') {
-            audio.configure(ctx.state.settings);
-            applyTheme(ctx.state.settings.themeColor);
-            applyReadable(ctx.state.settings.readableText);
-            if (ctx.route === 'home') nav('home'); // re-render with the pulled progress
-            toast('Synced your latest progress ✨');
-          }
-        })
-        .catch(() => {});
-      // push when the tab is hidden (app switch / lock / close) — best-effort
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden' && ctx.state.settings.syncCode) {
-          sync.push(ctx.state.settings.syncCode, localEnv()).catch(() => {});
-        }
-      });
-    });
+  // Route by how many explorers exist:
+  //  - none yet → first-run onboarding (creates explorer #1)
+  //  - exactly one → straight into their game (no need to choose)
+  //  - more than one → "Who's playing?" EVERY launch (in case it's a different sibling —
+  //    what the game serves depends on that learner's progress; user 2026-06-18)
+  const count = store.profileCount();
+  if (count === 0) {
+    nav('onboarding');
+  } else if (count === 1) {
+    refreshActive();
+    nav(ctx.state.profile.onboarded ? 'home' : 'onboarding');
+    maybeBootSync();
+  } else {
+    nav('profiles');
+    maybeBootSync(); // sync the family in the background while they pick
   }
+}
+
+// Family sync (cross-device): if the FAMILY sync password is set, pull + merge on open
+// and push when the app is backgrounded (app switch / lock). Non-blocking + lazy-loaded;
+// any failure (offline) is ignored. Conflict resolution never loses progress.
+function maybeBootSync() {
+  const code = store.syncCode();
+  if (!code) return;
+  const localEnv = () => JSON.parse(store.exportData());
+  const adopt = (envel) => store.importData(JSON.stringify(envel));
+  import('./cloud_sync_backend.js').then((sync) => {
+    sync
+      .syncNow({ code, getLocal: localEnv, applyRemote: adopt })
+      .then((res) => {
+        if (res && res.action === 'pull') {
+          refreshActive();
+          if (ctx.route === 'home') nav('home');
+          toast('Synced your latest progress ✨');
+        }
+      })
+      .catch(() => {});
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden' && store.syncCode()) {
+        sync.push(store.syncCode(), localEnv()).catch(() => {});
+      }
+    });
+  });
 }
 
 boot();

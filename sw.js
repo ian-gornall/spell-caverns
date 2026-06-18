@@ -22,7 +22,9 @@
 //      first-run onboarding.
 // v11: picture password dropped (grown-up sets a normal family password, saved locally);
 //      mastery decoupled from speed; target-words session algorithm; level-select.
-const VERSION = 'csc-v11';
+// v12: multi-profile (engine/profiles.js + screens/profiles.js "who's playing"), per-kid
+//      progress, family-level sync, snapshots; clickable quests.
+const VERSION = 'csc-v12';
 
 const CORE = [
   '/',
@@ -50,6 +52,7 @@ const CORE = [
   '/src/engine/narrative.js',
   '/src/engine/backup.js',
   '/src/engine/cloudsync.js',
+  '/src/engine/profiles.js',
   '/src/cloud_sync_backend.js',
   '/src/modes/rhythm.js',
   '/src/modes/puzzle.js',
@@ -60,6 +63,7 @@ const CORE = [
   '/src/screens/feedback.js',
   '/src/screens/catalog.js',
   '/src/screens/onboarding.js',
+  '/src/screens/profiles.js',
   '/src/screens/boss.js',
   '/data/words.js',
   '/data/patterns.js',

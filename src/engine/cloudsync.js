@@ -30,6 +30,10 @@ export function isValidSyncCode(input) {
 // learning history (answers, tracked words, the recency tick) over gems.
 export function progressScore(blob) {
   if (!blob || typeof blob !== 'object') return -1;
+  // A multi-profile container: sum every profile's progress (family-level total).
+  if (blob.schema === 2 && Array.isArray(blob.profiles)) {
+    return blob.profiles.reduce((sum, p) => sum + Math.max(0, progressScore(p)), 0);
+  }
   const answers = blob.stats?.answers || 0;
   const tick = blob.tracker?.tick || 0;
   const tracked = Array.isArray(blob.tracker?.records) ? blob.tracker.records.length : 0;

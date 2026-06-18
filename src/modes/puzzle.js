@@ -42,7 +42,7 @@ export function startPuzzle(ctx, params = {}) {
   const length = Math.min(settings.length || 10, 6);
   const session = review
     ? buildReviewSession(state.tracker, { length, rng })
-    : buildSession(state.tracker, { difficulty: settings.difficulty, length, rng });
+    : buildSession(state.tracker, { difficulty: settings.difficulty, length, rng, startTier: state.startLevel || 1 });
   const extra =
     typeof settings.difficulty === 'string' ? EXTRA_BY_DIFF[settings.difficulty] ?? 1 : 1;
 

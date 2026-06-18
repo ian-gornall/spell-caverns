@@ -1,21 +1,16 @@
-// src/screens/onboarding.js — first-run welcome (research Tier 2 #9: a named mascot
-// guide + light personalization supports autonomy & competence; SDT, Kim 2015).
+// src/screens/onboarding.js — create-an-explorer flow (first run AND "add explorer").
 //
-// Flow (one screen, internal steps — no router churn):
-//   welcome → name → crystal colour → "let's dig!" → a GUARANTEED-WIN first wave.
-// Geo (the crystal guide) speaks each prompt aloud. The colour choice becomes the
-// live --accent theme; the name personalizes the whole app. On finish we mark
-// profile.onboarded so this never shows again, then drop the learner straight into a
-// short, very-easy rhythm wave (firstRun) so their first experience is a clear WIN.
-//
-// UI module — verified with Playwright, never imported by node --test.
+// Flow (one screen, internal steps): welcome → name → crystal colour → WHERE TO START
+// (level select) → "let's dig!" → a guaranteed-win first wave. Geo (the crystal guide)
+// speaks each prompt. On finish we CREATE a new profile (store.addProfile) and make it
+// active, so siblings each get their own progress. Family sync is a parent/family concern
+// and lives in Settings (not here). UI module — never imported by node --test.
 import { el, mascot, applyTheme, toast } from '../ui.js';
+import { wordsByTier } from '../engine/lexicon.js';
 import * as sync from '../cloud_sync_backend.js';
 import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
 
-// A few friendly "crystal colours" the miner can pick (sets settings.themeColor →
-// --accent). Each is a real accent already used elsewhere in the palette. Exported
-// so Settings can reuse the same palette for changing the colour later.
+// Crystal colours (sets settings.themeColor → --accent). Reused by Settings.
 export const COLOURS = [
   { id: 'blue', value: '#7AA2FF', name: 'Sky' },
   { id: 'cyan', value: '#36F1CD', name: 'Aqua' },
@@ -25,13 +20,39 @@ export const COLOURS = [
   { id: 'pink', value: '#FF7EB6', name: 'Rose' },
 ];
 
+// Starting points the parent/learner can pick (the level-select). Each maps to a tier
+// the engine anchors NEW words around; it then adapts up/down from there. We show a few
+// example words per level so a grown-up can gauge difficulty (a starting point, NOT
+// "learning from lists" — user 2026-06-18). Reused by Settings.
+export const LEVELS = [
+  { label: 'Just starting', age: 'ages 5–6', tier: 1 },
+  { label: 'Beginner', age: 'ages 6–7', tier: 3 },
+  { label: 'Building', age: 'ages 8–9', tier: 5 },
+  { label: 'Confident', age: 'ages 10–11', tier: 7 },
+  { label: 'Advanced', age: 'ages 12–13', tier: 9 },
+];
+
+// A few short, common example words from a tier (for the level cards).
+export function exampleWords(tier, n = 3) {
+  return wordsByTier(tier)
+    .slice()
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, n)
+    .map((w) => w.word);
+}
+
 export function onboardingScreen(ctx) {
   const { audio } = ctx;
   const body = el('div', { class: 'onboard-body' });
   const screen = el('div', { class: 'screen onboarding' }, body);
 
-  let chosenName = ctx.state.profile.name && ctx.state.profile.name !== 'Explorer' ? ctx.state.profile.name : '';
-  let chosenColour = ctx.state.settings.themeColor || COLOURS[0].value;
+  const active = ctx.state;
+  // first run (no profiles yet) shows the family-sync option; "add explorer" (a profile
+  // already exists, so the family is set up) skips straight to creating the new explorer.
+  const firstRun = ctx.store.profileCount() === 0;
+  let chosenName = active?.profile?.name && active.profile.name !== 'Explorer' ? active.profile.name : '';
+  let chosenColour = active?.settings?.themeColor || COLOURS[0].value;
+  let chosenLevel = active?.startLevel || 1;
   applyTheme(chosenColour);
 
   // --- step 1: welcome ------------------------------------------------------
@@ -47,30 +68,14 @@ export function onboardingScreen(ctx) {
   // --- step 2: name ---------------------------------------------------------
   function askName() {
     const line = 'What should I call you, explorer?';
-    const input = el('input', {
-      type: 'text',
-      class: 'onboard-name',
-      placeholder: 'Type your name',
-      maxLength: 20,
-      value: chosenName,
-    });
+    const input = el('input', { type: 'text', class: 'onboard-name', placeholder: 'Type your name', maxLength: 20, value: chosenName });
     const next = () => {
       chosenName = (input.value || '').trim().slice(0, 20);
       chooseColour();
     };
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') next();
-    });
-    body.replaceChildren(
-      mascot(line),
-      input,
-      el('button', { class: 'btn primary onboard-go', onClick: next }, "That's me! →"),
-    );
-    try {
-      input.focus();
-    } catch {
-      /* ignore */
-    }
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') next(); });
+    body.replaceChildren(mascot(line), input, el('button', { class: 'btn primary onboard-go', onClick: next }, "That's me! →"));
+    try { input.focus(); } catch { /* ignore */ }
     audio.say(line);
   }
 
@@ -90,7 +95,7 @@ export function onboardingScreen(ctx) {
             'aria-label': c.name,
             onClick: (e) => {
               chosenColour = c.value;
-              applyTheme(chosenColour); // live preview
+              applyTheme(chosenColour);
               [...e.currentTarget.parentNode.children].forEach((n) => n.classList.remove('on'));
               e.currentTarget.classList.add('on');
             },
@@ -99,42 +104,60 @@ export function onboardingScreen(ctx) {
         ),
       ),
     );
-    body.replaceChildren(
-      mascot(line),
-      swatches,
-      el('button', { class: 'btn primary onboard-go', onClick: syncStep }, 'Perfect! →'),
-    );
+    body.replaceChildren(mascot(line), swatches, el('button', { class: 'btn primary onboard-go', onClick: chooseLevel }, 'Perfect! →'));
     audio.say('Pick your crystal colour!');
   }
 
-  // --- step 4: family sync (across devices) --------------------------------
-  // Surfaced at first run (not buried in Settings): "just this tablet" (the easy
-  // default, no cloud), or cross-device sync. A GROWN-UP sets one family password; the
-  // device saves it locally, so the child never has to type it again. Parent-gated
-  // (COPPA): consent before any data leaves the device. Entering the SAME password on
-  // another tablet automatically joins the family's progress (the server merges).
+  // --- step 4: where to start (level select) -------------------------------
+  function chooseLevel() {
+    const line = "Where should we start digging? Pick the words that look about right — I'll figure out the rest from there.";
+    const cards = el(
+      'div',
+      { class: 'level-grid' },
+      ...LEVELS.map((lv) =>
+        el(
+          'button',
+          {
+            class: 'level-card' + (lv.tier === chosenLevel ? ' on' : ''),
+            onClick: (e) => {
+              chosenLevel = lv.tier;
+              [...e.currentTarget.parentNode.children].forEach((n) => n.classList.remove('on'));
+              e.currentTarget.classList.add('on');
+            },
+          },
+          el('div', { class: 'level-label' }, lv.label),
+          el('div', { class: 'level-age' }, lv.age),
+          el('div', { class: 'level-examples' }, exampleWords(lv.tier).join(' · ')),
+        ),
+      ),
+    );
+    body.replaceChildren(
+      mascot('Where should we start?'),
+      el('p', { class: 'field-hint', style: { maxWidth: '460px' } }, "Pick the words that look about right — the game finds the ones you don't know yet and adjusts."),
+      cards,
+      el('button', { class: 'btn primary onboard-go', onClick: firstRun ? syncStep : ready }, "Let's dig! →"),
+    );
+    audio.say(line);
+  }
+
+  // --- step 4b (first run only): family sync option ------------------------
+  // Optional cross-device sync. A grown-up sets ONE family password; the device saves it
+  // so the child never types it again. Entering the SAME password that another tablet
+  // already uses JOINS the family — its existing explorers appear in "Who's playing?"
+  // (we don't make a duplicate). A brand-new password starts a fresh family.
   function syncStep() {
     const line = 'Do you play on more than one tablet?';
     body.replaceChildren(
       mascot(line),
       el('button', { class: 'btn primary onboard-go', onClick: ready }, '📱 Just this one!'),
       el('button', { class: 'btn onboard-go', onClick: syncSetup }, '👨‍👩‍👧 Sync our tablets'),
-      el('p', { class: 'field-hint', style: { maxWidth: '420px' } }, 'Grown-ups: sync keeps progress the same on every tablet.'),
+      el('p', { class: 'field-hint', style: { maxWidth: '420px' } }, 'Grown-ups: sync keeps every explorer the same on every tablet.'),
     );
     audio.say(line);
   }
 
   function syncSetup() {
-    const input = el('input', {
-      type: 'text',
-      class: 'onboard-name',
-      placeholder: 'Family password',
-      maxLength: 40,
-      autocapitalize: 'none',
-      autocomplete: 'off',
-      disabled: 'disabled',
-    });
-    const status = el('p', { class: 'field-hint', style: { maxWidth: '440px' } }, 'Pick something only your family knows (e.g. a phrase). Use the SAME one on every tablet.');
+    const input = el('input', { type: 'text', class: 'onboard-name', placeholder: 'Family password', maxLength: 40, autocapitalize: 'none', autocomplete: 'off', disabled: 'disabled' });
     const goBtn = el('button', { class: 'btn primary onboard-go', disabled: 'disabled', onClick: () => enableSync(input.value) }, '☁️ Turn on sync');
     const consentRow = el(
       'label',
@@ -147,63 +170,57 @@ export function onboardingScreen(ctx) {
           if (on) try { input.focus(); } catch { /* ignore */ }
         },
       }),
-      el('span', {}, "Grown-up: I'm this child's parent/guardian and I agree to store their progress (a nickname + scores only) in the cloud to sync devices. See PRIVACY.md."),
+      el('span', {}, "Grown-up: I'm this child's parent/guardian and I agree to store the family's progress (nicknames + scores only) in the cloud to sync devices. See PRIVACY.md."),
     );
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !goBtn.hasAttribute('disabled')) enableSync(input.value); });
     body.replaceChildren(
       mascot('Grown-ups: set one family password. Type the SAME one on each tablet to keep them in sync.'),
       consentRow,
       input,
-      status,
+      el('p', { class: 'field-hint', style: { maxWidth: '440px' } }, 'Pick something only your family knows. New tablets that enter it join your explorers automatically.'),
       goBtn,
       el('button', { class: 'btn ghost onboard-go', onClick: syncStep }, '← Back'),
     );
   }
 
-  // Persist the family password + consent, sync (the server merges — creating the
-  // family on the first device, joining it on the next), then continue into the game.
   async function enableSync(raw) {
     const code = normalizeSyncCode(raw);
     if (!isValidSyncCode(code)) {
       toast('Use at least 4 letters or numbers.');
       return;
     }
-    ctx.state.settings.syncCode = code;
-    ctx.state.settings.syncConsent = true;
-    ctx.save();
-    let pulled = false;
+    ctx.store.setSyncCode(code);
+    ctx.store.setSyncConsent(true);
     try {
-      const { action } = await sync.syncNow({
+      await sync.syncNow({
         code,
         getLocal: () => JSON.parse(ctx.store.exportData()),
         applyRemote: (envel) => ctx.store.importData(JSON.stringify(envel)),
       });
-      pulled = action === 'pull';
     } catch {
-      /* offline — local state is saved; it'll sync later */
+      /* offline — saved locally; syncs later */
     }
-    // a pull may have changed name/colour/settings — re-apply before continuing
-    chosenName = ctx.state.profile.name && ctx.state.profile.name !== 'Explorer' ? ctx.state.profile.name : chosenName;
-    chosenColour = ctx.state.settings.themeColor || chosenColour;
-    ctx.audio.configure(ctx.state.settings);
-    applyTheme(chosenColour);
-    toast(pulled ? 'Synced your progress! ✨' : 'Sync is on — use the same password on your other tablets. ☁️');
-    ready();
+    // Joined an EXISTING family (its explorers came down) → pick who's playing. A brand-
+    // new family (still no profiles) → continue creating this first explorer.
+    if (ctx.store.profileCount() > 0) {
+      toast('Synced your family! Pick who’s playing. ✨');
+      ctx.nav('profiles');
+    } else {
+      ready();
+    }
   }
 
-  // --- step 5: ready -> guaranteed-win first wave ---------------------------
+  // --- step 5: create the profile -> guaranteed-win first wave --------------
   function ready() {
     const name = chosenName || 'Explorer';
-    ctx.state.profile.name = name;
-    ctx.state.profile.onboarded = true;
-    ctx.state.settings.themeColor = chosenColour;
-    ctx.audio.configure(ctx.state.settings);
+    // Create a NEW profile (first-run, or "add explorer") and make it active.
+    ctx.store.addProfile({ name, themeColor: chosenColour, startLevel: chosenLevel });
+    ctx.refreshActive();
     applyTheme(chosenColour);
-    ctx.save();
 
-    const line = `Let's dig, ${name}! Tap the word you hear — you've got this!`;
+    const lineTxt = `Let's dig, ${name}! Tap the word you hear — you've got this!`;
     body.replaceChildren(
-      mascot(line),
+      mascot(lineTxt),
       el('button', { class: 'btn primary onboard-go big', onClick: () => ctx.nav('rhythm', { firstRun: true }) }, '⛏️ Start digging!'),
     );
     audio.say(`Let's dig, ${name}! You've got this!`);

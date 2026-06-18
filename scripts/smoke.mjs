@@ -43,9 +43,11 @@ try {
   await page.click('.onboard-go'); // -> colour
   await page.waitForSelector('.colour-grid .colour-swatch', { timeout: 4000 });
   await page.locator('.colour-swatch').nth(1).click();
-  await page.click('.onboard-go'); // -> family-sync step
-  await page.waitForSelector('.onboarding .onboard-go', { timeout: 4000 });
-  await page.click('text=Just this one'); // skip sync -> ready
+  await page.click('.onboard-go'); // -> level select
+  await page.waitForSelector('.level-card', { timeout: 4000 });
+  await page.click('.onboard-go'); // "Let's dig!" -> family-sync step (first run)
+  await page.waitForSelector('text=Just this one', { timeout: 4000 });
+  await page.click('text=Just this one'); // skip sync -> ready (creates the profile)
   await page.waitForSelector('.onboard-go.big', { timeout: 4000 });
   await page.click('.onboard-go.big'); // -> guaranteed-win first wave (rhythm firstRun)
   await page.waitForSelector('.rhythm .tile', { timeout: 5000 });
@@ -250,7 +252,14 @@ try {
   await page.locator('.seg button', { hasText: 'Just right' }).click();
   await page.fill('.feedback-note', 'Smoke test note');
   const fbLen = () =>
-    page.evaluate(() => JSON.parse(localStorage.getItem('crystal-spell-caverns:v1') || '{}').feedback?.length || 0);
+    page.evaluate(() => {
+      const c = JSON.parse(localStorage.getItem('crystal-spell-caverns:v1') || '{}');
+      if (Array.isArray(c.profiles)) {
+        const p = c.profiles.find((x) => x.id === c.activeId) || c.profiles[0] || {};
+        return (p.feedback || []).length;
+      }
+      return c.feedback?.length || 0; // legacy single-blob fallback
+    });
   const fbBefore = await fbLen();
   await page.click('.feedback-send');
   await page.waitForSelector('.menu-card.play', { timeout: 4000 }); // returns home

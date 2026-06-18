@@ -64,7 +64,7 @@ export function startRhythm(ctx, params = {}) {
         byRank().filter((w) => w.tier <= 2 && w.word.length >= 3 && w.word.length <= 6).slice(0, 14),
         rng,
       ).slice(0, length)
-    : buildSession(state.tracker, { difficulty, length, rng });
+    : buildSession(state.tracker, { difficulty, length, rng, startTier: state.startLevel || 1 });
 
   // --- static structure -----------------------------------------------------
   const dots = el('div', { class: 'dots' });
