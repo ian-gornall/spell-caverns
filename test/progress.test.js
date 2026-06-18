@@ -32,19 +32,24 @@ import {
 } from '../src/engine/progress.js';
 
 // ---------------------------------------------------------------- answerScore
-test('answerScore: wrong is 0; correct is scaled by speed', () => {
+// MASTERY is about ACCURACY, not speed (user 2026-06-18: "if a child is accurate, the
+// speed really shouldn't matter"). So any correct answer is full credit regardless of how
+// fast it was; only a wrong answer scores 0. (Speed still drives gems/praise in praise.js
+// — the DDR fun layer — but it must NOT affect what's considered learned.)
+test('answerScore: wrong is 0; ANY correct is full credit, speed irrelevant', () => {
   assert.equal(answerScore({ correct: false, responseMs: 300 }), 0);
-  const fast = answerScore({ correct: true, responseMs: 500 }); // perfect tier
-  const mid = answerScore({ correct: true, responseMs: 3000 }); // great tier
-  const slow = answerScore({ correct: true, responseMs: 9000 }); // good tier
-  assert.ok(fast > mid && mid > slow, `expected fast>mid>slow, got ${fast},${mid},${slow}`);
-  assert.ok(fast <= 1 && slow >= 0.5, `scores out of expected band: ${fast},${slow}`);
+  const fast = answerScore({ correct: true, responseMs: 500 });
+  const mid = answerScore({ correct: true, responseMs: 3000 });
+  const slow = answerScore({ correct: true, responseMs: 30000 });
+  assert.equal(fast, 1, 'a fast-correct is full credit');
+  assert.equal(slow, 1, 'a slow-correct is ALSO full credit — speed must not matter');
+  assert.equal(fast, mid, 'speed makes no difference to mastery credit');
 });
 
-test('answerScore falls back to the fast flag when no responseMs', () => {
-  const fast = answerScore({ correct: true, fast: true });
-  const unhurried = answerScore({ correct: true, fast: false });
-  assert.ok(fast > unhurried);
+test('answerScore: a correct answer is full credit with or without timing info', () => {
+  assert.equal(answerScore({ correct: true }), 1);
+  assert.equal(answerScore({ correct: true, fast: false }), 1, 'slow flag still full credit');
+  assert.equal(answerScore({ correct: false }), 0);
 });
 
 // --------------------------------------------------------------- empty tracker
@@ -258,11 +263,12 @@ test('serveCooldown grows with mastery and with confirmations', () => {
   const many = serveCooldown(getRecord(t2, 'w'));
   assert.ok(many > once * 1.5, `well-confirmed word should rest far longer (${many} vs ${once})`);
 
-  // a still-learning word (correct but slow, mid mastery) rests far less than a mastered one
+  // a shaky word (recently MISSED -> low mastery) rests far less than a mastered one, so
+  // it comes straight back (accuracy drives this now, not speed)
   const t3 = createTracker();
-  recordAnswer(t3, 'w', true, { responseMs: 6000 }); // "good" tier -> mastery ~0.6
+  recordAnswer(t3, 'w', false, { responseMs: 500 }); // missed -> low mastery
   const learning = serveCooldown(getRecord(t3, 'w'));
-  assert.ok(learning < once, `a learning word should rest less than a mastered one (${learning} vs ${once})`);
+  assert.ok(learning < once, `a shaky/missed word should rest less than a mastered one (${learning} vs ${once})`);
 });
 
 test('isEligible: a just-mastered word is NOT eligible immediately, but is after it rests', () => {

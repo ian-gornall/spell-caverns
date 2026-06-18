@@ -12,7 +12,6 @@
 //
 // The cold-start pre-assessment and live play both feed this tracker IDENTICALLY
 // (seedFromAssessment just replays recordAnswer). Imports nothing browser-specific.
-import { SPEED_TIERS } from './praise.js';
 
 // EMA weight on the newest answer — high so RECENT performance dominates ("recency
 // weighted"). Tunable later.
@@ -23,21 +22,13 @@ const CONF_BASE = 0.5;
 // back to here (also the default `knownAt` for summary's known bucket).
 const KNOWN_AT = 0.85;
 
-// Per-answer score from correctness + speed. Wrong is 0; a correct answer earns
-// partial→full credit by how fast it was, reusing the praise speed tiers so the
-// whole app shares one notion of "fast". Slow-but-correct still counts.
-const SPEED_SCORE = { perfect: 1.0, amazing: 0.9, great: 0.75, good: 0.6 };
-
-function speedScore(responseMs) {
-  const t = Number.isFinite(responseMs) ? responseMs : Infinity;
-  const tier = SPEED_TIERS.find((x) => t <= x.maxMs) || SPEED_TIERS[SPEED_TIERS.length - 1];
-  return SPEED_SCORE[tier.key] ?? 0.6;
-}
-
-export function answerScore({ correct, responseMs, fast } = {}) {
-  if (!correct) return 0;
-  if (Number.isFinite(responseMs)) return speedScore(responseMs);
-  return fast ? 0.9 : 0.6; // no timing info: a "fast" flag is a coarse fallback
+// Per-answer score for MASTERY. Mastery is about ACCURACY, not speed (user 2026-06-18:
+// "if a child is accurate, the speed really shouldn't matter") — so any correct answer is
+// full credit (1) regardless of how fast it was, and a wrong answer is 0. Speed still
+// drives gems + spoken praise in praise.js (the DDR fun layer); it just must not change
+// what the engine treats as learned. `responseMs`/`fast` are accepted but ignored here.
+export function answerScore({ correct } = {}) {
+  return correct ? 1 : 0;
 }
 
 // Map a difficulty tier (1..9) onto a 0..1 prior (1=easiest spelling, 9=hardest).
