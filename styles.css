@@ -1205,6 +1205,123 @@ select {
   }
 }
 
+/* ------- Crystal Catalog (mineral collection / gem spend sink) ------- */
+.menu-card.catalog {
+  background: linear-gradient(150deg, #2a4a8e55, #20285a);
+  border-color: #7aa2ff66;
+}
+.menu-card.catalog .desc {
+  color: rgba(255, 255, 255, 0.82);
+}
+/* a collectable is affordable right now — pull the eye to it */
+.menu-card.catalog.has-unlock {
+  border-color: var(--cyan);
+  box-shadow: 0 0 22px -6px var(--cyan);
+}
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 14px;
+}
+.crystal-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--panel-border);
+  transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.crystal-cell:active {
+  transform: scale(0.95);
+}
+.crystal-art {
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+}
+.crystal-cell.locked .crystal-art {
+  filter: grayscale(1) brightness(0.4) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+  opacity: 0.7;
+}
+.crystal-cell.owned .crystal-art {
+  animation: pop 0.5s ease;
+}
+.crystal-name {
+  font-size: 0.98rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.1;
+}
+.crystal-cell.locked .crystal-name {
+  color: var(--ink-dim);
+}
+.crystal-rarity {
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.crystal-price {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink-dim);
+}
+.crystal-price.can {
+  color: var(--cyan);
+}
+/* an affordable, un-owned crystal glows + gently pulses to invite the unlock */
+.crystal-cell.affordable {
+  border-color: var(--cyan);
+  box-shadow: 0 0 18px -6px var(--cyan);
+}
+.crystal-cell.affordable .crystal-art {
+  filter: grayscale(0.55) brightness(0.7) drop-shadow(0 2px 8px rgba(54, 241, 205, 0.4));
+  opacity: 0.92;
+  animation: breathe 2.4s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+.rarity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.rarity-chip {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glow, var(--panel-border));
+  color: var(--glow, var(--ink));
+}
+/* milestone "new mineral discovered" banner on the wave-reward screen */
+.crystal-grant {
+  display: block;
+  width: 100%;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--cyan);
+  background: rgba(54, 241, 205, 0.12);
+  border: 1px solid rgba(54, 241, 205, 0.45);
+  border-radius: 16px;
+  padding: 12px 18px;
+  margin: 4px 0;
+  animation: pop 0.6s ease;
+}
+.crystal-grant:active {
+  transform: scale(0.97);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001s !important;

@@ -12,7 +12,7 @@
 // home screen and runs online; true offline needs HTTPS. (See README.)
 //
 // Bump VERSION whenever a precached file changes, to retire the old cache.
-const VERSION = 'csc-v4';
+const VERSION = 'csc-v5';
 
 const CORE = [
   '/',
@@ -36,6 +36,7 @@ const CORE = [
   '/src/engine/puzzle.js',
   '/src/engine/streak.js',
   '/src/engine/quests.js',
+  '/src/engine/catalog.js',
   '/src/modes/rhythm.js',
   '/src/modes/puzzle.js',
   '/src/modes/lab.js',
@@ -43,6 +44,7 @@ const CORE = [
   '/src/screens/settings.js',
   '/src/screens/progress.js',
   '/src/screens/feedback.js',
+  '/src/screens/catalog.js',
   '/data/words.js',
   '/data/patterns.js',
   '/data/nonsense_blocklist.js',

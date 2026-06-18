@@ -7,10 +7,14 @@ import { el, header, toast, createIdleGuard, pulse } from '../ui.js';
 import { lapsedWords } from '../engine/progress.js';
 import { streakIsLive } from '../engine/streak.js';
 import { dailyQuests, questProgress } from '../engine/quests.js';
+import { catalogSummary, affordableLocked } from '../engine/catalog.js';
 
 export function homeScreen(ctx) {
   const name = ctx.state.profile.name || 'Explorer';
   const cracked = lapsedWords(ctx.state.tracker).length;
+  const owned = ctx.store.ownedCrystals();
+  const cat = catalogSummary(owned);
+  const canUnlock = affordableLocked(owned, ctx.state.gems || 0).length;
 
   // Daily streak ("glowing vein") + a tiny daily gem goal — guilt-free momentum.
   const streak = ctx.state.streak || {};
@@ -83,6 +87,13 @@ export function homeScreen(ctx) {
       el('span', { class: 'ic' }, '🔮'),
       el('span', { class: 'lbl' }, 'Crystal Lab'),
       el('span', { class: 'desc' }, 'Invent, spell & draw crystals'),
+    ),
+    el(
+      'button',
+      { class: 'menu-card catalog' + (canUnlock ? ' has-unlock' : ''), onClick: () => ctx.nav('catalog') },
+      el('span', { class: 'ic' }, '💠'),
+      el('span', { class: 'lbl' }, 'Catalog'),
+      el('span', { class: 'desc' }, canUnlock ? `${canUnlock} ready to unlock! · ${cat.owned}/${cat.total}` : `Collect minerals with gems · ${cat.owned}/${cat.total}`),
     ),
     el(
       'button',

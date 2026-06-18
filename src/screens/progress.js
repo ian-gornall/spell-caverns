@@ -8,6 +8,7 @@ import { el, header, toast, burst } from '../ui.js';
 import { summary, lapsedWords } from '../engine/progress.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { dailyQuests, questProgress, allQuestsDone, openGeode } from '../engine/quests.js';
+import { catalogSummary } from '../engine/catalog.js';
 
 export function progressScreen(ctx) {
   const sum = summary(ctx.state.tracker);
@@ -133,7 +134,25 @@ export function progressScreen(ctx) {
         ),
       ),
       el('div', { class: 'panel' }, el('h3', {}, 'Recent digs'), daysRow),
+      catalogPanel(ctx),
       specimenPanel(ctx),
+    ),
+  );
+}
+
+// A compact Crystal Catalog summary + jump-in button (full collection on its screen).
+function catalogPanel(ctx) {
+  const sum = catalogSummary(ctx.store.ownedCrystals());
+  const pct = Math.round((sum.owned / sum.total) * 100);
+  return el(
+    'div',
+    { class: 'panel' },
+    el('h3', {}, `Crystal Catalog (${sum.owned}/${sum.total})`),
+    el('div', { class: 'goal-bar' }, el('div', { class: 'goal-fill', style: { width: pct + '%' } })),
+    el(
+      'button',
+      { class: 'btn', style: { marginTop: '14px', width: '100%' }, onClick: () => ctx.nav('catalog') },
+      '💠 Open your Crystal Catalog',
     ),
   );
 }

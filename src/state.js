@@ -13,6 +13,7 @@ import {
   deserializeTracker,
 } from './engine/progress.js';
 import { defaultStreak, updateStreak } from './engine/streak.js';
+import { purchaseResult, nextFreeCrystal } from './engine/catalog.js';
 
 const KEY = 'crystal-spell-caverns:v1';
 
@@ -43,6 +44,7 @@ function defaults() {
     stats: { sessionsPlayed: 0, answers: 0, correct: 0, byDay: {} },
     streak: defaultStreak(), // daily-play streak (the "glowing vein")
     records: { bestCombo: 0, bestWaveGems: 0 }, // personal bests ("beat your best")
+    catalog: { owned: [], milestoneDepth: 1 }, // Crystal Catalog: collected mineral ids + last depth that granted a free crystal
     tracker: createTracker(), // LIVE tracker (Map); serialized on save()
   };
 }
@@ -69,6 +71,7 @@ export function load() {
       stats: { ...base.stats, ...(data.stats || {}) },
       streak: { ...base.streak, ...(data.streak || {}) },
       records: { ...base.records, ...(data.records || {}) },
+      catalog: { ...base.catalog, ...(data.catalog || {}) },
       tracker: deserializeTracker(data.tracker),
     };
   } else {
@@ -184,6 +187,48 @@ export function addSpecimen(spec) {
   return state.specimens;
 }
 
+// --- Crystal Catalog (mineral collection; gem spend sink) --------------------
+
+function ensureCatalog() {
+  if (!state.catalog || typeof state.catalog !== 'object') state.catalog = { owned: [], milestoneDepth: 1 };
+  if (!Array.isArray(state.catalog.owned)) state.catalog.owned = [];
+  return state.catalog;
+}
+
+export function ownedCrystals() {
+  return ensureCatalog().owned;
+}
+
+// Buy a crystal with gems (the spend sink). Pure transaction in engine/catalog.js;
+// here we apply + persist. Returns { ok, reason?, species? } for the screen to react.
+export function purchaseCrystal(id) {
+  const cat = ensureCatalog();
+  const res = purchaseResult(cat.owned, state.gems || 0, id);
+  if (!res.ok) return res;
+  cat.owned = res.owned;
+  state.gems = res.gems;
+  save();
+  return res;
+}
+
+// Grant the next un-owned crystal FREE when the learner reaches a NEW cavern depth
+// (endowed-progress milestone gift). Idempotent per depth via catalog.milestoneDepth;
+// returns the granted species (or null if nothing new to give / depth not advanced).
+export function grantMilestoneCrystal(depth) {
+  const cat = ensureCatalog();
+  const last = cat.milestoneDepth || 1;
+  if (!(depth > last)) return null;
+  cat.milestoneDepth = depth;
+  const species = nextFreeCrystal(cat.owned);
+  if (!species) {
+    save();
+    return null;
+  }
+  cat.owned = [...cat.owned, species.id];
+  save();
+  return species;
+}
+
 // --- export / import (data leaves/returns via a JSON file) -------------------
 
 export function exportData() {
@@ -201,6 +246,9 @@ export function importData(text) {
     profile: { ...base.profile, ...(data.profile || {}) },
     settings: { ...base.settings, ...(data.settings || {}) },
     stats: { ...base.stats, ...(data.stats || {}) },
+    streak: { ...base.streak, ...(data.streak || {}) },
+    records: { ...base.records, ...(data.records || {}) },
+    catalog: { ...base.catalog, ...(data.catalog || {}) },
     tracker: deserializeTracker(data.tracker),
   };
   save();
