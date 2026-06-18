@@ -25,7 +25,9 @@
 // v12: multi-profile (engine/profiles.js + screens/profiles.js "who's playing"), per-kid
 //      progress, family-level sync, snapshots; clickable quests.
 // v13: configurable voice speed (dictation rate; a little slow by default).
-const VERSION = 'csc-v13';
+// v14: NETWORK-FIRST fetch (online always gets the latest deploy; cache is the offline
+//      fallback). Stops the "deployed but I still see the old app" stale-cache problem.
+const VERSION = 'csc-v14';
 
 const CORE = [
   '/',
@@ -91,17 +93,20 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// NETWORK-FIRST (was cache-first). An online device ALWAYS gets the freshly-deployed
+// files (so a new deploy shows up immediately — no stale-cache "I don't see my update"),
+// refreshing the cache as it goes; only when OFFLINE does it fall back to the cache. The
+// precache (install) still makes the whole shell available offline. We never touch
+// /audio/ (ranged media) or /api/ (the live sync function — caching it would break sync).
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith('/audio/')) return; // let the browser handle ranged media
+  if (url.pathname.startsWith('/audio/') || url.pathname.startsWith('/api/')) return;
 
   event.respondWith(
     (async () => {
-      const cached = await caches.match(req);
-      if (cached) return cached;
       try {
         const res = await fetch(req);
         if (res && res.status === 200 && res.type === 'basic') {
@@ -110,7 +115,9 @@ self.addEventListener('fetch', (event) => {
         }
         return res;
       } catch (err) {
-        // offline and not cached — for a page navigation, fall back to the app shell
+        // offline → serve the cached copy; for a navigation, fall back to the app shell.
+        const cached = await caches.match(req);
+        if (cached) return cached;
         if (req.mode === 'navigate') {
           const shell = await caches.match('/index.html');
           if (shell) return shell;
