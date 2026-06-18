@@ -251,16 +251,23 @@ export function say(word, { onDone } = {}) {
 }
 
 // Spoken praise: prefer the clip; warm + natural Web Speech otherwise. (Only fired
-// on speed tiers / combos by callers, so it never lags the per-tap feedback.)
-export function speakPraise(phrase) {
-  if (!settings.voice || !phrase) return;
+// on speed tiers / combos by callers, so it never lags the per-tap feedback.) Calls
+// `onDone` when the phrase has FINISHED so the rhythm loop can hold the next word's
+// dictation until then — otherwise dictation cancels praise mid-word (HANDOFF §12).
+export function speakPraise(phrase, { onDone } = {}) {
+  const done = onceFn(onDone);
+  if (!settings.voice || !phrase) {
+    setTimeout(done, 0);
+    return;
+  }
   const s = slug(phrase);
   if (manifest && manifest.phrases.has(s)) {
     praiseEl = playClip(praiseEl, `/audio/phrases/${s}.mp3`, {
-      onFail: () => speakTTS(phrase, { rate: 1.0, pitch: 1.1 }),
+      onDone: done,
+      onFail: () => speakTTS(phrase, { rate: 1.0, pitch: 1.1, onDone: done }),
     });
   } else {
-    speakTTS(phrase, { rate: 1.0, pitch: 1.1 });
+    speakTTS(phrase, { rate: 1.0, pitch: 1.1, onDone: done });
   }
 }
 

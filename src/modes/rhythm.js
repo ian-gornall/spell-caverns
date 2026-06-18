@@ -102,6 +102,13 @@ export function startRhythm(ctx) {
   let locked = false;
   let rafId = 0;
   let graceTimer = 0;
+  let praiseDone = Promise.resolve(); // resolves when the last spoken praise finishes
+
+  // Speak praise AND remember when it finishes, so the next word's dictation can
+  // wait for it instead of cancelling it mid-phrase (clipping bug, HANDOFF §12).
+  const speakPraiseTracked = (phrase) => {
+    praiseDone = new Promise((res) => audio.speakPraise(phrase, { onDone: res }));
+  };
 
   if (!session.length) {
     sentenceEl.textContent = 'No words to dig right now — try a different difficulty in Settings.';
@@ -273,7 +280,7 @@ export function startRhythm(ctx) {
       // speak the phrase on the moments that matter (fast tiers / combos), not every
       // tap (queued TTS lags). When spoken, it matches the on-screen phrase exactly.
       if (verdict.isCombo || verdict.tier === 'perfect' || verdict.tier === 'amazing') {
-        audio.speakPraise(verdict.phrase);
+        speakPraiseTracked(verdict.phrase);
       }
       btn.classList.add('correct');
       flashVerdict(verdict.phrase, `+${verdict.points} 💎 · ${verdict.label}`, verdict.color);
@@ -283,7 +290,7 @@ export function startRhythm(ctx) {
     } else {
       combo = 0;
       audio.sfx('miss');
-      audio.speakPraise(verdict.phrase); // gentle encouragement (matches the text)
+      speakPraiseTracked(verdict.phrase); // gentle encouragement (matches the text)
       btn.classList.add('wrong');
       flashVerdict(verdict.phrase, 'The gem was…', verdict.color);
       [...tilesEl.children].forEach((c) => {
@@ -293,13 +300,22 @@ export function startRhythm(ctx) {
     updateCombo(verdict);
     ctx.save();
 
-    setTimeout(
-      () => {
-        index += 1;
-        present();
-      },
-      correct ? 850 : 1600,
-    );
+    // Advance only AFTER any spoken praise has finished, so dictating the next word
+    // doesn't cut it off (clipping bug, HANDOFF §12). `floor` keeps the verdict on
+    // screen long enough to read; `cap` is a backstop so a missing onDone never
+    // stalls the loop. When no praise was spoken, praiseDone is already resolved.
+    const floor = correct ? 850 : 1400;
+    const cap = correct ? 2400 : 2800;
+    let advanced = false;
+    const go = () => {
+      if (advanced) return;
+      advanced = true;
+      index += 1;
+      present();
+    };
+    const t0 = performance.now();
+    praiseDone.then(() => setTimeout(go, Math.max(0, floor - (performance.now() - t0))));
+    setTimeout(go, cap);
   }
 
   function finish() {

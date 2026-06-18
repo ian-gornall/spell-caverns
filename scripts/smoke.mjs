@@ -104,7 +104,7 @@ try {
   // --- play out the rest of the wave to the reward screen ---
   // Click the CORRECT tile each time: deterministic and quick (correct advances
   // faster), so the loop reliably reaches the wave reward.
-  for (let guard = 0; guard < 60; guard++) {
+  for (let guard = 0; guard < 120; guard++) {
     if ((await page.locator('.reward').count()) > 0) break;
     const unlocked = await page.locator('.rhythm .tiles:not(.locked) .tile').count();
     if (unlocked > 0) {
@@ -119,7 +119,7 @@ try {
     }
     await page.waitForTimeout(250);
   }
-  await page.waitForSelector('.reward', { timeout: 8000 });
+  await page.waitForSelector('.reward', { timeout: 12000 });
   const rewardText = (await page.locator('.reward h2').textContent())?.trim();
   ok(`reached wave-complete reward: "${rewardText}"`);
 
