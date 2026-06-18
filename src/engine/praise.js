@@ -47,7 +47,9 @@ export const SPEED_TIERS = [
     color: '#7AE582', // emerald
     mult: 1.5,
     maxMs: 3500,
-    phrases: ['Great job!', 'Nice one!', 'Well done!', 'Sparkling!', 'Sharp!'],
+    // a mix of outcome + EFFORT/process praise (growth mindset — praise the work,
+    // not just being right; research #9 / Khan's Kodi model)
+    phrases: ['Great job!', 'Nice one!', 'Well done!', 'Sparkling!', 'Sharp!', 'Smart work!'],
   },
   {
     key: 'good',
@@ -55,7 +57,8 @@ export const SPEED_TIERS = [
     color: '#9D8DF1', // soft amethyst
     mult: 1,
     maxMs: Infinity,
-    phrases: ['Good!', 'Got it!', 'Keep going!', 'Nice!', 'You did it!'],
+    // the slowest (still-correct) tier — lean into EFFORT praise: they worked for it
+    phrases: ['Good!', 'Got it!', 'You worked it out!', 'Nice thinking!', 'You figured it out!', 'You did it!'],
   },
 ];
 
