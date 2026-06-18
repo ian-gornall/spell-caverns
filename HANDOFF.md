@@ -1156,9 +1156,21 @@ run** (that triggers verifiable-parental-consent + policy + retention). Built in
   code helpers (+tests). Drive path removed (`src/cloud_drive.js` deleted). `netlify.toml` build+functions,
   `package.json` adds `@netlify/blobs`. Docs: `CLOUD_SYNC_SETUP.md` rewritten, `PRIVACY.md` operator
   section now ACTIVE, README updated.
-- ⏳ **LIVE VERIFICATION PENDING (needs the user):** the function only ships from a **Git-connected
-  Netlify build** (drag-and-drop can't bundle it) — the current `spell-caverns.netlify.app` was a
-  manual deploy, so it has NO `/api/sync` yet. To finish: push the repo to GitHub → link it on Netlify
-  → deploy → hit `/api/sync?code=TESTCODE` (should return `null`, not 404) → then create a family code
-  on one device and enter it on another. Steps in `CLOUD_SYNC_SETUP.md`. The pure reconcile + code
-  helpers are unit-tested; Netlify Blobs can't be exercised headlessly here.
+- **Kid-friendly PICTURE password + sync moved into ONBOARDING (2026-06-18, user feedback).** A
+  buried-in-Settings alphanumeric code was rejected. Now: `engine/picturecode.js` (+5 tests) maps a
+  4-picture tap-sequence ↔ the sync code; first-run onboarding has a "Just this one / Sync our tablets"
+  step → consent → make/enter a picture password; `ui.picturePicker` shared by onboarding + Settings;
+  Settings shows the code AS PICTURES + sync/stop/delete. `sw.js` → **csc-v10**. Repo pushed to
+  github.com/ian-gornall/spell-caverns. **167 tests green; smoke green.**
+- ⛔ **BLOCKER — Netlify is NOT deploying from the repo.** After 3 pushes, the live site is STILL the
+  old manual drag-and-drop deploy (`/sw.js` = csc-v8, `/api/sync` = 404, old `cloud_drive.js` still 200).
+  So the function never shipped. Fixed one build-killer (the `@netlify/blobs` version was a nonexistent
+  `^8.1.0` → now `^10.7.9`). The remaining cause is in the Netlify DASHBOARD (can't see it from here):
+  the site is likely still in **manual-deploy** mode — linking a repo to a drag-drop site does NOT
+  auto-enable continuous deployment. **Fix:** Netlify → site → **Site configuration → Build & deploy →
+  Continuous deployment** → ensure the repo is linked, production branch = `main`, build command
+  `node scripts/build_deploy.mjs`, publish `deploy`, functions `netlify/functions`; then **Deploys →
+  Trigger deploy**. Check the build log for errors. Reliable alternative: `netlify-cli` →
+  `netlify login` → `netlify link` → `netlify deploy --build --prod`. Verify with
+  `/api/sync?code=TESTCODE` → `null` (not 404). Pure reconcile + picture-code are unit-tested; Netlify
+  Blobs can't be exercised headlessly here.
