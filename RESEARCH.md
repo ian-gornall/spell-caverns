@@ -48,25 +48,37 @@ confusable patterns is a *desirable difficulty* (Klimovich & Richter 2025) — a
    actual tricky words + accuracy + streak. Export/import already moves data off-device.
 
 **Tier 2 — strong, moderate cost**
-6. **Crystal Catalog collection** (Squeebles/Prodigy; endowed-progress, Nunes & Drèze). **[LATER]**
+6. **Crystal Catalog collection** (Squeebles/Prodigy; endowed-progress, Nunes & Drèze). **[DONE]** —
+   `engine/catalog.js`: 24 real minerals unlocked by SPENDING gems (the economy's spend
+   sink, fixes I5) + granted free at depth milestones. Visible prices, kid chooses what to
+   buy (no randomised loot / FOMO / money — guardrails honored); procedural faceted-gem SVG.
 7. **Cavern-map progress PATH** with "you are here" + endowed progress (Duolingo path;
    goal-gradient, Hull/Kivetz). **[DONE]** — compact depth strip on Progress (current level
    glows, next level is the visible goal, "master N more to reach Depth X").
 8. **Variable geode reward** (Duolingo chests; variable-ratio reinforcement). **[DONE]** — always
    positive, free, never real-money / FOMO-timer.
 9. **Mascot guide + name/colour personalization on first run** (Khan's Kodi; SDT autonomy,
-   Kim 2015). **[LATER]** — note: changes the boot flow, update the smoke test too.
+   Kim 2015). **[DONE]** — `screens/onboarding.js`: Geo (a procedural gem character) guides
+   welcome → name → crystal colour → a guaranteed-win first wave. Colour wires themeColor →
+   the live --accent theme; boot routes here when !profile.onboarded (smoke/qa updated).
 10. **Personal records ("beat your best")** — safe single-player competence. **[DONE]** — best
     combo + best haul on Progress.
 
 **Tier 3 — polish / correctness**
-11. **`prefers-reduced-motion` + redundant (visual+audio) + mutable audio.** **[DONE]** —
-    reduced-motion media query already zeroes animations; audio is settings-gated; feedback is redundant.
+11. **`prefers-reduced-motion` + redundant (visual+audio) + mutable audio + easy-read text.** **[DONE]** —
+    reduced-motion media query zeroes animations; audio is settings-gated; feedback is redundant; an
+    opt-in "Easy-read text" setting adds letter-spacing/line-height to the spelling text so a struggling
+    reader can tell similar spellings apart (beach/buach/beacch/bach). Plus **"Sound it out"** (a
+    syllable-by-syllable dictation button in Play + Craft) — segment→blend, a core spelling strategy
+    using the dataset's existing `syllables`.
 12. **`navigator.vibrate()` haptics.** **[DONE]** — paired with SFX; no-op on iPad Safari (no
     Vibration API), adds feel on Android/Chromebook.
 13. **Re-tune idle thresholds for a thinking weak speller; nudge before any blocking overlay.**
     **[DONE]** — see HANDOFF §15 I4.
-14. **Light narrative spine + a "Geode Boss" milestone wave.** **[LATER]**
+14. **Light narrative spine + a "Geode Boss" milestone wave.** **[DONE]** — `engine/narrative.js`
+    (named depth ZONES) + `screens/boss.js`: breaking through to a new depth triggers an
+    always-positive, tap-to-crack Geode Boss that reveals the milestone mineral + the new
+    zone's name. Routed from rhythm/puzzle finish; pending until cracked (never skipped).
 15. **Process/effort praise** ("you worked it out", growth mindset; Khan model). **[DONE]** —
     effort phrases mixed into the `praise.js` good/great tier pools (spoken aloud).
 

@@ -878,9 +878,65 @@ tools committed: `scripts/qa_probe.mjs` (viewports/overflow/touch-drag), `script
 git-ignored.
 
 ### ▶️ Deferred nice-to-haves (from RESEARCH.md — not blockers; pick up anytime)
-- **Crystal Catalog** (extend specimens with milestone-unlocked, procedurally-recoloured crystals).
-- **First-run onboarding** (name + miner-colour choice + a guaranteed-win first wave + a named
-  mascot speaking the welcome). NOTE: would change the boot flow — update `scripts/smoke.mjs` too.
-- **Light narrative spine + a "Geode Boss"** milestone wave at each depth gate.
+- ~~**Crystal Catalog**~~ **✅ DONE (§16).** ~~**First-run onboarding**~~ **✅ DONE (§16).**
+  ~~**Light narrative spine + a "Geode Boss"**~~ **✅ DONE (§16).**
 - **Audio generation** is still the only parked BUILD item (Gemini free-tier daily cap — §12; device
   voice covers it meanwhile). ⚠️ Still remind the user to **rotate the Gemini API key** pasted in chat.
+
+---
+
+## 16. SESSION UPDATE — 2026-06-18 (all deferred nice-to-haves DONE + a11y/pedagogy) — READ FIRST
+
+This session cleared the ENTIRE §15 deferred list (Catalog, onboarding, narrative + Geode Boss)
+and added two research-backed accessibility/pedagogy wins. `npm test` = **134 green** (added
+`catalog.test.js` +8, `narrative.test.js` +3); `npm run smoke` green (now also walks the new
+onboarding boot flow); `node scripts/qa.mjs` = 0 console/JS errors across portrait + landscape;
+every new screen verified by reading screenshots. All committed; tree clean except the long-standing
+orphan `scripts/oneshot.mjs` (still intentionally untracked).
+
+### What shipped (each its own commit, with a scratch QA probe)
+1. **Crystal Catalog — the gem SPEND SINK (fixes QA I5) + an endowed-progress collection.**
+   `src/engine/catalog.js` (PURE, +8 tests): **24 real minerals** (ties to the rocks-&-minerals
+   interest), a rarity→cost ladder (common 100 / rare 280 / epic 650 / legendary 1400, tuned to the
+   ~100-380 gems/wave economy), ownership/affordability queries, a pure validated `purchaseResult`
+   transaction, the milestone free-grant selector, and a **procedural faceted-gem SVG** (`crystalSvg`,
+   no art assets). `state.js`: `catalog.owned` + `purchaseCrystal`/`grantMilestoneCrystal`/
+   `ownedCrystals`/`lastMilestoneDepth`. `src/screens/catalog.js`: a grid (locked silhouettes show the
+   goal; affordable ones glow + pulse), per-rarity progress, a real-world fact on tap. Home "Catalog"
+   card (glows when something's affordable); Progress summary + link. NO randomised loot / FOMO / money
+   — visible prices, kid chooses (guardrails). Scratch QA: `scripts/qa_catalog.mjs`.
+2. **First-run onboarding — Geo the mascot + name + crystal colour + a guaranteed-win first wave.**
+   `src/screens/onboarding.js`: welcome → name → colour → "let's dig!", Geo (a procedural gem
+   "character" in `ui.mascot`) speaks each prompt. The colour choice is REAL personalization —
+   `ui.applyTheme` wires `settings.themeColor` → the live `--accent` (was stored-but-unused); restored
+   on boot, changeable in Settings → You. `app.js` routes to onboarding when `!profile.onboarded`. The
+   first wave is `rhythm({firstRun:true})`: 5 hand-picked most-common easy words (tier ≤2, 3-6 letters)
+   with obviously-wrong distractors, so the first experience is a sure WIN. smoke.mjs + qa.mjs walk
+   the new boot flow (and seed `onboarded` for the isolated idle/menu sub-pages).
+3. **Geode Boss + light narrative spine.** `src/engine/narrative.js` (PURE, +3 tests): named depth
+   ZONES (the Glimmer Shallows → the Heart of the Mountain). `src/screens/boss.js`: breaking through
+   to a new cavern depth (every 8 mastered words) routes here from rhythm/puzzle `finish()` — Geo
+   announces a Great Geode, the kid TAPS it open (Brotato-style, guaranteed, auto-cracks if idle), it
+   bursts to reveal the milestone mineral (granted free into the Catalog) + a bonus + the new zone's
+   name. An always-positive celebration, never fail-able. Pending until cracked (gated on
+   `state.lastMilestoneDepth`), so leaving early never skips it. Scratch QA: `scripts/qa_boss.mjs`.
+4. **"Sound it out" (pedagogy for the weak speller).** `audio.saySlow(word, syllables)` dictates a
+   word syllable-by-syllable then blends it whole (segment→blend, a core spelling strategy) using the
+   dataset's existing `syllables`. A "🐢 Sound it out" button beside "Hear it again" in Play + Craft.
+5. **"Easy-read text" (accessibility).** Opt-in Settings switch (`ui.applyReadable` → an `<html>.readable`
+   class) adds letter-spacing/line-height to the spelling-critical text so similar spellings are easier
+   to tell apart (beach/buach/beacch/bach). Scoped tightly; verified no tile overflow at 4-choice/high
+   difficulty (`scripts/qa_readable.mjs`).
+6. **Home grid rebalanced** for the new Catalog card: Repair is now a full-width amber CTA banner and
+   Feedback a half-card paired with Settings, so the 2-col grid is always balanced.
+
+New engine modules precached by `sw.js` (VERSION **csc-v5**): `catalog.js`, `narrative.js`,
+`screens/catalog.js`, `screens/onboarding.js`, `screens/boss.js`. New scratch QA tools committed:
+`qa_catalog.mjs`, `qa_boss.mjs`, `qa_readable.mjs`, `qa_home_repair.mjs`.
+
+### ▶️ What's LEFT
+- **Audio generation** remains the ONLY parked build item (Gemini free-tier daily cap — §12; device
+  voice + the new "Sound it out" cover dictation meanwhile). Run only with the user's awareness
+  ([[approval-before-consuming-limits]]). ⚠️ Still remind the user to **rotate the Gemini API key**.
+- Everything else (engine + all UI + the full deferred list) is built, tested, and visually QA'd. Next
+  pickup is polish/audio, not new surfaces. Keep `npm test` green, verify UI with `npm run smoke`.

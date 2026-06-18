@@ -42,9 +42,15 @@ step, runs in iPad Safari.
 | 🔨 **Craft** (puzzle) | The *production / recall* counterweight. Hear a word and **build it** from scrambled crystal letters (tap or drag). Gentle: keep the letters that fit, 💡 hint always available. |
 | 🔧 **Repair** (cracked crystals) | Appears once the learner has *missed* words. Re-spells exactly those words in **production** form (recall, not multiple choice) until they're reliably correct again — the strongest path to real, unaided spelling. |
 | 🔮 **Crystal Lab** | Creativity. The lab invents a **brand-new nonsense word** in a pattern the learner has been practising, they spell it, then **draw its made-up meaning** on a canvas and name it. Saved to the **Specimen Collection**. |
-| 🗺️ **Progress** | The same view for kid and grown-up: gems, cavern depth, mastery spectrum, **daily quests**, **personal bests**, the **tricky words** still to repair, recent-days accuracy, and the specimen collection. |
-| ⚙️ **Settings** | The two kid levers — **difficulty** (harder levels *unlock* with mastery, never forced) and **session length** — plus voice, volume, name, and data export/import/reset. |
+| 💠 **Catalog** | A collection of **24 real minerals** (quartz, amethyst, emerald, opal, diamond…). **Spend mined gems** to unlock them — a real use for the gems, with each crystal's price shown up front (no randomised loot, no timers, no money). Reaching a new depth also gifts one **free**. Educational + endowed-progress motivation. |
+| 🗺️ **Progress** | The same view for kid and grown-up: gems, cavern depth, mastery spectrum, **daily quests**, **personal bests**, the **tricky words** still to repair, recent-days accuracy, the mineral catalog, and the specimen collection. |
+| ⚙️ **Settings** | The two kid levers — **difficulty** (harder levels *unlock* with mastery, never forced) and **session length** — plus voice, volume, name, **crystal colour**, **Easy-read text**, and data export/import/reset. |
 | 💬 **Feedback** | A built-in rating + note so the learner (or parent) can tell us what to change; data can be exported as a JSON file. |
+
+On the **first run**, a friendly crystal guide (**Geo**) welcomes the learner, asks
+their name + a crystal colour, then drops them into a short, easy **guaranteed-win
+first wave**. Breaking through to a **new cavern depth** triggers a celebratory
+**Geode Boss** — tap to crack open a giant geode and reveal a new mineral.
 
 Difficulty and word selection are the **program's** job — the kid never picks
 individual words. Harder difficulties **unlock** as words are mastered.
@@ -65,6 +71,9 @@ individual words. Harder difficulties **unlock** as words are mastered.
   rhythm loop always ends a card on the *correct* spelling so misspellings don't stick.
 - **Guilt-free momentum.** A daily streak ("glowing vein", with free freezes), a tiny
   daily gem goal, and 3 rotating daily quests keep it inviting — never punitive.
+- **Built for a weak speller.** A "🐢 Sound it out" button dictates a word syllable by
+  syllable (segment → blend); an optional "Easy-read text" mode spaces the letters so
+  similar spellings are easier to tell apart. Reduced-motion is fully respected.
 
 The full design rationale lives in **`HANDOFF.md`** (§4 especially) — read that before
 changing learning behaviour.
@@ -85,7 +94,7 @@ changing learning behaviour.
 ## Develop / test
 
 ```
-npm test            # the pure decision engine (Node's test runner) — 123 tests
+npm test            # the pure decision engine (Node's test runner) — 134 tests
 npm start           # serve the app for the iPad / a browser
 node scripts/smoke.mjs   # Playwright UI smoke test of every mode (server must be up)
 ```
@@ -117,11 +126,13 @@ local cert or a tunnel like `cloudflared`/`ngrok`).
 index.html · styles.css · manifest.webmanifest · sw.js · server.js
 icons/                     app icons (SVG source + generated PNGs)
 data/                      the 2,919-word dataset + build inputs
-src/engine/                PURE decision logic (tested with node --test)
+src/engine/                PURE decision logic (tested with node --test):
+                           lexicon · distractors · praise · assessment · progress ·
+                           session · nonsense · puzzle · streak · quests · catalog · narrative
 src/modes/                 rhythm · puzzle · lab
-src/screens/               home · progress · settings · feedback
+src/screens/               home · onboarding · progress · settings · feedback · catalog · boss
 src/{app,ui,state,audio}.js  bootstrap, DOM toolkit/router, storage, sound
-scripts/                   merge · build_backbone · gen_audio · gen_icons · smoke
+scripts/                   merge · build_backbone · gen_audio · gen_icons · smoke · qa*
 HANDOFF.md                 full design + decisions + status (read this to continue)
 ```
 
