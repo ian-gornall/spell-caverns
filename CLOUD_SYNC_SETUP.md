@@ -21,12 +21,18 @@ paste it into the app.
 1. Go to the **Google Cloud Console** → <https://console.cloud.google.com/> and create a
    project (any name).
 2. **APIs & Services → Library** → enable the **Google Drive API**.
-3. **APIs & Services → OAuth consent screen**:
+3. **APIs & Services → OAuth consent screen** (newer consoles call this **Google Auth
+   Platform → Branding / Audience**):
    - User type **External**, fill the app name + your email.
-   - Add the scope `.../auth/drive.appdata` (Drive — app data only).
-   - Add yourself as a **Test user** (your Google account). You can leave it in "Testing"
-     mode — that's fine for personal/family use; no Google verification needed.
-4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**:
+   - Add yourself as a **Test user** (your Google account). Leave it in "Testing" mode —
+     fine for personal/family use; no Google verification needed.
+   - **You do NOT need to add a scope here.** The app requests the `drive.appdata` scope
+     **at runtime** (you approve it on the Google popup when you tap Connect), and a test
+     user can grant it without pre-registering it. (Scopes now live under **Data Access**;
+     only touch it if Connect ever complains about a missing scope — then add
+     `.../auth/drive.appdata` there and retry.)
+4. **APIs & Services → Credentials → Create Credentials → OAuth client ID** (this screen
+   has NO scope field — just the origins below; that's expected):
    - Application type **Web application**.
    - Under **Authorized JavaScript origins**, add your app's exact origin, e.g.
      `https://your-app.netlify.app` (and `http://localhost:5173` if you want to test
@@ -34,6 +40,9 @@ paste it into the app.
    - Create, then **copy the Client ID** (looks like `1234-abc.apps.googleusercontent.com`).
 5. In the app: **Settings → Parents & privacy → Auto-sync to your Google Drive** → paste
    the Client ID → tap **Connect Google Drive** → choose your Google account.
+   - You'll see **"Google hasn't verified this app"** — that's normal in Testing mode (it's
+     your own app). Tap **Advanced → Go to (app) (unsafe)**, then **Allow** the
+     "see, create, and delete its own configuration data in your Drive" permission.
 
 That's it. After connecting, the app:
 
