@@ -540,6 +540,22 @@ button {
 .hear-again .spk {
   font-size: 1.6rem;
 }
+/* the dictation controls row (Hear it again + Sound it out) */
+.hear-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+/* "Sound it out" is a secondary aid — a touch smaller/quieter than Hear it again */
+.hear-again.sound-out {
+  font-size: 1.05rem;
+  padding: 12px 20px;
+  color: var(--ink-dim);
+}
+.hear-again.sound-out .spk {
+  font-size: 1.35rem;
+}
 .sentence {
   font-size: clamp(1.3rem, 4.4vw, 2rem);
   line-height: 1.5;

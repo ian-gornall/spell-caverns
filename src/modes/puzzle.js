@@ -62,6 +62,15 @@ export function startPuzzle(ctx, params = {}) {
     el('span', { class: 'spk' }, '🔊'),
     'Hear it again',
   );
+  // Sound-it-out: dictate the word syllable by syllable — a core spelling strategy
+  // for a weak speller building the word from memory (segment → blend).
+  const soundOutBtn = el(
+    'button',
+    { class: 'hear-again sound-out', onClick: () => audio.saySlow(session[index]?.word, session[index]?.syllables) },
+    el('span', { class: 'spk' }, '🐢'),
+    'Sound it out',
+  );
+  const hearRow = el('div', { class: 'hear-row' }, hearBtn, soundOutBtn);
   const hintBtn = el('button', { class: 'btn ghost', onClick: hint }, '💡 Hint');
   const clearBtn = el('button', { class: 'btn ghost', onClick: clearAll }, '↺ Clear');
   const controlsEl = el('div', { class: 'puzzle-controls' }, hintBtn, clearBtn);
@@ -79,7 +88,7 @@ export function startPuzzle(ctx, params = {}) {
     el(
       'div',
       { class: 'play-body' },
-      el('div', { class: 'prompt' }, hearBtn, sentenceEl, verdictEl, verdictChip),
+      el('div', { class: 'prompt' }, hearRow, sentenceEl, verdictEl, verdictChip),
       el('div', { class: 'answer-zone' }, slotsEl, controlsEl, trayEl),
     ),
   );

@@ -250,6 +250,36 @@ export function say(word, { onDone } = {}) {
   }
 }
 
+// "Sound it out": dictate a word SYLLABLE BY SYLLABLE (slow, with a gap between
+// each) then say the whole word once — a core spelling strategy for a weak speller
+// (segment → blend). Uses Web Speech directly (no per-syllable clips exist) at a
+// slow rate. Falls back to the whole word if there's only one syllable / none given.
+// Degrades silently when voice is off. `onDone` fires after the final whole-word say.
+export function saySlow(word, syllables, { onDone } = {}) {
+  const done = onceFn(onDone);
+  const text = String(word || '');
+  if (!settings.voice || !text) {
+    setTimeout(done, 160);
+    return;
+  }
+  const parts = Array.isArray(syllables) && syllables.length > 1 ? syllables.slice() : null;
+  if (!parts) {
+    speakTTS(text, { rate: 0.78, pitch: 1.0, onDone: done });
+    return;
+  }
+  let i = 0;
+  const next = () => {
+    if (i >= parts.length) {
+      // a beat, then the whole word at a gentle pace to "blend" the parts
+      setTimeout(() => speakTTS(text, { rate: 0.85, pitch: 1.0, onDone: done }), 260);
+      return;
+    }
+    const part = parts[i++];
+    speakTTS(part, { rate: 0.7, pitch: 1.02, onDone: () => setTimeout(next, 300) });
+  };
+  next();
+}
+
 // Spoken praise: prefer the clip; warm + natural Web Speech otherwise. (Only fired
 // on speed tiers / combos by callers, so it never lags the per-tap feedback.) Calls
 // `onDone` when the phrase has FINISHED so the rhythm loop can hold the next word's

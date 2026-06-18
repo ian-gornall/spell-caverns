@@ -90,6 +90,15 @@ export function startRhythm(ctx, params = {}) {
     el('span', { class: 'spk' }, '🔊'),
     'Hear it again',
   );
+  // Sound-it-out: dictate the word syllable by syllable (segment → blend) — a help
+  // for a weak speller who didn't catch the whole word at speed.
+  const soundOutBtn = el(
+    'button',
+    { class: 'hear-again sound-out', onClick: () => audio.saySlow(session[index]?.word, session[index]?.syllables) },
+    el('span', { class: 'spk' }, '🐢'),
+    'Sound it out',
+  );
+  const hearRow = el('div', { class: 'hear-row' }, hearBtn, soundOutBtn);
 
   const hdr = header(ctx, { title: 'Mining', onBack: () => ctx.nav('home') });
   const gemCountEl = hdr.querySelector('.gem-count');
@@ -104,7 +113,7 @@ export function startRhythm(ctx, params = {}) {
     el(
       'div',
       { class: 'play-body' },
-      el('div', { class: 'prompt' }, hearBtn, sentenceEl, verdictEl, verdictChip),
+      el('div', { class: 'prompt' }, hearRow, sentenceEl, verdictEl, verdictChip),
       el('div', { class: 'answer-zone' }, speedMeter, tilesEl),
     ),
   );
