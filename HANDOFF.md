@@ -1118,3 +1118,37 @@ run** (that triggers verifiable-parental-consent + policy + retention). Built in
   verify: deploy, follow `CLOUD_SYNC_SETUP.md`, Connect, then check a second device pulls the progress.
   Conflict rule = more learning-history wins (ties → newer); concurrent heavy OFFLINE play on two
   devices is the only lossy case (rare for one kid; manual file backup is the safety net).
+
+---
+
+## 19. SESSION UPDATE — 2026-06-18 (DEPLOYED + pivot to a REAL BACKEND) — READ FIRST
+
+### Live deployment
+- **The app is LIVE at https://spell-caverns.netlify.app/** (Netlify, static drag-and-drop of the
+  `deploy/` bundle built by `scripts/build_deploy.mjs`). HTTPS ✓ → service worker + offline + installable.
+
+### Decision: per-device Google-Drive OAuth is REJECTED → build a real backend (user, 2026-06-18)
+- The §18b "OAuth to your own Drive" sync requires, ON EACH DEVICE, pasting a Google OAuth Client ID +
+  clearing the "unverified app" consent popup. The user (correctly) called this unacceptable for a
+  parent setting up multiple kids' devices. **It is being replaced by a real backend.** The Drive path
+  (`src/cloud_drive.js`, the Settings "Auto-sync to your Google Drive" block) is DEPRECATED — remove or
+  hide it as the backend lands. The PURE pieces stay reusable: `engine/cloudsync.js` (reconcile),
+  `engine/backup.js` (envelope), and the manual file backup/restore (keep — offline safety net).
+- **Chosen architecture (lowest friction, no new vendor — already on Netlify): Netlify Functions +
+  Netlify Blobs, keyed by an opaque FAMILY SYNC CODE.** Parent creates a code once; each device enters
+  that code once (a short string — NOT OAuth); the app then auto-syncs (pull on open, push on
+  save/leave) through a serverless function. Server- and client-side conflict resolution reuses the
+  tested `cloudsync.reconcile` (never-lose-progress). Data stored = pseudonymous gameplay only
+  (nickname + stats; no real name, no email).
+- **COPPA/regulatory consequence — we BECOME an operator now** (we hold a child's data on a service we
+  run). Required + being built: a published privacy policy (extend PRIVACY.md), a one-time **parental
+  consent** acknowledgement at sync setup, **data minimization** (already: nickname only), a **delete-
+  from-cloud** action + retention stance, and reasonable security (HTTPS, opaque code, no PII). See
+  PRIVACY.md "operated backend" section.
+- **Deploy consequence:** Netlify Functions need a build/bundle step → the drag-and-drop static deploy
+  is being replaced by **Git-connected Netlify** (push repo to GitHub → connect on Netlify → it builds
+  functions + bundles `@netlify/blobs`). `netlify.toml` gains a `[functions]` dir + a `/api/sync`
+  redirect. (Static `deploy/` bundle stays usable for the no-backend fallback.)
+- STATUS: building this now — function (`netlify/functions/sync`), client adapter, "Family sync" UX
+  (create/enter code, sync now, delete from cloud, consent gate), boot wiring, docs. Live verification
+  needs the Git-connected deploy with Blobs enabled (can't run Netlify Blobs locally without `netlify dev`).
