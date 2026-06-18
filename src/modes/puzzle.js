@@ -458,8 +458,8 @@ export function startPuzzle(ctx) {
     // Don't let them stall on the reward: highlight the primary action, then
     // auto-continue into another round ("let's go" — keep them crafting).
     const rewardGuard = createIdleGuard({
-      nudgeMs: 9000,
-      pauseMs: 18000,
+      nudgeMs: 13000,
+      pauseMs: 30000,
       onNudge: () => pulse(reward.querySelector('.btn.primary')),
       onTimeout: () => {
         toast('🔨 Keep crafting!');

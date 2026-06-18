@@ -268,7 +268,7 @@ try {
   const idlePage = await browser.newPage({ viewport: { width: 820, height: 1180 } });
   idlePage.on('pageerror', (e) => errors.push('pageerror(idle): ' + e.message));
   await idlePage.addInitScript(() => {
-    window.__idleTest = 0.03; // 12s nudge -> ~360ms, 26s pause -> ~780ms
+    window.__idleTest = 0.03; // 15s nudge -> ~450ms, 45s pause -> ~1350ms
   });
   await idlePage.goto(URL, { waitUntil: 'networkidle' });
   await idlePage.click('.menu-card.play');
@@ -285,7 +285,7 @@ try {
   const menuPage = await browser.newPage({ viewport: { width: 820, height: 1180 } });
   menuPage.on('pageerror', (e) => errors.push('pageerror(menu): ' + e.message));
   await menuPage.addInitScript(() => {
-    window.__idleTest = 0.04; // home nudge ~360ms, auto-launch ~720ms
+    window.__idleTest = 0.04; // home nudge ~520ms, auto-launch ~1280ms
   });
   await menuPage.goto(URL, { waitUntil: 'networkidle' });
   await menuPage.click('.home-title'); // a harmless tap unlocks audio so it WILL launch

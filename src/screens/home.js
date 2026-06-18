@@ -71,8 +71,8 @@ export function homeScreen(ctx) {
   // dictated game — we just keep highlighting Play until they tap once; after that, an
   // idle menu auto-drops them straight into a wave.
   const guard = createIdleGuard({
-    nudgeMs: 9000,
-    pauseMs: 18000,
+    nudgeMs: 13000,
+    pauseMs: 32000,
     onNudge: () => {
       pulse(node.querySelector('.menu-card.play'));
       toast('💎 Ready to mine some gems? Tap Play!');

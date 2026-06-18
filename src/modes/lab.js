@@ -28,8 +28,9 @@ const NOT_NONSENSE = new Set([...REAL_WORDS, ...NONSENSE_BLOCKLIST]);
 const SPECIMEN_GEMS = 15;
 // Drawing is open-ended, so cap it: nudge to wrap up at SOFT, auto-advance at HARD
 // (so a child can't draw "forever and a day" — they're gently moved to naming).
-const DRAW_SOFT_MS = 25000;
-const DRAW_HARD_MS = 50000;
+// Generous: drawing is the creative reward, so give real time before nudging (QA I4).
+const DRAW_SOFT_MS = 40000;
+const DRAW_HARD_MS = 90000;
 // Friendly cold-start patterns when the learner hasn't practised enough yet.
 const SEED_PATTERNS = ['silent-e-a', 'ee-ea', 'ight', 'short-a', 'oo', 'ai-ay'].filter((p) =>
   NONSENSE_PATTERNS.includes(p),

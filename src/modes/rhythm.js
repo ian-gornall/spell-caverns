@@ -425,8 +425,8 @@ export function startRhythm(ctx) {
     // auto-continue into another wave ("let's go" — keep them mining).
     const primaryAction = nextHarder ? goHarder : () => ctx.nav('rhythm');
     const rewardGuard = createIdleGuard({
-      nudgeMs: 9000,
-      pauseMs: 18000,
+      nudgeMs: 13000,
+      pauseMs: 30000,
       onNudge: () => pulse(reward.querySelector('.btn.primary')),
       onTimeout: () => {
         toast('⛏️ Back to mining!');

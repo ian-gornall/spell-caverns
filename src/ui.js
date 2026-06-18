@@ -133,7 +133,7 @@ export function pulse(node) {
 //     `onResume` when the child taps to resume) — for active play, so they can't zone out.
 // Self-manages its listeners + overlay — call `.stop()` on leaving the screen (register
 // it via ctx.onLeave). `.poke()` resets the timer. Thresholds scale by window.__idleTest.
-export function createIdleGuard({ nudgeMs = 12000, pauseMs = 26000, onNudge, onPause, onResume, onTimeout } = {}) {
+export function createIdleGuard({ nudgeMs = 15000, pauseMs = 45000, onNudge, onPause, onResume, onTimeout } = {}) {
   const scale = (typeof window !== 'undefined' && Number(window.__idleTest)) || 1;
   nudgeMs *= scale;
   pauseMs *= scale;
