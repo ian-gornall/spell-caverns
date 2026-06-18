@@ -1,0 +1,17 @@
+{
+  "name": "Crystal Spell Caverns",
+  "short_name": "Spell Caverns",
+  "description": "A gamified spelling adventure — mine gems by spelling the words you hear, build words from crystal letters, and invent crystals in the lab.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070a1c",
+  "theme_color": "#0b1026",
+  "categories": ["education", "games", "kids"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

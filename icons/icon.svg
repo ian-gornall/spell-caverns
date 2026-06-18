@@ -1,0 +1,32 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b2350"/>
+      <stop offset="1" stop-color="#070a1c"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.34" r="0.62">
+      <stop offset="0" stop-color="#2f3f8f"/>
+      <stop offset="1" stop-color="#2f3f8f" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+
+  <!-- faceted crystal -->
+  <g stroke="#0a0f24" stroke-width="4" stroke-linejoin="round">
+    <!-- pavilion (lower point) -->
+    <polygon points="128,232 200,232 256,420" fill="#1f7f99"/>
+    <polygon points="200,232 312,232 256,420" fill="#2aa7b8"/>
+    <polygon points="312,232 384,232 256,420" fill="#34c7d6"/>
+    <!-- crown (upper) -->
+    <polygon points="176,150 200,232 128,232" fill="#36F1CD"/>
+    <polygon points="336,150 384,232 312,232" fill="#36F1CD"/>
+    <polygon points="176,150 336,150 312,232 200,232" fill="#9D8DF1"/>
+    <!-- table highlight -->
+    <polygon points="210,176 302,176 288,210 224,210" fill="#EAF0FF" opacity="0.9"/>
+  </g>
+
+  <!-- gold sparkle -->
+  <path d="M404 116 l11 28 28 11 -28 11 -11 28 -11 -28 -28 -11 28 -11 z" fill="#FFD23F"/>
+</svg>

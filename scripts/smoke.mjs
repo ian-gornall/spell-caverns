@@ -235,6 +235,33 @@ try {
   if (fbAfter > fbBefore) ok(`feedback recorded to the log (${fbBefore} -> ${fbAfter})`);
   else fail(`feedback was not recorded (${fbBefore} -> ${fbAfter})`);
 
+  // --- PWA: manifest valid + icons load + service worker registers (offline) ---
+  const pwa = await page.evaluate(async () => {
+    const out = {};
+    try {
+      const m = await (await fetch('/manifest.webmanifest')).json();
+      out.name = m.name;
+      out.icons = (m.icons || []).length;
+      const checks = await Promise.all((m.icons || []).map((i) => fetch(i.src).then((r) => r.ok)));
+      out.iconsOk = checks.every(Boolean);
+    } catch (e) {
+      out.err = String(e);
+    }
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      out.sw = !!reg;
+    } catch (e) {
+      out.swErr = String(e);
+    }
+    return out;
+  });
+  if (pwa.name === 'Crystal Spell Caverns' && pwa.icons >= 2 && pwa.iconsOk) {
+    ok(`PWA manifest valid (${pwa.name}, ${pwa.icons} icons load)`);
+  } else fail(`manifest/icons problem: ${JSON.stringify(pwa)}`);
+  if (pwa.sw) ok('service worker registered (offline cache active on localhost/HTTPS)');
+  else fail(`service worker did not register: ${JSON.stringify(pwa)}`);
+
   await page.screenshot({ path: 'scripts/smoke.png', fullPage: false });
   ok('screenshot saved to scripts/smoke.png');
 } catch (e) {
