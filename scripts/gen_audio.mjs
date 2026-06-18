@@ -25,6 +25,7 @@ import path from 'node:path';
 import * as lame from '@breezystack/lamejs';
 import { WORDS } from '../data/words.js';
 import { SPEED_TIERS, COMBO_PHRASES, GENTLE_PHRASES } from '../src/engine/praise.js';
+import { normalizePcm } from './audio_dsp.mjs';
 
 // Load GEMINI_API_KEY from the git-ignored .env if it isn't already in the env.
 if (!process.env.GEMINI_API_KEY) {
@@ -200,7 +201,10 @@ async function processBatch(items) {
   }
   items.forEach((it, i) => {
     const [a, b] = segs[i];
-    fs.writeFileSync(outPath(it.kind, it.slug), pcmToMp3(resp.samples.subarray(a, b), resp.rate));
+    // Loudness-normalize each clip to a consistent level before encoding, so playback
+    // volume doesn't jump between words / batches / models (§17.C).
+    const seg = normalizePcm(resp.samples.subarray(a, b));
+    fs.writeFileSync(outPath(it.kind, it.slug), pcmToMp3(seg, resp.rate));
     made += 1;
   });
   console.log(
@@ -245,11 +249,19 @@ async function main() {
     `targets ${all.length}, done ${all.length - pending.length}, pending ${pending.length}. Batch=${BATCH_SIZE}, models=[${MODELS.join(', ')}], voice=${VOICE}.`,
   );
 
+  // FAIL-FAST guard (§17.C bug): the daily cap is sometimes reported as a PLAIN 429
+  // with no "per day" wording. The old code treated that as a per-minute limit and
+  // waited 30s forever (it looped ~115×/~1hr before being killed). So we count
+  // CONSECUTIVE rate-limit waits with no successful batch; after MAX_RATE_WAITS we
+  // treat it as a wall — rotate to the next model, or stop if none are left.
+  const MAX_RATE_WAITS = 4; // ~2 min of fruitless waiting before we give up on a model
+  let rateWaits = 0;
   let i = 0;
   while (i < pending.length && made < maxNew) {
     const batch = pending.slice(i, i + BATCH_SIZE);
     try {
       await processBatch(batch);
+      rateWaits = 0; // progress made — reset the stuck-loop counter
       i += batch.length;
       saveManifest();
       await sleep(DELAY_MS);
@@ -258,13 +270,24 @@ async function main() {
         if (e.perDay) {
           console.warn(`  ${MODELS[modelIdx]} daily quota reached.`);
           modelIdx += 1;
+          rateWaits = 0;
           if (modelIdx >= MODELS.length) {
             console.warn('  all models hit their daily cap — stopping. Re-run tomorrow to resume.');
             break;
           }
           console.warn(`  switching to ${MODELS[modelIdx]}`);
+        } else if (++rateWaits >= MAX_RATE_WAITS) {
+          // Likely a daily cap misreported as a plain 429 — don't loop forever.
+          console.warn(`  ${MAX_RATE_WAITS} rate-limit waits with no progress on ${MODELS[modelIdx]} — treating as a wall.`);
+          modelIdx += 1;
+          rateWaits = 0;
+          if (modelIdx >= MODELS.length) {
+            console.warn('  no models left to try — stopping. Re-run later to resume (it skips done clips).');
+            break;
+          }
+          console.warn(`  switching to ${MODELS[modelIdx]}`);
         } else {
-          console.warn('  per-minute rate limit; waiting 30s');
+          console.warn(`  per-minute rate limit; waiting 30s (${rateWaits}/${MAX_RATE_WAITS})`);
           await sleep(30000);
         }
       } else {
