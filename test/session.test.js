@@ -21,6 +21,7 @@ import {
   predictedSuccess,
   tierToPrior,
   getRecord,
+  summary,
 } from '../src/engine/progress.js';
 import {
   DIFFICULTY_PRESETS,
@@ -93,6 +94,23 @@ test('only easy is unlocked at the start; medium/hard unlock with mastery', () =
   seedKnown(t, UNLOCK_THRESHOLDS.hard); // now well past the hard gate
   assert.ok(isUnlocked(t, 'hard'));
   assert.deepEqual(unlockedDifficulties(t), ['easy', 'medium', 'hard']);
+});
+
+test('unlocks ratchet — they never regress when mastery later dips (QA I5)', () => {
+  const t = createTracker();
+  seedKnown(t, UNLOCK_THRESHOLDS.hard);
+  assert.deepEqual(unlockedDifficulties(t), ['easy', 'medium', 'hard'], 'hard should be unlocked');
+  // Recency-weighted mastery can collapse the LIVE known count (e.g. a rough day),
+  // but a difficulty the learner already earned must stay open.
+  for (let i = 0; i < UNLOCK_THRESHOLDS.hard; i++) {
+    for (let k = 0; k < 6; k++) recordAnswer(t, `known_${i}`, false, { responseMs: 4000 });
+  }
+  assert.equal(summary(t).counts.known, 0, 'live known count should have collapsed');
+  assert.deepEqual(
+    unlockedDifficulties(t),
+    ['easy', 'medium', 'hard'],
+    'unlocks must not regress after the dip',
+  );
 });
 
 // ------------------------------------------------------------- the two axes

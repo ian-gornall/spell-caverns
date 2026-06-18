@@ -24,6 +24,7 @@ import {
   tierToPrior,
   serializeTracker,
   deserializeTracker,
+  knownPeak,
 } from '../src/engine/progress.js';
 
 // ---------------------------------------------------------------- answerScore
@@ -158,6 +159,24 @@ test('serializeTracker -> JSON -> deserializeTracker round-trips losslessly', ()
   // mastery/confidence read back identically through the public helpers
   assert.equal(mastery(restored, 'cave'), mastery(t, 'cave'));
   assert.equal(confidence(restored, 'cave'), confidence(t, 'cave'));
+});
+
+test('knownPeak ratchets up and round-trips through serialization (QA I5)', () => {
+  const t = createTracker();
+  assert.equal(knownPeak(t), 0);
+  for (let i = 0; i < 3; i++) {
+    recordAnswer(t, `w${i}`, true, { responseMs: 500 });
+    recordAnswer(t, `w${i}`, true, { responseMs: 500 });
+  }
+  assert.equal(knownPeak(t), 3, 'peak tracks the known count');
+  // mastery dips below the known bar, but the peak must not fall
+  recordAnswer(t, 'w0', false, { responseMs: 6000 });
+  recordAnswer(t, 'w0', false, { responseMs: 6000 });
+  assert.ok(summary(t).counts.known < 3, 'live known dropped');
+  assert.equal(knownPeak(t), 3, 'peak never regresses');
+  // and it survives persistence
+  const restored = deserializeTracker(JSON.parse(JSON.stringify(serializeTracker(t))));
+  assert.equal(restored.knownPeak, 3, 'knownPeak persists across save/load');
 });
 
 test('a deserialized tracker keeps recording correctly (recency/tick continue)', () => {

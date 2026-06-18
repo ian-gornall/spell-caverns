@@ -45,8 +45,11 @@ export function tierToPrior(tier) {
 
 // A fresh, empty tracker. `tick` is a monotonic counter used for recency/spacing
 // (so the session builder can prefer least-recently-seen words for mixed review).
+// `knownPeak` is a high-water mark of the "known"-bucket count: because mastery is
+// recency-weighted it can dip, but difficulty UNLOCKS must never regress once earned
+// (QA I5), so unlocking gates on this monotonic peak, not the live count.
 export function createTracker() {
-  return { records: new Map(), tick: 0 };
+  return { records: new Map(), tick: 0, knownPeak: 0 };
 }
 
 export function getRecord(tracker, word) {
@@ -140,6 +143,7 @@ export function summary(tracker, { knownAt = 0.85, confAt = 0.6, shakyBelow = 0.
 export function serializeTracker(tracker) {
   return {
     tick: tracker.tick,
+    knownPeak: tracker.knownPeak || 0,
     // records keyed by word, but we store the values (each already carries .word)
     records: [...tracker.records.values()].map((r) => ({ ...r })),
   };
@@ -149,10 +153,20 @@ export function deserializeTracker(data) {
   const tracker = createTracker();
   if (!data || typeof data !== 'object') return tracker;
   tracker.tick = Number.isFinite(data.tick) ? data.tick : 0;
+  tracker.knownPeak = Number.isFinite(data.knownPeak) ? data.knownPeak : 0;
   for (const rec of Array.isArray(data.records) ? data.records : []) {
     if (rec && typeof rec.word === 'string') tracker.records.set(rec.word, { ...rec });
   }
   return tracker;
+}
+
+// Ratchet + read the "known"-bucket high-water mark. Difficulty unlocks gate on this
+// so they never regress when recency-weighted mastery dips (QA I5). Mutates tracker
+// (bumps knownPeak); callers persist via save(). Returns the current peak.
+export function knownPeak(tracker) {
+  const known = summary(tracker).counts.known;
+  tracker.knownPeak = Math.max(tracker.knownPeak || 0, known);
+  return tracker.knownPeak;
 }
 
 // Seed a tracker from a pre-assessment result by REPLAYING its responses through

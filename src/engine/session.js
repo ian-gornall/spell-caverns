@@ -15,7 +15,7 @@
 // program-driven (the kid never picks words). Imports nothing browser-specific.
 import { byRank } from './lexicon.js';
 import { shuffle } from './distractors.js';
-import { predictedSuccess, tierToPrior, summary, getRecord } from './progress.js';
+import { predictedSuccess, tierToPrior, getRecord, knownPeak } from './progress.js';
 
 const MAX_PATTERNS = 5; // patternSpread 1.0 mixes up to this many families
 const REVIEW_FRACTION = 0.3; // share of a session that opens as mixed review
@@ -72,10 +72,12 @@ export function resolveDifficulty(difficulty) {
   };
 }
 
-// Which built-in difficulties are unlocked, given demonstrated mastery.
+// Which built-in difficulties are unlocked, given demonstrated mastery. Gates on the
+// monotonic high-water mark (knownPeak) so an unlock the learner earned never
+// disappears when recency-weighted mastery later dips (QA I5: unlock, never regress).
 export function unlockedDifficulties(tracker) {
-  const known = summary(tracker).counts.known;
-  return ['easy', 'medium', 'hard'].filter((name) => known >= UNLOCK_THRESHOLDS[name]);
+  const peak = knownPeak(tracker);
+  return ['easy', 'medium', 'hard'].filter((name) => peak >= UNLOCK_THRESHOLDS[name]);
 }
 
 export function isUnlocked(tracker, name) {

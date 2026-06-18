@@ -127,4 +127,23 @@ export const WORDS = [
   { word: "wrist", rank: 2700, tier: 5, pattern: "silent-letters", syllables: ["wrist"],       misspellings: ["rist", "wrest"],    sentence: "I wear my watch on my wrist." },
   { word: "crumb", rank: 3400, tier: 5, pattern: "silent-letters", syllables: ["crumb"],       misspellings: ["crum", "crumbe"],   sentence: "Not a crumb of food was left." },
   { word: "numb",  rank: 3100, tier: 5, pattern: "silent-letters", syllables: ["numb"],        misspellings: ["num", "nummb"],     sentence: "My fingers went numb in the cold." },
+
+  // ---- QA I7: sentence fixes — these words' chunk sentences used a morphological
+  //      variant or were off-topic, so they never contained the exact word (the
+  //      rhythm/puzzle "blank the word" context degraded). Same fields as the
+  //      chunk entry; only the sentence is corrected to contain the exact word.
+  //      (rank is ignored here — the merge keeps the backbone's authoritative rank.)
+  { word: "rights",      rank: 145,  tier: 4, pattern: "ight",          syllables: ["rights"],         misspellings: ["rites", "rightes", "rihts"],                  sentence: "We learned about our rights at school." },
+  { word: "cell",        rank: 638,  tier: 6, pattern: "double-cons",   syllables: ["cell"],           misspellings: ["sel", "ceel", "ceell"],                       sentence: "Every living thing is made of one tiny cell." },
+  { word: "self",        rank: 640,  tier: 2, pattern: "end-blend",     syllables: ["self"],           misspellings: ["salf", "sellf", "selff"],                     sentence: "Be proud of your true self." },
+  { word: "degree",      rank: 1128, tier: 3, pattern: "ee-ea",         syllables: ["de", "gree"],     misspellings: ["degre", "degrey", "digree"],                  sentence: "It is one degree warmer in the cave today." },
+  { word: "super",       rank: 1134, tier: 6, pattern: "schwa-er-or-ar", syllables: ["su", "per"],     misspellings: ["souper", "supar", "supir"],                   sentence: "The new crystal drill is super fast." },
+  { word: "smith",       rank: 1201, tier: 2, pattern: "sh",            syllables: ["smith"],          misspellings: ["smyth", "smithe", "smeeth"],                  sentence: "The smith shaped glowing metal in the cave." },
+  { word: "sense",       rank: 1467, tier: 7, pattern: "soft-c-g",      syllables: ["sense"],          misspellings: ["sence", "sens", "senss"],                     sentence: "Use your sense of smell to find the gems." },
+  { word: "charges",     rank: 2050, tier: 7, pattern: "soft-c-g",      syllables: ["charg", "es"],    misspellings: ["charjes", "chargas", "chargis", "chargez"],   sentence: "The miner charges his lamp before the dig." },
+  { word: "falls",       rank: 2236, tier: 4, pattern: "aw-au-all",     syllables: ["falls"],          misspellings: ["fals", "fawls", "fallz"],                     sentence: "A gem falls into the cart with a clink." },
+  { word: "matches",     rank: 2850, tier: 6, pattern: "multisyllable", syllables: ["match", "es"],    misspellings: ["matchs", "matchez", "matchess"],              sentence: "She matches each crystal to its color." },
+  { word: "playstation", rank: 2864, tier: 9, pattern: "tion",          syllables: ["play", "sta", "tion"], misspellings: ["playsation", "plastation", "playstaion"], sentence: "He played a racing game on his PlayStation." },
+  { word: "blonde",      rank: 2949, tier: 7, pattern: "silent-letters", syllables: ["blonde"],        misspellings: ["blond", "blunde", "blonnd"],                  sentence: "The doll has long blonde hair." },
+  { word: "concerning",  rank: 2968, tier: 7, pattern: "ending-ed-ing", syllables: ["con", "cern", "ing"], misspellings: ["concurning", "consurning", "conserning", "concernning"], sentence: "The teacher wrote a note concerning the test." },
 ];
