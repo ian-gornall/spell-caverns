@@ -162,11 +162,14 @@ button {
 
 /* ------- home ------- */
 .home {
-  justify-content: space-between;
+  /* scroll if the menu (up to 7 cards + streak strip) is taller than the viewport,
+     instead of clipping the bottom cards (regression when the Repair card appears) */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .home-hero {
   text-align: center;
-  padding: 18px 0 6px;
+  padding: 12px 0 4px;
 }
 .home-title {
   font-size: clamp(2rem, 7vw, 3.2rem);
@@ -302,13 +305,13 @@ button {
 .home-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
+  gap: 14px;
   padding-bottom: 12px;
 }
 .menu-card {
-  min-height: 132px;
+  min-height: 118px;
   border-radius: 28px;
-  padding: 20px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -343,7 +346,7 @@ button {
 }
 .menu-card.play {
   grid-column: 1 / -1;
-  min-height: 160px;
+  min-height: 136px;
   background: linear-gradient(150deg, #5f7bff, #8a5cff);
   border-color: transparent;
   box-shadow: 0 16px 40px -12px #6a5cffaa;
