@@ -1,68 +1,65 @@
 # Crystal Spell Caverns — Project Handoff
 
-> Read this top-to-bottom before continuing. It is written so a fresh session (with
-> no prior context) can pick up and build the game without re-deriving any decisions.
-> Project root: `C:\Users\iango\spell`  •  Last updated 2026-06-18. The game is
-> **FEATURE-COMPLETE** (all play surfaces + catalog + onboarding + boss + feedback +
-> progress + settings + PWA). `npm test` green (**134 tests**); smoke + multi-viewport
-> visual QA found **no console/JS errors**.
-> **➡️ START AT §17 — the NEXT-SESSION BACKLOG** (the user's 2026-06-18 review: installable-
-> app-on-iPad + deployment, app-store-quality UI polish, an audio volume bug, re-engagement
-> alerts, and economy rebalancing). §16 = what the last session shipped (all deferred
-> nice-to-haves: Catalog, onboarding+mascot, Geode Boss+narrative, a11y). §15/§14 = the
-> earlier QA + research rounds. §12 = audio status (722/2949 word clips generated so far).
+> Read this top-to-bottom before continuing. It is written so a fresh session (with no
+> prior context) can pick up without re-deriving decisions. Project root:
+> `C:\Users\iango\spell`  •  Last updated 2026-06-18.
+> **The game is FEATURE-COMPLETE, DEPLOYED, and MULTI-USER.** Live (HTTPS, installable
+> PWA) at **https://spell-caverns.netlify.app/**, auto-deployed by Netlify from
+> **github.com/ian-gornall/spell-caverns** on every push to `main`. `npm test` green
+> (**172 tests**); `npm run smoke` green; sw **csc-v13**.
+> **➡️ START AT §0 (current state) then §20 (latest session).** The newest work — the
+> target-words learning algorithm, multi-profile (siblings), family-password cloud sync,
+> and configurable voice speed — is summarized in **§20**, which also lists the **DEFERRED**
+> items (the next job): the kid-lock setter UI, the parent-password zone, and the
+> snapshot-rollback UI (all have data + tested helpers; only the screens are unbuilt).
+> Older sections are reference: §4/§7/§8 = design decisions (don't relitigate); §16 =
+> Catalog/onboarding/Geode-Boss; §17 = the (now-DONE) polish/economy/deploy backlog;
+> §18–18b = backup + cloud-sync design; §19 = deploy bring-up; §12 = audio (722/2949 clips).
 
 ---
 
 ## 0. CURRENT STATE & NEXT ACTION (read first)
 
-**Done so far (all committed, tree clean):**
-- **Word data:** `data/words.js` = **2,919 words**, frequency-ordered, ages 5–13, 63 internal
-  spelling-pattern families. Rebuildable: `node scripts/merge.mjs` (chunks + `curated.js` +
-  `supplement.js`).
-- **The entire PURE DECISION ENGINE is complete + tested** (`src/engine/`, all `node --test`):
-  `lexicon` · `distractors` · `praise` · `assessment` · `progress` (now also
-  `serializeTracker`/`deserializeTracker` for persistence) · `session` · `nonsense`.
-  **90 tests green.** See §2 for each module's API and §4 for the design decisions behind them.
-- **`UX.md`** — research-backed UI/UX design guide. Followed for the shell below.
-- **✅ PWA SHELL + RHYTHM MODE — built and verified in a real browser (the game is PLAYABLE):**
-  - `index.html` (iPad full-screen PWA meta) + `styles.css` (crystal-cavern theme, big touch
-    targets, praise tier colors).
-  - `src/state.js` (localStorage store: profile/settings/gems/stats/feedback + the LIVE mastery
-    tracker; export/import/reset), `src/audio.js` (Web Speech dictation + spoken praise, Web Audio
-    synth SFX; primed on first gesture; **degrades silently with no audio/voices**), `src/ui.js`
-    (`el()` helper, screen router, shared gem/depth header, toast, particle burst), `src/app.js`
-    (bootstrap, `ctx` wiring, audio priming, route table).
-  - `src/screens/home.js` (big themed menu), `src/screens/settings.js` (difficulty/length/voice/
-    volume/name + export-import-reset; **locked difficulties explain how to unlock**),
-    `src/screens/progress.js` (gem haul, cavern depth, mastery spectrum, recent-days strip).
-  - `src/modes/rhythm.js` — **THE CORE LOOP**: `buildSession` → dictate + blanked sentence →
-    `buildOptions` tiles → tap → `gradeAnswer` (SFX + big colored label + spoken speed/combo praise +
-    gem-burst + combo meter) → `recordAnswer` → advance → wave-complete reward that keeps the loop
-    going. Distractor similarity adapts per word from `predictedSuccess`. Wrong stays gentle + reveals
-    the correct spelling. (Carries a small off-DOM test hook `window.__rhythmCurrent` for the smoke test.)
-  - `scripts/smoke.mjs` — **Playwright** smoke test (home → Play → correct tap mines gems + PERFECT
-    praise → loop advances → wrong tap gentle + reveal → wave reward → Keep mining; zero console
-    errors). Run: `npm start` then `node scripts/smoke.mjs`. (Playwright installed `--no-save`, so
-    `package.json` stays dependency-free; `node_modules` + `scripts/smoke.png` are git-ignored.)
+**The app is feature-complete, deployed, and multi-user. Everything below is committed; tree clean.**
 
-**→ NEXT ACTION — ⭐ run the EXPLORATORY VISUAL QA-AND-FIX LOOP in §14.** The user
-play-tested and reports the app "doesn't seem to be working" — multiple UX/visual issues
-(they didn't enumerate them). Automated checks are green and there are NO console/JS errors,
-so the problems are visual/layout/UX/behavioral. §14 has the full method (drive the live app
-with Playwright + monitoring hooks, screenshot frequently and **analyze each visually**,
-document + FIX each, re-verify visually — NOT new persistent tests), the `scripts/qa.mjs`
-harness, and a **seeded issue backlog** (I1–I8: rhythm/puzzle layout balance, Lab emitting
-real words like "greet", low-contrast Play card, engagement-timing tuning, economy sanity,
-device/touch-drag checks, …). Keep finding the ones the user didn't list.
+**Live + deploy**
+- **https://spell-caverns.netlify.app/** — installable PWA, offline-capable, HTTPS.
+- Auto-deploys from **github.com/ian-gornall/spell-caverns** (`main`) via Netlify CD (build =
+  `node scripts/build_deploy.mjs` → publishes `deploy/`; functions in `netlify/functions`).
+- `npm test` = **172 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
+  `node scripts/qa.mjs` = 0 console/JS errors. sw VERSION **csc-v13** (bump on any precached change).
 
-The game is otherwise FEATURE-COMPLETE (all three play surfaces + feedback + progress +
-settings + PWA, all smoke-verified; see §13). Only parked build item is **bulk audio
-generation** (Gemini free-tier cap — §12; device voice covers it meanwhile; run only with
-the user's awareness).
+**What exists**
+- **Data:** `data/words.js` = 2,919 frequency-ordered words (ages 5–13), 63 pattern families;
+  rebuild via `node scripts/merge.mjs`. (§3)
+- **Pure engine** (`src/engine/`, all unit-tested): `lexicon · distractors · praise · assessment ·
+  progress · session · nonsense · puzzle · streak · quests · catalog · narrative · backup ·
+  cloudsync · profiles`. Learning model: CONTINUOUS mastery (accuracy-driven — speed no longer
+  affects mastery), TARGET-WORDS selection (lead with ~10 missed-recently words, park
+  correct-first-time, introduce new words progressively from the profile's start tier). (§4, §20)
+- **UI** (`src/`): `app.js` (boot/router/ctx + family sync), `state.js` (MULTI-PROFILE container —
+  see below), `audio.js` (clip/Web-Speech dictation + synth SFX; configurable voice speed), `ui.js`.
+  Screens: `home · onboarding · profiles ("who's playing") · settings · progress · feedback ·
+  catalog · boss`. Modes: `rhythm · puzzle · lab`.
+- **Multi-profile:** one device/family, many kids, each with own progress; "Who's playing?" each
+  launch; per-profile level-select; family-password cloud sync (Netlify Function + Blobs). (§20)
+- **Privacy/COPPA:** on-device by default; opt-in family sync stores only pseudonymous data behind
+  a parental-consent gate; deletable. (PRIVACY.md, §18b)
 
-Build **test-first where it's pure**, keep `npm test` green (the **test gate hook runs `npm test`
-before every `git commit`**), **verify UI changes with `scripts/smoke.mjs`**, and **commit per milestone**.
+**→ NEXT ACTION — finish the multi-user UI (the only DEFERRED work; design already chosen):**
+1. **Kid-lock setter** — profiles carry a `kidLock` code and "Who's playing?" already challenges it;
+   build the screen to SET one (the picture-password idea belongs here, as the optional per-kid lock).
+2. **Parent-password zone** — `parentPassword` + `setParentPassword` exist; build the UI to set it and
+   GATE sync changes + rollback behind it.
+3. **Snapshot-rollback UI** — per-profile dated snapshots auto-save; `listSnapshots`/`rollback` exist;
+   build the parent screen to pick a restore point.
+4. (Optional) wire `profiles.mergeFamily` into `netlify/functions/sync.mjs` for true per-profile sync
+   merge (currently the whole family container reconciles by summed progress — coarse but works).
+   Then: web-push re-engagement (needs the backend), regenerate the 722 audio clips, rotate the Gemini key.
+
+Build **test-first where it's pure**, keep `npm test` green (a **PreToolUse gate runs `npm test`
+before Bash**), **verify UI with `scripts/smoke.mjs` + `qa*.mjs` screenshots**, **commit per
+milestone**, and `git push` to deploy. Bump `sw.js` VERSION whenever a precached file changes.
 
 ---
 
@@ -1200,6 +1197,9 @@ green**, smoke green; sw **csc-v12**):
   LEVEL-SELECT in onboarding (shows example words; sets the engine's start tier); Settings
   Players panel (switch/add/reset). Sync is family-level (container-aware reconcile). Legacy
   saves migrate to one profile. Auto dated snapshots per profile for parent rollback.
+- **Configurable voice speed.** `settings.voiceRate` (per profile, default **0.85** — a little
+  slower for a weak speller) drives both Web-Speech rate and clip `playbackRate` for dictation
+  (praise unchanged). Settings → Sound → "Voice speed": Slow / Normal / Fast (each previews).
 
 ### ▶️ DEFERRED (chosen design, data + helpers EXIST, UI not built yet)
 - **Kid-lock UI**: profiles can carry a `kidLock` code (the "who's playing" screen already
