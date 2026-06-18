@@ -4,10 +4,11 @@
 // learner name, and data export/import/reset. Harder difficulties show LOCKED
 // until mastery unlocks them (HANDOFF §4: unlock, never force) — tapping a locked
 // one explains how to unlock it rather than doing nothing.
-import { el, header, toast } from '../ui.js';
+import { el, header, toast, applyTheme } from '../ui.js';
 import * as audio from '../audio.js';
 import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
+import { COLOURS } from './onboarding.js';
 
 const LENGTHS = [6, 10, 15, 20];
 
@@ -144,6 +145,29 @@ export function settingsScreen(ctx) {
     },
   });
 
+  // crystal colour (sets themeColor -> --accent; applied live)
+  const colourRow = el(
+    'div',
+    { class: 'colour-grid', style: { justifyContent: 'flex-start' } },
+    ...COLOURS.map((c) =>
+      el(
+        'button',
+        {
+          class: 'colour-swatch small' + (s.themeColor === c.value ? ' on' : ''),
+          style: { background: c.value },
+          'aria-label': c.name,
+          onClick: (e) => {
+            s.themeColor = c.value;
+            applyTheme(c.value);
+            apply();
+            [...e.currentTarget.parentNode.children].forEach((n) => n.classList.remove('on'));
+            e.currentTarget.classList.add('on');
+          },
+        },
+      ),
+    ),
+  );
+
   // voice picker (best-effort; may be empty before voices load)
   const voices = audio.listVoices();
   const voicePicker = el(
@@ -259,6 +283,7 @@ export function settingsScreen(ctx) {
         { class: 'panel' },
         el('h3', {}, 'You'),
         el('div', { class: 'field' }, el('label', {}, 'Your explorer name'), nameInput),
+        el('div', { class: 'field' }, el('label', {}, 'Crystal colour'), colourRow),
       ),
       el(
         'div',

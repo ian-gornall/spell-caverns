@@ -19,7 +19,8 @@
 // with Playwright, not node.
 import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
 import { buildSession, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
-import { buildOptions, mulberry32 } from '../engine/distractors.js';
+import { buildOptions, mulberry32, shuffle } from '../engine/distractors.js';
+import { byRank } from '../engine/lexicon.js';
 import { gradeAnswer, projectedScore } from '../engine/praise.js';
 import { recordAnswer, predictedSuccess, tierToPrior, summary } from '../engine/progress.js';
 import { REAL_WORDS } from '../engine/lexicon.js';
@@ -41,18 +42,29 @@ function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export function startRhythm(ctx) {
+export function startRhythm(ctx, params = {}) {
   const { state, audio } = ctx;
   const settings = state.settings;
   const seed = (Date.now() >>> 0) || 1;
   const rng = mulberry32(seed);
   const unlockedAtStart = unlockedDifficulties(state.tracker);
 
-  const session = buildSession(state.tracker, {
-    difficulty: settings.difficulty,
-    length: settings.length || 10,
-    rng,
-  });
+  // First-run wave (from onboarding): short + easiest difficulty + obviously-wrong
+  // distractors, so the learner's very first experience is a guaranteed WIN (SDT
+  // competence). Otherwise the normal level builder from the kid's chosen settings.
+  const firstRun = !!params.firstRun;
+  const difficulty = firstRun ? 'easy' : settings.difficulty;
+  const length = firstRun ? 5 : settings.length || 10;
+
+  // First run: hand-pick the most common, easiest, spellable words (tier ≤2, 3-6
+  // letters) so the welcome wave is a sure win — the level builder optimises for a
+  // mastery TARGET and can surface a harder word, which we don't want here.
+  const session = firstRun
+    ? shuffle(
+        byRank().filter((w) => w.tier <= 2 && w.word.length >= 3 && w.word.length <= 6).slice(0, 14),
+        rng,
+      ).slice(0, length)
+    : buildSession(state.tracker, { difficulty, length, rng });
 
   // --- static structure -----------------------------------------------------
   const dots = el('div', { class: 'dots' });
@@ -165,8 +177,8 @@ export function startRhythm(ctx) {
   // Distractor difficulty for THIS word: preset baseline nudged by how well the
   // learner is predicted to do — confident words get harder, closer distractors.
   function distractorDifficulty(entry) {
-    const base =
-      typeof settings.difficulty === 'string' ? DIST_BASE[settings.difficulty] ?? 0.5 : 0.55;
+    if (firstRun) return 0.12; // obviously-wrong options for the guaranteed-win first wave
+    const base = typeof difficulty === 'string' ? DIST_BASE[difficulty] ?? 0.5 : 0.55;
     const ps = predictedSuccess(state.tracker, entry.word, tierToPrior(entry.tier));
     return Math.max(0, Math.min(1, base + (ps - 0.5) * 0.4));
   }
@@ -378,7 +390,7 @@ export function startRhythm(ctx) {
     const nextLocked = ORDER.find((d) => !unlockedNow.includes(d));
     const knownCount = summary(state.tracker).counts.known;
 
-    const grade = earned >= (settings.length || 10) * 18 ? '🏆' : earned > 0 ? '💎' : '⛏️';
+    const grade = earned >= session.length * 18 ? '🏆' : earned > 0 ? '💎' : '⛏️';
     const goHarder = () => {
       settings.difficulty = nextHarder;
       ctx.save();

@@ -110,6 +110,11 @@ body {
 .stat .icon {
   font-size: 1.2rem;
 }
+/* the cavern-depth chip carries the miner's chosen crystal colour (personalization) */
+.stat.depth {
+  border-color: color-mix(in srgb, var(--accent) 65%, var(--panel-border));
+  box-shadow: 0 0 14px -8px var(--accent);
+}
 .gem-count.bump {
   animation: pop 0.4s ease;
 }
@@ -1320,6 +1325,168 @@ select {
 }
 .crystal-grant:active {
   transform: scale(0.97);
+}
+
+/* ------- first-run onboarding + Geo the mascot ------- */
+.onboarding {
+  justify-content: center;
+}
+.onboard-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  padding: 24px;
+  text-align: center;
+}
+.mascot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  max-width: 460px;
+}
+.mascot-char {
+  width: 104px;
+  height: 104px;
+  background: radial-gradient(circle at 36% 30%, #ffffff, var(--accent) 62%, color-mix(in srgb, var(--accent) 60%, #000) 100%);
+  clip-path: polygon(50% 0%, 95% 26%, 95% 74%, 50% 100%, 5% 74%, 5% 26%);
+  position: relative;
+  filter: drop-shadow(0 8px 22px color-mix(in srgb, var(--accent) 55%, transparent));
+  animation: bob 2.6s ease-in-out infinite;
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-9px) rotate(2deg); }
+}
+.mascot-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.mascot-eyes {
+  display: flex;
+  gap: 16px;
+}
+.mascot-eyes .eye {
+  width: 15px;
+  height: 17px;
+  background: #1a1330;
+  border-radius: 50%;
+  position: relative;
+}
+.mascot-eyes .eye::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 5px;
+  height: 5px;
+  background: #fff;
+  border-radius: 50%;
+}
+.mascot-smile {
+  width: 26px;
+  height: 13px;
+  border: 3px solid #1a1330;
+  border-top: none;
+  border-radius: 0 0 26px 26px;
+}
+.speech-bubble {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  padding: 16px 20px;
+  max-width: 420px;
+}
+.speech-bubble::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 16px;
+  height: 16px;
+  background: var(--panel);
+  border-left: 1px solid var(--panel-border);
+  border-top: 1px solid var(--panel-border);
+}
+.speech-name {
+  font-weight: 800;
+  color: var(--accent);
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+.speech-text {
+  font-size: 1.3rem;
+  line-height: 1.35;
+}
+.onboard-go {
+  font-size: 1.35rem;
+  padding: 16px 34px;
+  min-width: 220px;
+}
+.onboard-go.big {
+  font-size: 1.5rem;
+  padding: 20px 40px;
+}
+.onboard-name {
+  font-size: 1.5rem;
+  text-align: center;
+  padding: 14px 18px;
+  width: min(360px, 80vw);
+  border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  color: var(--ink);
+}
+.onboard-name:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.colour-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+.colour-swatch {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+  box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.6);
+  transition: transform 0.12s ease, border-color 0.15s ease;
+}
+.colour-swatch:active {
+  transform: scale(0.93);
+}
+.colour-swatch.on {
+  border-color: #fff;
+  transform: scale(1.08);
+}
+.colour-swatch .colour-name {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.35);
+}
+.colour-swatch.small {
+  width: 52px;
+  height: 52px;
+  padding: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

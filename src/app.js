@@ -6,8 +6,9 @@
 // screen factories; each factory returns a DOM node that `render()` mounts.
 import * as store from './state.js';
 import * as audio from './audio.js';
-import { setRoot, render, toast } from './ui.js';
+import { setRoot, render, toast, applyTheme } from './ui.js';
 import { homeScreen } from './screens/home.js';
+import { onboardingScreen } from './screens/onboarding.js';
 import { settingsScreen } from './screens/settings.js';
 import { progressScreen } from './screens/progress.js';
 import { feedbackScreen } from './screens/feedback.js';
@@ -26,6 +27,7 @@ const routes = {
   lab: startLab,
   feedback: feedbackScreen,
   catalog: catalogScreen,
+  onboarding: onboardingScreen,
 };
 
 let ctx = null;
@@ -64,6 +66,7 @@ function depth() {
 function boot() {
   const state = store.load();
   audio.configure(state.settings);
+  applyTheme(state.settings.themeColor); // restore the miner's chosen crystal colour
 
   ctx = {
     state,
@@ -83,7 +86,9 @@ function boot() {
   // a user gesture (HANDOFF §4). `{ once:true }` removes the listener after.
   window.addEventListener('pointerdown', () => audio.prime(), { once: true });
 
-  nav('home');
+  // First run → the mascot-guided onboarding (name + crystal colour + a guaranteed-
+  // win first wave); afterwards, straight to home.
+  nav(state.profile.onboarded ? 'home' : 'onboarding');
 }
 
 boot();

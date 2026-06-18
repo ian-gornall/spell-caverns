@@ -44,6 +44,45 @@ export function setRoot(node) {
   root = node;
 }
 
+// Apply the learner's chosen "crystal colour" (Settings / onboarding) as the live
+// --accent CSS variable, so the personalization actually shows on screen. No-op for
+// a falsy colour.
+export function applyTheme(color) {
+  if (!color) return;
+  try {
+    document.documentElement.style.setProperty('--accent', color);
+  } catch {
+    /* ignore (no DOM) */
+  }
+}
+
+// Geo — the friendly crystal guide (mascot). A procedural gem "character" (no art
+// assets) with a speech bubble; used on first-run onboarding (research Tier 2 #9:
+// a named guide supports autonomy/competence). `text` is also a good thing to speak.
+export function mascot(text, { name = 'Geo' } = {}) {
+  return el(
+    'div',
+    { class: 'mascot' },
+    el(
+      'div',
+      { class: 'mascot-char', 'aria-hidden': 'true' },
+      el(
+        'div',
+        { class: 'mascot-face' },
+        el('div', { class: 'mascot-eyes' }, el('span', { class: 'eye' }), el('span', { class: 'eye' })),
+        el('div', { class: 'mascot-smile' }),
+      ),
+    ),
+    text &&
+      el(
+        'div',
+        { class: 'speech-bubble' },
+        el('div', { class: 'speech-name' }, name),
+        el('div', { class: 'speech-text' }, text),
+      ),
+  );
+}
+
 // Swap in a new screen. (Speech is stopped in nav() BEFORE the new screen is
 // built, so a screen that dictates on mount — e.g. rhythm — isn't cut off here.)
 export function render(screenNode) {

@@ -30,6 +30,27 @@ page.on('console', (m) => {
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 
 try {
+  // --- first-run onboarding (mascot + name + colour + guaranteed-win wave) ---
+  // A fresh browser context has no save, so the boot routes to onboarding. Walk it
+  // once: this verifies the flow AND persists profile.onboarded so the rest of the
+  // smoke starts from a normal home.
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.waitForSelector('.onboarding .onboard-go', { timeout: 5000 });
+  ok('first run shows the onboarding welcome (Geo the mascot)');
+  await page.click('.onboard-go'); // -> name
+  await page.waitForSelector('.onboard-name', { timeout: 4000 });
+  await page.fill('.onboard-name', 'Explorer');
+  await page.click('.onboard-go'); // -> colour
+  await page.waitForSelector('.colour-grid .colour-swatch', { timeout: 4000 });
+  await page.locator('.colour-swatch').nth(1).click();
+  await page.click('.onboard-go'); // -> ready
+  await page.waitForSelector('.onboard-go.big', { timeout: 4000 });
+  await page.click('.onboard-go.big'); // -> guaranteed-win first wave (rhythm firstRun)
+  await page.waitForSelector('.rhythm .tile', { timeout: 5000 });
+  const fwDots = await page.locator('.rhythm .dots .dot').count();
+  if (fwDots === 5) ok('onboarding launched a short guaranteed-win first wave (5 words)');
+  else fail(`first wave expected 5 words, got ${fwDots}`);
+  // back to a normal home for the main flow (onboarded now persisted)
   await page.goto(URL, { waitUntil: 'networkidle' });
 
   // --- home ---
@@ -269,6 +290,10 @@ try {
   idlePage.on('pageerror', (e) => errors.push('pageerror(idle): ' + e.message));
   await idlePage.addInitScript(() => {
     window.__idleTest = 0.03; // 15s nudge -> ~450ms, 45s pause -> ~1350ms
+    try {
+      const KEY = 'crystal-spell-caverns:v1';
+      if (!localStorage.getItem(KEY)) localStorage.setItem(KEY, JSON.stringify({ profile: { name: 'Explorer', onboarded: true } }));
+    } catch {}
   });
   await idlePage.goto(URL, { waitUntil: 'networkidle' });
   await idlePage.click('.menu-card.play');
@@ -286,6 +311,10 @@ try {
   menuPage.on('pageerror', (e) => errors.push('pageerror(menu): ' + e.message));
   await menuPage.addInitScript(() => {
     window.__idleTest = 0.04; // home nudge ~520ms, auto-launch ~1280ms
+    try {
+      const KEY = 'crystal-spell-caverns:v1';
+      if (!localStorage.getItem(KEY)) localStorage.setItem(KEY, JSON.stringify({ profile: { name: 'Explorer', onboarded: true } }));
+    } catch {}
   });
   await menuPage.goto(URL, { waitUntil: 'networkidle' });
   await menuPage.click('.home-title'); // a harmless tap unlocks audio so it WILL launch

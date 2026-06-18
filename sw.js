@@ -45,6 +45,7 @@ const CORE = [
   '/src/screens/progress.js',
   '/src/screens/feedback.js',
   '/src/screens/catalog.js',
+  '/src/screens/onboarding.js',
   '/data/words.js',
   '/data/patterns.js',
   '/data/nonsense_blocklist.js',

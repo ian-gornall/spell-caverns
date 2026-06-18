@@ -74,6 +74,28 @@ try {
   await page.evaluate(() => localStorage.clear());
   await page.goto(URL, { waitUntil: 'networkidle' });
 
+  section('ONBOARDING (first run)');
+  await page.waitForSelector('.onboarding .onboard-go');
+  await wait(300);
+  await shot('onboard-welcome');
+  await page.click('.onboard-go'); // -> name
+  await page.waitForSelector('.onboard-name');
+  await page.fill('.onboard-name', 'Ada');
+  await shot('onboard-name');
+  await page.click('.onboard-go'); // -> colour
+  await page.waitForSelector('.colour-grid .colour-swatch');
+  await page.locator('.colour-swatch').nth(1).click();
+  await shot('onboard-colour');
+  await page.click('.onboard-go'); // -> ready
+  await page.waitForSelector('.onboard-go.big');
+  await shot('onboard-ready');
+  await page.click('.onboard-go.big'); // -> guaranteed-win first wave
+  await page.waitForSelector('.rhythm .tile');
+  await wait(400);
+  await shot('onboard-firstwave');
+  // finish onboarding cleanly so the rest of the pass starts from a normal home
+  await page.goto(URL, { waitUntil: 'networkidle' });
+
   section('HOME');
   await page.waitForSelector('.menu-card.play');
   await shot('home');
