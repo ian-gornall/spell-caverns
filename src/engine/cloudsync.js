@@ -9,16 +9,16 @@
 // this stays pure + testable.
 
 // --- family sync codes ----------------------------------------------------------
-// Cross-device sync is keyed by an opaque "family sync code": the parent creates one
-// once, then types it on each device once (no OAuth, no accounts). It's a short,
-// case-insensitive, unambiguous string. These helpers are pure (validation/normalize);
-// generation uses the browser's crypto and lives in the UI.
-export const SYNC_CODE_RE = /^[A-Z0-9]{6,12}$/;
+// Cross-device sync is keyed by a "family password" the GROWN-UP sets once per device
+// (no OAuth, no accounts); the device saves it locally so the child never re-enters it.
+// It's a normal password — case-insensitive, letters/numbers, 4–40 chars. These helpers
+// are pure (validation/normalize).
+export const SYNC_CODE_RE = /^[A-Z0-9]{4,40}$/;
 
 // Uppercase + strip anything that isn't A-Z/0-9 + cap length, so a parent can type the
-// code loosely (spaces, dashes, lowercase) and still match.
+// password loosely (spaces, dashes, lowercase, punctuation) and still match across devices.
 export function normalizeSyncCode(input) {
-  return String(input || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+  return String(input || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 40);
 }
 
 export function isValidSyncCode(input) {

@@ -20,7 +20,9 @@
 //     (cloud_sync_backend.js). Per-device OAuth removed.
 // v10: kid-friendly PICTURE password (engine/picturecode.js) + family sync moved into
 //      first-run onboarding.
-const VERSION = 'csc-v10';
+// v11: picture password dropped (grown-up sets a normal family password, saved locally);
+//      mastery decoupled from speed; target-words session algorithm; level-select.
+const VERSION = 'csc-v11';
 
 const CORE = [
   '/',
@@ -48,7 +50,6 @@ const CORE = [
   '/src/engine/narrative.js',
   '/src/engine/backup.js',
   '/src/engine/cloudsync.js',
-  '/src/engine/picturecode.js',
   '/src/cloud_sync_backend.js',
   '/src/modes/rhythm.js',
   '/src/modes/puzzle.js',

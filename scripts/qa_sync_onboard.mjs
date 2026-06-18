@@ -1,4 +1,5 @@
-// scripts/qa_sync_onboard.mjs — screenshot the first-run family-sync step + picture picker.
+// scripts/qa_sync_onboard.mjs — screenshot the first-run family-sync step (grown-up
+// sets a normal family password).
 import { chromium } from 'playwright';
 const URL = process.env.URL || 'http://localhost:5173';
 const b = await chromium.launch();
@@ -19,21 +20,15 @@ await p.locator('.colour-swatch').nth(1).click();
 await p.click('.onboard-go'); // -> sync step
 await p.waitForTimeout(300);
 await p.screenshot({ path: 'scripts/qa/sync-01-step.png' });
-await p.click('text=Sync our tablets'); // -> consent
+await p.click('text=Sync our tablets'); // -> setup
 await p.waitForSelector('.consent-row');
 await p.waitForTimeout(200);
-await p.screenshot({ path: 'scripts/qa/sync-02-consent.png' });
+await p.screenshot({ path: 'scripts/qa/sync-02-setup.png' });
 await p.locator('.consent-row input').check();
-await p.click('text=Make a picture password'); // -> picker
-await p.waitForSelector('.pic-grid');
-await p.waitForTimeout(200);
-await p.screenshot({ path: 'scripts/qa/sync-03-picker.png' });
-// tap 2 pictures to show the slots filling
-await p.locator('.pic-btn').nth(0).click();
-await p.locator('.pic-btn').nth(5).click();
+await p.fill('.onboard-name', 'smithfamily'); // the family password field reuses .onboard-name styling
 await p.waitForTimeout(150);
-await p.screenshot({ path: 'scripts/qa/sync-04-picking.png' });
+await p.screenshot({ path: 'scripts/qa/sync-03-typed.png' });
 console.log('console/page errors:', errs.length);
 for (const e of errs) console.log('  - ' + e);
-console.log('shots: sync-01-step, sync-02-consent, sync-03-picker, sync-04-picking');
+console.log('shots: sync-01-step, sync-02-setup, sync-03-typed');
 await b.close();

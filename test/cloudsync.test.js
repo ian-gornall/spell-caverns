@@ -59,12 +59,13 @@ test('reconcile always reports which envelope to use + a human reason', () => {
   assert.equal(typeof r.reason, 'string');
 });
 
-test('sync codes normalize loosely-typed input and validate the format', () => {
+test('family passwords normalize loosely-typed input and validate the format', () => {
   assert.equal(normalizeSyncCode(' ab-cd ef '), 'ABCDEF', 'uppercased, stripped');
-  assert.equal(normalizeSyncCode('abcdefghijklmnop'), 'ABCDEFGHIJKL', 'capped at 12');
-  assert.ok(isValidSyncCode('crys7gem'), 'a normal code is valid');
-  assert.ok(isValidSyncCode('ABC123'), 'six chars ok');
-  assert.ok(!isValidSyncCode('abc'), 'too short');
+  assert.equal(normalizeSyncCode('Smith Family 2024!'), 'SMITHFAMILY2024', 'a normal phrase works');
+  assert.equal(normalizeSyncCode('a'.repeat(50)).length, 40, 'capped at 40');
+  assert.ok(isValidSyncCode('smith2024'), 'a normal family password is valid');
+  assert.ok(isValidSyncCode('ABCD'), 'four chars ok');
+  assert.ok(!isValidSyncCode('abc'), 'too short (<4)');
   assert.ok(!isValidSyncCode(''), 'empty invalid');
   assert.ok(!isValidSyncCode(null), 'null invalid');
 });

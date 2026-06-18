@@ -4,10 +4,10 @@
 // learner name, and data export/import/reset. Harder difficulties show LOCKED
 // until mastery unlocks them (HANDOFF §4: unlock, never force) — tapping a locked
 // one explains how to unlock it rather than doing nothing.
-import { el, header, toast, applyTheme, applyReadable, picturePicker } from '../ui.js';
+import { el, header, toast, applyTheme, applyReadable } from '../ui.js';
 import * as audio from '../audio.js';
 import * as sync from '../cloud_sync_backend.js';
-import { codeToPictures } from '../engine/picturecode.js';
+import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
 import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
 import { COLOURS } from './onboarding.js';
@@ -316,11 +316,10 @@ export function settingsScreen(ctx) {
     '🗑️ Delete all data',
   );
 
-  // --- Family sync (cross-device) — kid-friendly PICTURE password, no OAuth --------
-  // Setup mainly lives in onboarding now; here a parent can SEE the picture password (to
-  // re-tap on other devices), sync/stop/delete, or enable it on a device that skipped it.
-  // We store only pseudonymous gameplay data keyed by the code (COPPA: consent + minimize
-  // + delete). Setup is parent-gated by the consent tick.
+  // --- Family sync (cross-device) — a GROWN-UP sets one family password ------------
+  // The device saves it locally so the child never types it. Entering the SAME password
+  // on another tablet auto-joins the family's progress (the server merges). We store only
+  // pseudonymous gameplay data keyed by the code (COPPA: consent + minimize + delete).
   const getLocal = () => JSON.parse(ctx.store.exportData());
   const applyRemote = (envel) => ctx.store.importData(JSON.stringify(envel));
   const afterPull = () => {
@@ -339,30 +338,34 @@ export function settingsScreen(ctx) {
       toast('Could not reach the sync server. Check your connection. 😕');
     }
   };
-  const finishSync = async (code, pullFirst) => {
+  const enableSync = async (raw) => {
+    const code = normalizeSyncCode(raw);
+    if (!isValidSyncCode(code)) {
+      toast('Use at least 4 letters or numbers.');
+      return;
+    }
     s.syncCode = code;
     s.syncConsent = true;
     ctx.save();
     try {
-      await sync.syncNow({ code, getLocal, applyRemote });
+      const { action } = await sync.syncNow({ code, getLocal, applyRemote });
+      if (action === 'pull') afterPull();
     } catch {
       /* offline — saved locally, syncs later */
     }
-    afterPull();
-    toast(pullFirst ? 'Synced your progress! ✨' : 'Sync on — use the same pictures on your other tablets ☁️');
+    toast('Sync on — use the same password on your other tablets ☁️');
     ctx.nav('settings');
   };
 
   let cloudSyncBlock;
   if (s.syncCode) {
-    const pics = codeToPictures(s.syncCode) || [];
     cloudSyncBlock = el(
       'div',
       { class: 'cloud-sync' },
       el('h4', { class: 'cloud-title' }, '🔗 Family sync (across devices)'),
-      el('p', { class: 'backup-status' }, 'Your picture password:'),
-      el('div', { class: 'pic-chosen' }, ...pics.map((p) => el('span', { class: 'pic-slot filled' }, p.emoji))),
-      el('p', { class: 'field-hint' }, 'Tap these same pictures on your other tablets to sync them.'),
+      el('p', { class: 'backup-status' }, 'Family password:'),
+      el('div', { class: 'sync-code' }, s.syncCode),
+      el('p', { class: 'field-hint' }, 'Type this same password on your other tablets to sync them.'),
       el(
         'div',
         { class: 'data-actions' },
@@ -399,67 +402,27 @@ export function settingsScreen(ctx) {
       ),
     );
   } else {
-    // Not syncing on this device yet: consent → pick a NEW picture password or enter an
-    // existing one. The picker host is mutated in place (no router churn).
-    const host = el('div', { class: 'sync-setup' });
-    let consent = !!s.syncConsent;
-
-    const showPicker = (mode) => {
-      const status = el('p', { class: 'field-hint' }, mode === 'create' ? 'Tap 4 pictures — and remember them!' : 'Tap your 4 secret pictures.');
-      let picker;
-      const submit = async (code) => {
-        status.textContent = 'Checking…';
-        try {
-          const existing = await sync.pull(code);
-          if (mode === 'create') {
-            if (existing) {
-              status.textContent = 'Those pictures are taken — try another secret.';
-              picker.reset();
-              return;
-            }
-            finishSync(code, false);
-          } else {
-            if (!existing) {
-              status.textContent = 'No progress for those pictures. Check the order with a grown-up.';
-              picker.reset();
-              return;
-            }
-            finishSync(code, true);
-          }
-        } catch {
-          status.textContent = 'Could not reach the sync server. Try again later.';
-          picker.reset();
-        }
-      };
-      picker = picturePicker(submit);
-      host.replaceChildren(picker.node, status, el('button', { class: 'btn ghost', onClick: showChoices }, '← Back'));
-    };
-
-    function showChoices() {
-      const newBtn = el('button', { class: 'btn primary', onClick: () => showPicker('create') }, '✨ Make a picture password');
-      const haveBtn = el('button', { class: 'btn', onClick: () => showPicker('join') }, '🔑 I have a picture password');
-      if (!consent) {
-        newBtn.setAttribute('disabled', 'disabled');
-        haveBtn.setAttribute('disabled', 'disabled');
-      }
-      host.replaceChildren(
-        newBtn,
-        haveBtn,
-        el('p', { class: 'field-hint' }, 'No accounts, no OAuth — your child taps 4 pictures. See CLOUD_SYNC_SETUP.md.'),
-      );
-    }
-
+    // Not syncing yet: consent (parent-gated) → type a family password → turn on.
+    const codeInput = el('input', {
+      type: 'text',
+      placeholder: 'Family password',
+      maxLength: 40,
+      autocapitalize: 'none',
+      autocomplete: 'off',
+      disabled: 'disabled',
+    });
+    const goBtn = el('button', { class: 'btn primary', disabled: 'disabled', onClick: () => enableSync(codeInput.value) }, '☁️ Turn on sync');
+    codeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !goBtn.hasAttribute('disabled')) enableSync(codeInput.value); });
     const consentRow = el(
       'label',
       { class: 'consent-row' },
       el('input', {
         type: 'checkbox',
-        checked: s.syncConsent ? 'checked' : undefined,
         onChange: (e) => {
-          consent = e.target.checked;
-          s.syncConsent = consent;
+          const on = e.target.checked;
+          s.syncConsent = on;
           ctx.save();
-          showChoices(); // re-render to enable/disable the setup buttons
+          for (const n of [codeInput, goBtn]) on ? n.removeAttribute('disabled') : n.setAttribute('disabled', 'disabled');
         },
       }),
       el(
@@ -469,14 +432,18 @@ export function settingsScreen(ctx) {
           '(a nickname + scores only) in the cloud to sync across devices. See PRIVACY.md.',
       ),
     );
-
-    showChoices();
     cloudSyncBlock = el(
       'div',
       { class: 'cloud-sync' },
       el('h4', { class: 'cloud-title' }, '🔗 Family sync (across devices)'),
       consentRow,
-      host,
+      el(
+        'div',
+        { class: 'sync-setup' },
+        codeInput,
+        goBtn,
+        el('p', { class: 'field-hint' }, 'Grown-up sets one password; type the SAME one on each tablet. The child never needs it. See CLOUD_SYNC_SETUP.md.'),
+      ),
     );
   }
 
