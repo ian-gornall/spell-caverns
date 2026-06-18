@@ -15,7 +15,7 @@
 let actx = null; // Web Audio context (created on prime)
 let primed = false;
 let voices = [];
-let settings = { voice: true, volume: 0.85, voiceName: null };
+let settings = { voice: true, volume: 0.85, voiceName: null, voiceRate: 0.85 };
 
 // Pre-generated clip manifest (sets of slugs) + reusable <audio> players.
 let manifest = null; // { words:Set, phrases:Set } once loaded
@@ -174,7 +174,9 @@ export function listVoices() {
 // length-based safety timer for engines that never fire `onend`.
 function speakTTS(text, { rate = 1, pitch = 1, onDone } = {}) {
   const done = onceFn(onDone);
-  const estMs = 650 + String(text).length * 95;
+  // estimate duration, scaled by rate so the safety timer doesn't fire before a SLOW
+  // (low-rate) utterance finishes — otherwise dictation would "end" early.
+  const estMs = (650 + String(text).length * 95) / Math.max(0.5, rate);
   if (!settings.voice || !text) {
     setTimeout(done, 160);
     return;
@@ -211,7 +213,7 @@ function onceFn(fn) {
 
 // Play a pre-generated clip on a reusable <audio>. onDone on 'ended'; onFail on any
 // load/play error (caller then falls back to Web Speech).
-function playClip(el, url, { onDone, onFail } = {}) {
+function playClip(el, url, { onDone, onFail, rate = 1 } = {}) {
   const a = el || new Audio();
   const done = onceFn(onDone);
   const fail = onceFn(onFail);
@@ -219,6 +221,7 @@ function playClip(el, url, { onDone, onFail } = {}) {
     a.onended = done;
     a.onerror = fail;
     a.volume = settings.volume ?? 1;
+    a.playbackRate = rate; // dictation can be slowed via the voice-speed setting
     a.muted = false;
     a.src = url;
     a.currentTime = 0;
@@ -240,13 +243,15 @@ export function say(word, { onDone } = {}) {
     return;
   }
   const s = slug(text);
+  const rate = settings.voiceRate ?? 0.85; // dictation speed (configurable; default a bit slow)
   if (manifest && manifest.words.has(s)) {
     clipEl = playClip(clipEl, `/audio/words/${s}.mp3`, {
+      rate,
       onDone: done,
-      onFail: () => speakTTS(text, { rate: 0.92, pitch: 1.02, onDone: done }),
+      onFail: () => speakTTS(text, { rate, pitch: 1.02, onDone: done }),
     });
   } else {
-    speakTTS(text, { rate: 0.92, pitch: 1.02, onDone: done });
+    speakTTS(text, { rate, pitch: 1.02, onDone: done });
   }
 }
 

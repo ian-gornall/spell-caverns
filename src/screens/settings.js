@@ -121,6 +121,35 @@ export function settingsScreen(ctx) {
     ),
   );
 
+  // voice speed (dictation rate) — default a little slow for a weak speller; tappable
+  // presets that PREVIEW the new speed so a grown-up can pick what's clearest.
+  const RATES = [
+    { label: '🐢 Slow', v: 0.7 },
+    { label: 'Normal', v: 0.85 },
+    { label: '🐇 Fast', v: 1.0 },
+  ];
+  const curRate = s.voiceRate ?? 0.85;
+  const rateSeg = el(
+    'div',
+    { class: 'seg' },
+    ...RATES.map((r) =>
+      el(
+        'button',
+        {
+          class: Math.abs(curRate - r.v) < 0.001 ? 'on' : '',
+          onClick: (e) => {
+            s.voiceRate = r.v;
+            apply();
+            [...e.currentTarget.parentNode.children].forEach((n) => n.classList.remove('on'));
+            e.currentTarget.classList.add('on');
+            audio.say('Spell the word you hear.'); // preview at the new speed
+          },
+        },
+        r.label,
+      ),
+    ),
+  );
+
   // volume slider
   const vol = el('input', {
     type: 'range',
@@ -505,6 +534,7 @@ export function settingsScreen(ctx) {
         { class: 'panel' },
         el('h3', {}, 'Sound'),
         el('div', { class: 'field' }, el('label', {}, 'Spoken voice'), voiceSeg),
+        el('div', { class: 'field' }, el('label', {}, 'Voice speed'), rateSeg),
         el('div', { class: 'field' }, el('label', {}, 'Volume'), vol),
         el('div', { class: 'field' }, el('label', {}, 'Voice choice'), voicePicker, testVoiceBtn),
       ),

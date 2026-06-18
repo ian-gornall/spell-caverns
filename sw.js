@@ -24,7 +24,8 @@
 //      mastery decoupled from speed; target-words session algorithm; level-select.
 // v12: multi-profile (engine/profiles.js + screens/profiles.js "who's playing"), per-kid
 //      progress, family-level sync, snapshots; clickable quests.
-const VERSION = 'csc-v12';
+// v13: configurable voice speed (dictation rate; a little slow by default).
+const VERSION = 'csc-v13';
 
 const CORE = [
   '/',

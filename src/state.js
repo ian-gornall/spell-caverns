@@ -34,6 +34,7 @@ function defaultSettings() {
     voice: true,
     volume: 0.85,
     voiceName: null,
+    voiceRate: 0.85, // dictation speed: a little slower than 1.0 by default (clearer for a weak speller); configurable in Settings
     themeColor: '#7AA2FF',
     readableText: false,
     dailyGoalGems: 250,
