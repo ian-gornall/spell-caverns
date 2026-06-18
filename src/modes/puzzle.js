@@ -62,15 +62,11 @@ export function startPuzzle(ctx, params = {}) {
     el('span', { class: 'spk' }, '🔊'),
     'Hear it again',
   );
-  // Sound-it-out: dictate the word syllable by syllable — a core spelling strategy
-  // for a weak speller building the word from memory (segment → blend).
-  const soundOutBtn = el(
-    'button',
-    { class: 'hear-again sound-out', onClick: () => audio.saySlow(session[index]?.word, session[index]?.syllables) },
-    el('span', { class: 'spk' }, '🐢'),
-    'Sound it out',
-  );
-  const hearRow = el('div', { class: 'hear-row' }, hearBtn, soundOutBtn);
+  // NOTE: "Sound it out" (audio.saySlow) is DISABLED for now — on iOS the device TTS
+  // reads short isolated syllables as letter names ("spells it out") rather than
+  // blending them (user feedback 2026-06-18). Helper kept for a future revisit with
+  // real phoneme audio. Prompt shows only "Hear it again" meanwhile.
+  const hearRow = el('div', { class: 'hear-row' }, hearBtn);
   const hintBtn = el('button', { class: 'btn ghost', onClick: hint }, '💡 Hint');
   const clearBtn = el('button', { class: 'btn ghost', onClick: clearAll }, '↺ Clear');
   const controlsEl = el('div', { class: 'puzzle-controls' }, hintBtn, clearBtn);

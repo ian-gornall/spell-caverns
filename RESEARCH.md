@@ -68,9 +68,9 @@ confusable patterns is a *desirable difficulty* (Klimovich & Richter 2025) — a
 11. **`prefers-reduced-motion` + redundant (visual+audio) + mutable audio + easy-read text.** **[DONE]** —
     reduced-motion media query zeroes animations; audio is settings-gated; feedback is redundant; an
     opt-in "Easy-read text" setting adds letter-spacing/line-height to the spelling text so a struggling
-    reader can tell similar spellings apart (beach/buach/beacch/bach). Plus **"Sound it out"** (a
-    syllable-by-syllable dictation button in Play + Craft) — segment→blend, a core spelling strategy
-    using the dataset's existing `syllables`.
+    reader can tell similar spellings apart (beach/buach/beacch/bach). (A syllable-by-syllable
+    "Sound it out" button was tried but DISABLED — iOS TTS reads isolated syllables as letter names
+    instead of blending them; needs real phoneme audio. See HANDOFF §16.)
 12. **`navigator.vibrate()` haptics.** **[DONE]** — paired with SFX; no-op on iPad Safari (no
     Vibration API), adds feel on Android/Chromebook.
 13. **Re-tune idle thresholds for a thinking weak speller; nudge before any blocking overlay.**

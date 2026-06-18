@@ -250,6 +250,9 @@ export function say(word, { onDone } = {}) {
   }
 }
 
+// CURRENTLY UNUSED (the "Sound it out" buttons were disabled 2026-06-18 — iOS TTS
+// reads short isolated syllables as letter names instead of blending them). Kept for
+// a future revisit with real phoneme audio. See rhythm.js / puzzle.js for the note.
 // "Sound it out": dictate a word SYLLABLE BY SYLLABLE (slow, with a gap between
 // each) then say the whole word once — a core spelling strategy for a weak speller
 // (segment → blend). Uses Web Speech directly (no per-syllable clips exist) at a

@@ -71,9 +71,9 @@ individual words. Harder difficulties **unlock** as words are mastered.
   rhythm loop always ends a card on the *correct* spelling so misspellings don't stick.
 - **Guilt-free momentum.** A daily streak ("glowing vein", with free freezes), a tiny
   daily gem goal, and 3 rotating daily quests keep it inviting — never punitive.
-- **Built for a weak speller.** A "🐢 Sound it out" button dictates a word syllable by
-  syllable (segment → blend); an optional "Easy-read text" mode spaces the letters so
-  similar spellings are easier to tell apart. Reduced-motion is fully respected.
+- **Built for a weak speller.** An optional "Easy-read text" mode spaces the letters so
+  similar spellings are easier to tell apart, and a "Hear it again" replay is always one
+  tap away. Reduced-motion is fully respected.
 
 The full design rationale lives in **`HANDOFF.md`** (§4 especially) — read that before
 changing learning behaviour.

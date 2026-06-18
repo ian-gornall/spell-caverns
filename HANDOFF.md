@@ -920,9 +920,12 @@ orphan `scripts/oneshot.mjs` (still intentionally untracked).
    bursts to reveal the milestone mineral (granted free into the Catalog) + a bonus + the new zone's
    name. An always-positive celebration, never fail-able. Pending until cracked (gated on
    `state.lastMilestoneDepth`), so leaving early never skips it. Scratch QA: `scripts/qa_boss.mjs`.
-4. **"Sound it out" (pedagogy for the weak speller).** `audio.saySlow(word, syllables)` dictates a
-   word syllable-by-syllable then blends it whole (segment→blend, a core spelling strategy) using the
-   dataset's existing `syllables`. A "🐢 Sound it out" button beside "Hear it again" in Play + Craft.
+4. **"Sound it out" — built, then DISABLED on user feedback.** `audio.saySlow(word, syllables)` was
+   wired to a "🐢 Sound it out" button in Play + Craft to dictate a word syllable-by-syllable. On a
+   real iPad the device TTS reads short isolated syllables as LETTER NAMES ("spells it out") instead
+   of blending them, so it confused rather than helped — the user asked to disable it. The buttons are
+   removed; `audio.saySlow` stays dormant (commented in rhythm/puzzle) for a future revisit with real
+   phoneme audio (not Web-Speech fragments).
 5. **"Easy-read text" (accessibility).** Opt-in Settings switch (`ui.applyReadable` → an `<html>.readable`
    class) adds letter-spacing/line-height to the spelling-critical text so similar spellings are easier
    to tell apart (beach/buach/beacch/bach). Scoped tightly; verified no tile overflow at 4-choice/high

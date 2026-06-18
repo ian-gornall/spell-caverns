@@ -90,15 +90,12 @@ export function startRhythm(ctx, params = {}) {
     el('span', { class: 'spk' }, '🔊'),
     'Hear it again',
   );
-  // Sound-it-out: dictate the word syllable by syllable (segment → blend) — a help
-  // for a weak speller who didn't catch the whole word at speed.
-  const soundOutBtn = el(
-    'button',
-    { class: 'hear-again sound-out', onClick: () => audio.saySlow(session[index]?.word, session[index]?.syllables) },
-    el('span', { class: 'spk' }, '🐢'),
-    'Sound it out',
-  );
-  const hearRow = el('div', { class: 'hear-row' }, hearBtn, soundOutBtn);
+  // NOTE: "Sound it out" (syllable-by-syllable dictation, audio.saySlow) is DISABLED
+  // for now — on iOS the device TTS reads short isolated syllables as letter names
+  // ("spells it out") instead of blending them, so it confuses rather than helps
+  // (user feedback 2026-06-18). The audio.saySlow helper stays in place for a future
+  // revisit (e.g. real phoneme audio). Until then the prompt shows only "Hear it again".
+  const hearRow = el('div', { class: 'hear-row' }, hearBtn);
 
   const hdr = header(ctx, { title: 'Mining', onBack: () => ctx.nav('home') });
   const gemCountEl = hdr.querySelector('.gem-count');
