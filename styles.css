@@ -221,7 +221,8 @@ button {
    near-invisible — use a bright near-white instead (QA I3). */
 .menu-card.play .desc,
 .menu-card.craft .desc,
-.menu-card.lab .desc {
+.menu-card.lab .desc,
+.menu-card.repair .desc {
   color: rgba(255, 255, 255, 0.86);
 }
 .menu-card.play {
@@ -238,6 +239,10 @@ button {
 .menu-card.lab {
   background: linear-gradient(150deg, #6a3ca855, #20285a);
   border-color: #9d8df166;
+}
+.menu-card.repair {
+  background: linear-gradient(150deg, #b5791f55, #20285a);
+  border-color: #ffd23f88;
 }
 .menu-card.feedback {
   grid-column: 1 / -1;

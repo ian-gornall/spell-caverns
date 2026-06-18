@@ -25,6 +25,7 @@ import {
   serializeTracker,
   deserializeTracker,
   knownPeak,
+  lapsedWords,
 } from '../src/engine/progress.js';
 
 // ---------------------------------------------------------------- answerScore
@@ -139,6 +140,36 @@ test('seedFromAssessment replays responses into the tracker identically', () => 
   assert.equal(getRecord(t, 'cat').attempts, 2);
   assert.equal(getRecord(t, 'rhythm').attempts, 1);
   assert.ok(mastery(t, 'cat') > mastery(t, 'rhythm'), 'correct word should outrank the missed one');
+});
+
+// ------------------------------------------------ lapsed / "cracked crystals"
+test('a miss marks a word lapsed; it stays lapsed until re-mastered', () => {
+  const t = createTracker();
+  recordAnswer(t, 'rhythm', false, { responseMs: 5000 }); // miss -> cracked
+  recordAnswer(t, 'island', true, { responseMs: 500 }); // clean -> never cracked
+  assert.deepEqual(lapsedWords(t), ['rhythm']);
+  // one lucky correct is NOT enough to repair (mastery still below the bar)
+  recordAnswer(t, 'rhythm', true, { responseMs: 500 });
+  assert.deepEqual(lapsedWords(t), ['rhythm'], 'still cracked after one correct');
+  // several fast corrects pull mastery back to the known bar -> repaired
+  for (let i = 0; i < 4; i++) recordAnswer(t, 'rhythm', true, { responseMs: 400 });
+  assert.deepEqual(lapsedWords(t), [], 'repaired word leaves the cracked list');
+});
+
+test('lapsedWords lists the worst (lowest mastery) first', () => {
+  const t = createTracker();
+  recordAnswer(t, 'aaa', false, { responseMs: 5000 }); // stays at 0 mastery
+  recordAnswer(t, 'bbb', false, { responseMs: 5000 });
+  recordAnswer(t, 'bbb', true, { responseMs: 400 }); // bbb a little better, still cracked
+  assert.deepEqual(lapsedWords(t), ['aaa', 'bbb']);
+  assert.ok(lapsedWords(t, { max: 1 }).length === 1, 'max caps the list');
+});
+
+test('lapsed survives serialization', () => {
+  const t = createTracker();
+  recordAnswer(t, 'gneiss', false, { responseMs: 6000 });
+  const restored = deserializeTracker(JSON.parse(JSON.stringify(serializeTracker(t))));
+  assert.deepEqual(lapsedWords(restored), ['gneiss']);
 });
 
 // ------------------------------------------------ serialize / deserialize (persistence)

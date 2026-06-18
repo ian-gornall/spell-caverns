@@ -4,9 +4,11 @@
 // and surface a friendly "coming soon" toast (the engine for the Lab exists; the
 // screen comes later in the build order). Progress + Settings are wired.
 import { el, header, toast, createIdleGuard, pulse } from '../ui.js';
+import { lapsedWords } from '../engine/progress.js';
 
 export function homeScreen(ctx) {
   const name = ctx.state.profile.name || 'Explorer';
+  const cracked = lapsedWords(ctx.state.tracker).length;
 
   const cards = [
     el(
@@ -16,6 +18,16 @@ export function homeScreen(ctx) {
       el('span', { class: 'lbl' }, 'Play'),
       el('span', { class: 'desc' }, 'Mine gems by spelling the words you hear'),
     ),
+    // Cracked crystals = words the learner missed. Surface a repair path (production
+    // practice of exactly those words) only when there are some to fix.
+    cracked > 0 &&
+      el(
+        'button',
+        { class: 'menu-card repair', onClick: () => ctx.nav('puzzle', { review: true }) },
+        el('span', { class: 'ic' }, '🔧'),
+        el('span', { class: 'lbl' }, `Repair${cracked >= 1 ? ` (${cracked})` : ''}`),
+        el('span', { class: 'desc' }, 'Re-spell the crystals you cracked'),
+      ),
     el(
       'button',
       { class: 'menu-card craft', onClick: () => ctx.nav('puzzle') },

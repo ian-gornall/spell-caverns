@@ -10,10 +10,10 @@
 // speed/combo gems; a build that needed help still earns a small "you crafted it"
 // reward (positive reinforcement, never shaming). UI module — verified with Playwright.
 import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
-import { buildSession } from '../engine/session.js';
+import { buildSession, buildReviewSession } from '../engine/session.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { gradeAnswer, GENTLE_PHRASES } from '../engine/praise.js';
-import { recordAnswer } from '../engine/progress.js';
+import { recordAnswer, lapsedWords } from '../engine/progress.js';
 import { scrambleTray, gradeBuild } from '../engine/puzzle.js';
 
 // Extra red-herring tray letters per difficulty preset (raises the recall load).
@@ -27,19 +27,22 @@ function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export function startPuzzle(ctx) {
+export function startPuzzle(ctx, params = {}) {
   const { state, audio } = ctx;
   const settings = state.settings;
   const seed = (Date.now() >>> 0) || 1;
   const rng = mulberry32(seed);
 
+  // "Repair" = a Craft session built from the learner's CRACKED CRYSTALS (words they
+  // missed), practised in PRODUCTION form — recall, not recognition (transfer
+  // research). Otherwise a normal Craft session from the level builder.
+  const review = !!params.review;
+
   // Puzzle is deliberate/slower than rhythm — keep waves short so it never drags.
   const length = Math.min(settings.length || 10, 6);
-  const session = buildSession(state.tracker, {
-    difficulty: settings.difficulty,
-    length,
-    rng,
-  });
+  const session = review
+    ? buildReviewSession(state.tracker, { length, rng })
+    : buildSession(state.tracker, { difficulty: settings.difficulty, length, rng });
   const extra =
     typeof settings.difficulty === 'string' ? EXTRA_BY_DIFF[settings.difficulty] ?? 1 : 1;
 
@@ -63,7 +66,7 @@ export function startPuzzle(ctx) {
   const clearBtn = el('button', { class: 'btn ghost', onClick: clearAll }, '↺ Clear');
   const controlsEl = el('div', { class: 'puzzle-controls' }, hintBtn, clearBtn);
 
-  const hdr = header(ctx, { title: 'Crafting', onBack: () => ctx.nav('home') });
+  const hdr = header(ctx, { title: review ? 'Repair Crystals' : 'Crafting', onBack: () => ctx.nav('home') });
   const gemCountEl = hdr.querySelector('.gem-count');
 
   const screen = el(
@@ -97,9 +100,12 @@ export function startPuzzle(ctx) {
   let suppressClick = false; // set right after a drag so the trailing click is ignored
 
   if (!session.length) {
-    sentenceEl.textContent = 'No words to craft right now — try a different difficulty in Settings.';
+    sentenceEl.textContent = review
+      ? 'No cracked crystals — every gem is sparkling! ✨'
+      : 'No words to craft right now — try a different difficulty in Settings.';
     slotsEl.style.display = 'none';
     trayEl.style.display = 'none';
+    controlsEl.style.display = 'none';
     return screen;
   }
 
@@ -433,24 +439,28 @@ export function startPuzzle(ctx) {
     ctx.store.recordSessionPlayed();
     ctx.save();
     const grade = earned >= length * 18 ? '🏆' : earned > 0 ? '💎' : '⛏️';
+    const moreToRepair = review && lapsedWords(state.tracker).length > 0;
+    const primary = moreToRepair
+      ? el('button', { class: 'btn primary', onClick: () => ctx.nav('puzzle', { review: true }) }, '🔧 Repair more')
+      : el('button', { class: 'btn primary', onClick: () => ctx.nav('puzzle') }, '🔨 Craft again');
     const reward = el(
       'div',
       { class: 'reward' },
-      el('div', { class: 'big' }, grade),
-      el('h2', {}, 'Crafting complete!'),
+      el('div', { class: 'big' }, review && !moreToRepair ? '✨' : grade),
+      el('h2', {}, review ? (moreToRepair ? 'Crystals repaired!' : 'All crystals sparkling!') : 'Crafting complete!'),
       el('div', { class: 'earned' }, `+${earned} gems crafted`),
       el('p', { style: { color: 'var(--ink-dim)' } }, `Total: 💎 ${state.gems || 0}  ·  Depth ⛏️ ${ctx.depth()}`),
       el(
         'div',
         { class: 'row' },
-        el('button', { class: 'btn primary', onClick: () => ctx.nav('puzzle') }, '🔨 Craft again'),
+        primary,
         el('button', { class: 'btn', onClick: () => ctx.nav('rhythm') }, '⛏️ Mine (fast)'),
         el('button', { class: 'btn', onClick: () => ctx.nav('progress') }, '🗺️ Progress'),
         el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
       ),
     );
     screen.replaceChildren(
-      header(ctx, { title: 'Crafting complete', onBack: () => ctx.nav('home') }),
+      header(ctx, { title: review ? 'Repair complete' : 'Crafting complete', onBack: () => ctx.nav('home') }),
       reward,
     );
     if (earned > 0) audio.sfx('great');
@@ -462,8 +472,8 @@ export function startPuzzle(ctx) {
       pauseMs: 30000,
       onNudge: () => pulse(reward.querySelector('.btn.primary')),
       onTimeout: () => {
-        toast('🔨 Keep crafting!');
-        ctx.nav('puzzle');
+        toast(moreToRepair ? '🔧 Keep repairing!' : '🔨 Keep crafting!');
+        ctx.nav('puzzle', moreToRepair ? { review: true } : {});
       },
     });
     ctx.onLeave(() => rewardGuard.stop());

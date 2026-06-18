@@ -5,13 +5,14 @@
 // friendly bar rather than raw numbers), and a tiny recent-days accuracy strip.
 // Buckets are display-only — never a gate.
 import { el, header } from '../ui.js';
-import { summary } from '../engine/progress.js';
+import { summary, lapsedWords } from '../engine/progress.js';
 
 export function progressScreen(ctx) {
   const sum = summary(ctx.state.tracker);
   const { known, learning, shaky, tracked } = sum.counts;
   const total = Math.max(1, tracked);
   const pct = (n) => `${(n / total) * 100}%`;
+  const cracked = lapsedWords(ctx.state.tracker).length;
 
   const spectrum = el(
     'div',
@@ -83,6 +84,12 @@ export function progressScreen(ctx) {
         el('h3', {}, `Words explored (${tracked})`),
         spectrum,
         legend,
+        cracked > 0 &&
+          el(
+            'button',
+            { class: 'btn', style: { marginTop: '14px', width: '100%' }, onClick: () => ctx.nav('puzzle', { review: true }) },
+            `🔧 Repair ${cracked} cracked crystal${cracked === 1 ? '' : 's'}`,
+          ),
       ),
       el('div', { class: 'panel' }, el('h3', {}, 'Recent digs'), daysRow),
       specimenPanel(ctx),

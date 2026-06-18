@@ -30,6 +30,7 @@ import {
   unlockedDifficulties,
   isUnlocked,
   buildSession,
+  buildReviewSession,
 } from '../src/engine/session.js';
 
 // --- synthetic word pools (only word/rank/tier/pattern matter to the builder) ---
@@ -192,6 +193,31 @@ test('same seed yields the same session', () => {
   const a = buildSession(t, { difficulty: 'hard', length: 12, rng: mulberry32(2026), words });
   const b = buildSession(t, { difficulty: 'hard', length: 12, rng: mulberry32(2026), words });
   assert.deepEqual(a.map((w) => w.word), b.map((w) => w.word));
+});
+
+// ------------------------------------------------------ review ("cracked crystals")
+test('buildReviewSession returns the missed words as full dataset entries', () => {
+  const words = pool([
+    { pattern: 'short-a', tier: 1, count: 5 },
+    { pattern: 'ee-ea', tier: 2, count: 5 },
+  ]);
+  const t = createTracker();
+  recordAnswer(t, words[0].word, false, { responseMs: 5000 }); // crack two
+  recordAnswer(t, words[6].word, false, { responseMs: 5000 });
+  recordAnswer(t, words[2].word, true, { responseMs: 400 }); // a clean one (not cracked)
+  const s = buildReviewSession(t, { length: 6, words, rng: mulberry32(1) });
+  const got = new Set(s.map((w) => w.word));
+  assert.ok(got.has(words[0].word) && got.has(words[6].word), 'includes both cracked words');
+  assert.ok(!got.has(words[2].word), 'a cleanly-answered word is not in the repair set');
+  assert.ok(s.every((w) => typeof w.tier === 'number' && w.pattern), 'full entries, not bare words');
+});
+
+test('buildReviewSession only repairs — never pulls in brand-new words', () => {
+  const words = pool([{ pattern: 'short-a', tier: 1, count: 10 }]);
+  const t = createTracker();
+  recordAnswer(t, words[0].word, false, { responseMs: 5000 }); // one cracked word, nothing else seen
+  const s = buildReviewSession(t, { length: 6, words, rng: mulberry32(2) });
+  assert.deepEqual(s.map((w) => w.word), [words[0].word], 'just the one cracked word, no fresh material');
 });
 
 // ------------------------------------------------------- real-lexicon smoke

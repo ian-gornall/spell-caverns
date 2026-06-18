@@ -19,6 +19,9 @@ import { SPEED_TIERS } from './praise.js';
 const ALPHA = 0.4;
 // confidence = 1 - CONF_BASE^attempts  → ~0.5, 0.75, 0.875, … approaching 1.
 const CONF_BASE = 0.5;
+// The "known" mastery bar: a lapsed word is considered repaired once mastery climbs
+// back to here (also the default `knownAt` for summary's known bucket).
+const KNOWN_AT = 0.85;
 
 // Per-answer score from correctness + speed. Wrong is 0; a correct answer earns
 // partial→full credit by how fast it was, reusing the praise speed tiers so the
@@ -72,7 +75,7 @@ export function recordAnswer(tracker, word, correct, opts = {}) {
   const s = answerScore({ correct, responseMs: opts.responseMs, fast: opts.fast });
   let rec = tracker.records.get(word);
   if (!rec) {
-    rec = { word, attempts: 0, mastery: 0, confidence: 0, lastSeen: 0, recentMs: null };
+    rec = { word, attempts: 0, mastery: 0, confidence: 0, lastSeen: 0, recentMs: null, lapsed: false };
     tracker.records.set(word, rec);
   }
   // First answer seeds mastery outright; later answers blend with recency weight.
@@ -84,7 +87,23 @@ export function recordAnswer(tracker, word, correct, opts = {}) {
     rec.recentMs =
       rec.recentMs == null ? opts.responseMs : rec.recentMs + ALPHA * (opts.responseMs - rec.recentMs);
   }
+  // "Cracked crystal" tracking: a miss marks the word lapsed (it resurfaces for
+  // PRODUCTION review — recall, not recognition — per the transfer research); it
+  // stays lapsed until it's reliably correct again (mastery back to the known bar).
+  if (!correct) rec.lapsed = true;
+  else if (rec.mastery >= KNOWN_AT) rec.lapsed = false;
   return rec;
+}
+
+// Words the learner has MISSED and not yet re-mastered — the "cracked crystals" to
+// repair via production practice. Worst (lowest mastery) first, then most overdue.
+// A SELECTOR over the continuous tracker (not an interval scheduler — HANDOFF §4).
+export function lapsedWords(tracker, { max = 50 } = {}) {
+  return [...tracker.records.values()]
+    .filter((r) => r.lapsed)
+    .sort((a, b) => a.mastery - b.mastery || a.lastSeen - b.lastSeen)
+    .slice(0, max)
+    .map((r) => r.word);
 }
 
 // Observed difficulty (1 - mastery), blended with the cold-start `prior` by

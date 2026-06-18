@@ -15,7 +15,7 @@
 // program-driven (the kid never picks words). Imports nothing browser-specific.
 import { byRank } from './lexicon.js';
 import { shuffle } from './distractors.js';
-import { predictedSuccess, tierToPrior, getRecord, knownPeak } from './progress.js';
+import { predictedSuccess, tierToPrior, getRecord, knownPeak, lapsedWords } from './progress.js';
 
 const MAX_PATTERNS = 5; // patternSpread 1.0 mixes up to this many families
 const REVIEW_FRACTION = 0.3; // share of a session that opens as mixed review
@@ -214,4 +214,29 @@ export function buildSession(tracker, opts = {}) {
   // Mixed review opens the session (spacing); then the main words, ordered by spread.
   const ordered = [...shuffle(reviewWords, rng), ...orderMain(mainWords, patternSpread, rng)];
   return ordered.slice(0, length);
+}
+
+// buildReviewSession(tracker, { length, words, rng }) -> the learner's "cracked
+// crystals" (missed, not-yet-re-mastered words) as dataset entries, worst first,
+// for PRODUCTION practice (Craft mode) — recall, not recognition. Tops up with the
+// shakiest seen words if there aren't enough lapses; never pulls in brand-new words
+// (this is repair, not new material). May return fewer than `length` (that's fine —
+// nothing left to repair). A selector over the continuous tracker, not a scheduler.
+export function buildReviewSession(tracker, opts = {}) {
+  const { length = 6, words = byRank(), rng = Math.random } = opts;
+  const byWord = new Map(words.map((w) => [w.word, w]));
+  const chosen = lapsedWords(tracker, { max: length })
+    .map((w) => byWord.get(w))
+    .filter(Boolean);
+
+  if (chosen.length < length) {
+    const have = new Set(chosen.map((w) => w.word));
+    const extra = [...tracker.records.values()]
+      .filter((r) => !have.has(r.word) && r.attempts > 0 && r.mastery < 0.6)
+      .sort((a, b) => a.mastery - b.mastery || a.lastSeen - b.lastSeen)
+      .map((r) => byWord.get(r.word))
+      .filter(Boolean);
+    chosen.push(...extra.slice(0, length - chosen.length));
+  }
+  return shuffle(chosen, rng);
 }
