@@ -1340,7 +1340,8 @@ select {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
+  overflow-y: auto;
   gap: 26px;
   padding: 24px;
   text-align: center;
@@ -1499,8 +1500,11 @@ select {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 22px;
+  /* center when it fits; otherwise top-align + scroll so the action buttons are
+     never pushed off-screen on short/landscape viewports */
+  justify-content: safe center;
+  overflow-y: auto;
+  gap: 18px;
   padding: 24px;
   text-align: center;
 }

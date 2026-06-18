@@ -22,7 +22,7 @@ try {
   await page.goto(URL, { waitUntil: 'networkidle' });
   // Seed gems so several crystals are affordable (incl. an epic), nothing owned yet.
   await page.evaluate(() => {
-    localStorage.setItem('crystal-spell-caverns:v1', JSON.stringify({ gems: 800, profile: { name: 'Tester' } }));
+    localStorage.setItem('crystal-spell-caverns:v1', JSON.stringify({ gems: 800, profile: { name: 'Tester', onboarded: true } }));
   });
   await page.goto(URL, { waitUntil: 'networkidle' });
   await page.waitForSelector('.menu-card.catalog');
