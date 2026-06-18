@@ -12,7 +12,9 @@
 // home screen and runs online; true offline needs HTTPS. (See README.)
 //
 // Bump VERSION whenever a precached file changes, to retire the old cache.
-const VERSION = 'csc-v5';
+// v6: session/progress spacing, economy rebalance (praise/catalog/state), shared
+// button-centering tokens (styles.css), contextual welcome-back greeting (home).
+const VERSION = 'csc-v6';
 
 const CORE = [
   '/',

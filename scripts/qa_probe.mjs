@@ -32,7 +32,15 @@ for (const vp of VIEWPORTS) {
   page.on('pageerror', (e) => issues.push(`pageerror: ${e.message}`));
 
   await page.goto(URL, { waitUntil: 'networkidle' });
-  await page.evaluate(() => localStorage.clear());
+  // Seed an ONBOARDED save so we land on home (skip first-run onboarding, which was
+  // added after this probe was written — otherwise .menu-card.play never appears).
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem(
+      'crystal-spell-caverns:v1',
+      JSON.stringify({ version: 1, profile: { name: 'QA', onboarded: true } }),
+    );
+  });
   await page.goto(URL, { waitUntil: 'networkidle' });
   await page.screenshot({ path: `${OUT}/${vp.name}-01home.png` });
 

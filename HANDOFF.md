@@ -1039,8 +1039,58 @@ Symptom (user): "daily targets too easily [hit], too easy to buy all the gems."
 - Re-run `npm test` (134) + `npm run smoke` after any change; both must stay green (test-gate hook).
 
 ### Notes for whoever picks this up
-- Engine is pure + tested (`src/engine/`, 134 tests); UI is verified via Playwright (`npm run smoke`)
+- Engine is pure + tested (`src/engine/`, **149 tests**); UI is verified via Playwright (`npm run smoke`)
   + the scratch `qa*.mjs` probes. Logic↔UI split (§4) — keep new logic pure + test-first.
-- `sw.js` VERSION is **csc-v5** — bump it whenever a precached file changes.
+- `sw.js` VERSION is **csc-v6** — bump it whenever a precached file changes.
 - The user wants this to FEEL finished and trustworthy (app-store bar), so favor consistency +
   correctness over new features now. Do NOT add new game surfaces unless asked.
+
+---
+
+## 18. SESSION UPDATE — 2026-06-18 (the §17 backlog — DONE) — READ FIRST
+
+Worked the §17 backlog end-to-end in a QA↔feature loop, plus the user's new pedagogy
+request. `npm test` = **149 green**; `npm run smoke` green; `qa.mjs` (portrait + landscape +
+reduced-height) and the touch-drag probe = 0 console/JS errors. All committed; tree clean.
+
+### Shipped (each its own commit, verified)
+1. **Mastered-word SPACING (the user's headline request) — `progress.js` + `session.js`, +8 tests.**
+   Once a word is essentially known, it is NOT re-served immediately (even after one correct
+   answer): it rests for several sessions and the builder covers other words first, then revisits
+   known words only over a LONG horizon (scales with mastery × confirmation count). Unknown/shaky
+   words stay in frequent rotation. Pure SELECTOR (`serveCooldown`/`isEligible`/`serveOverdue`/
+   `ticksSinceSeen`) over the continuous tracker — NOT a due-date scheduler (honors §4). `selectWords`
+   skips resting words (review + new) with an overdue-first fallback so a session never starves.
+2. **Economy rebalance (§17.D) — `praise.js`/`catalog.js`/`state.js`, +1 cross-module guardrail test.**
+   `BASE_POINTS` 10→6 (flawless wave ~280, was ~465); catalog costs up (160/480/1200/2600 → full
+   24-mineral set ~19k gems = a multi-WEEK goal); `dailyGoalGems` 80→250. Guardrail: whole catalog
+   must cost > 30 flawless waves. Non-punitive; first common still ~1 wave; milestones still gift free.
+3. **Audio volume (§17.C) — new pure `scripts/audio_dsp.mjs` (`normalizePcm`) + `gen_audio.mjs`, +5 tests.**
+   Generated clips are now loudness-normalized (consistent RMS, peak-capped so they never clip) before
+   MP3 encode, so volume no longer jumps between words/voices. Also fixed the gen STUCK-LOOP: a plain
+   429 (no "per day" text) used to wait 30s forever; now fail-fast after 4 fruitless waits (rotate
+   model / stop). NOTE: applies to FUTURE generation only — the 722 existing clips would need
+   regeneration (quota-gated → the user's call; do NOT run unattended — [[approval-before-consuming-limits]]).
+   Runtime `audio.js` already applies `settings.volume` identically to clip + Web-Speech paths.
+4. **UI polish (§17.B, the user's biggest concern) — `styles.css`.** Shared flex-centering tokens on
+   every fixed-height interactive box (`.btn`/`.btn.ghost`, `.btn-icon.back`, `.tile`, `.tray-tile`,
+   `.seg button`) so labels/emoji/wrapped text are centered the SAME way instead of relying on the
+   browser default (fragile across fonts/platforms — the iPad uses Apple emoji + a fallback font).
+   Verified by reading screenshots of home/rhythm/puzzle/lab/settings/feedback/progress/catalog/boss/
+   onboarding across portrait + landscape + reduced-height; touch-drag re-verified.
+5. **Installable + deploy + re-engagement (§17.A) — `streak.js`/`home.js`/`netlify.toml`/`README`, +1 test.**
+   In-app **welcome-back** nudge (no backend): home greets a returning learner by name with how long
+   it's been (`streak.daysSinceLastPlayed`), streak-aware, never guilt-trippy. Verified manifest/icons/
+   meta are correct for Add-to-Home-Screen. Added `netlify.toml` (static, root, no-cache SW/shell) + a
+   README "Deploy as a real app on the iPad" section (root HTTPS hosting, the subpath caveat, install
+   steps). `sw.js` bumped to **csc-v6**.
+
+### ⤷ Still genuinely the USER's call (documented + surfaced, NOT done unilaterally)
+- **Pick an HTTPS host + deploy** (Netlify/Cloudflare/Vercel/GitHub user-page) — needs their account;
+  `netlify.toml` + README make it a 2-minute step. Then Add-to-Home-Screen on the iPad.
+- **True web-push re-engagement** (app closed): iOS 16.4+ installed-PWA only, and needs a push
+  service → a small backend or OneSignal (breaks the no-backend design). Left as a product decision;
+  the in-app welcome-back covers the common case now.
+- **Regenerate the 722 existing audio clips** at normalized loudness (Gemini quota-gated — only with
+  the user's awareness). New clips are already normalized. ⚠️ Still **rotate the Gemini API key**.
+- New scratch QA tools committed: `qa_welcome.mjs`; `qa_probe.mjs` now seeds an onboarded save.
