@@ -10,5 +10,8 @@ scripts/qa/
 audio/
 # Local TTS tooling (Piper binary + voice models) — downloaded, not committed.
 tools/
+# Parked one-shot TTS experiment (single-request whole-dataset gen) — tied to the
+# still-parked audio pipeline (HANDOFF §12); kept locally, not part of the app.
+scripts/oneshot.mjs
 # Secrets — Gemini API key etc. NEVER commit.
 .env

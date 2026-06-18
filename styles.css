@@ -1372,6 +1372,7 @@ select {
 .mascot-char {
   width: 104px;
   height: 104px;
+  background: var(--accent); /* solid fallback if color-mix() (below) is unsupported */
   background: radial-gradient(circle at 36% 30%, #ffffff, var(--accent) 62%, color-mix(in srgb, var(--accent) 60%, #000) 100%);
   clip-path: polygon(50% 0%, 95% 26%, 95% 74%, 50% 100%, 5% 74%, 5% 26%);
   position: relative;
