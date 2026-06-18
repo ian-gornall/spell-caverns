@@ -14,8 +14,14 @@ import { mkdir, rm } from 'node:fs/promises';
 
 const URL = process.env.URL || 'http://localhost:5173';
 const OUT = 'scripts/qa';
+// VIEW=landscape, or W=…/H=… for a custom viewport (e.g. W=820 H=860 to simulate an
+// iPad portrait with Safari's URL + tab bars eating vertical space — reduced-height QA).
 const VIEW =
-  process.env.VIEW === 'landscape' ? { width: 1180, height: 820 } : { width: 820, height: 1180 };
+  process.env.W && process.env.H
+    ? { width: +process.env.W, height: +process.env.H }
+    : process.env.VIEW === 'landscape'
+      ? { width: 1180, height: 820 }
+      : { width: 820, height: 1180 };
 
 await rm(OUT, { recursive: true, force: true });
 await mkdir(OUT, { recursive: true });
