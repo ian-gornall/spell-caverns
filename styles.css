@@ -1747,12 +1747,13 @@ select {
   padding: 0;
 }
 
-/* level select (onboarding "where to start") */
+/* level select (onboarding "where to start" + Settings "starting level") — 2 columns so
+   the 9 levels (one per tier) stay compact and don't push the screen too tall (§21-D). */
 .level-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
-  width: min(460px, 92vw);
+  width: min(520px, 94vw);
 }
 .level-card {
   text-align: left;

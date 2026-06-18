@@ -27,7 +27,9 @@
 // v13: configurable voice speed (dictation rate; a little slow by default).
 // v14: NETWORK-FIRST fetch (online always gets the latest deploy; cache is the offline
 //      fallback). Stops the "deployed but I still see the old app" stale-cache problem.
-const VERSION = 'csc-v14';
+// v15: learning-model rework — mastery=crafting-not-mining, level-led sessions, 9 levels,
+//      Settings level control (§21-A/B/C/D). JS+CSS changed, so retire the old cache.
+const VERSION = 'csc-v15';
 
 const CORE = [
   '/',

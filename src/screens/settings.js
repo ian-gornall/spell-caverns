@@ -10,7 +10,7 @@ import * as sync from '../cloud_sync_backend.js';
 import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
 import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
-import { COLOURS } from './onboarding.js';
+import { COLOURS, levelGrid, LEVELS } from './onboarding.js';
 
 const LENGTHS = [6, 10, 15, 20];
 
@@ -50,6 +50,19 @@ export function settingsScreen(ctx) {
       return btn;
     }),
   );
+
+  // starting level (per-profile) — re-aim where the engine introduces NEW words at any
+  // time (§21-B). Writes state.startLevel; the next session reflects it. Reuses the same
+  // level cards as onboarding. (This sets the FLOOR for new material; the game still
+  // adapts up/down and surfaces craft-missed words for repair.)
+  const curLevel = ctx.state.startLevel || 1;
+  const curLevelLabel = (LEVELS.find((l) => l.tier === curLevel) || {}).label || `Tier ${curLevel}`;
+  const levelGridEl = levelGrid(curLevel, (tier) => {
+    ctx.state.startLevel = tier;
+    ctx.save();
+    const lbl = (LEVELS.find((l) => l.tier === tier) || {}).label || `Tier ${tier}`;
+    toast(`New words now start around “${lbl}”. ⛏️`);
+  });
 
   // session length
   const lenSeg = el(
@@ -525,6 +538,13 @@ export function settingsScreen(ctx) {
         'div',
         { class: 'panel' },
         el('h3', {}, 'Adventure'),
+        el(
+          'div',
+          { class: 'field' },
+          el('label', {}, `Starting level — ${curLevelLabel}`),
+          el('p', { class: 'field-hint' }, 'Where new words begin. The game still adapts up and down and revisits tricky words.'),
+          levelGridEl,
+        ),
         el('div', { class: 'field' }, el('label', {}, 'Difficulty'), diffSeg),
         el('div', { class: 'field' }, el('label', {}, 'Words per dig'), lenSeg),
         el('div', { class: 'field' }, el('label', {}, 'Answer choices'), optSeg),

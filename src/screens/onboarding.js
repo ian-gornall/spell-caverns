@@ -23,13 +23,18 @@ export const COLOURS = [
 // Starting points the parent/learner can pick (the level-select). Each maps to a tier
 // the engine anchors NEW words around; it then adapts up/down from there. We show a few
 // example words per level so a grown-up can gauge difficulty (a starting point, NOT
-// "learning from lists" — user 2026-06-18). Reused by Settings.
+// "learning from lists" — user 2026-06-18). ONE LEVEL PER TIER (1–9) for fine control
+// (§21-D — the old 5 presets were too coarse for ~3,000 words). Reused by Settings (§21-B).
 export const LEVELS = [
-  { label: 'Just starting', age: 'ages 5–6', tier: 1 },
+  { label: 'Just starting', age: 'age 5', tier: 1 },
+  { label: 'Starting out', age: 'age 6', tier: 2 },
   { label: 'Beginner', age: 'ages 6–7', tier: 3 },
+  { label: 'Growing', age: 'ages 7–8', tier: 4 },
   { label: 'Building', age: 'ages 8–9', tier: 5 },
+  { label: 'Getting strong', age: 'ages 9–10', tier: 6 },
   { label: 'Confident', age: 'ages 10–11', tier: 7 },
-  { label: 'Advanced', age: 'ages 12–13', tier: 9 },
+  { label: 'Advanced', age: 'ages 11–12', tier: 8 },
+  { label: 'Expert', age: 'ages 12–13', tier: 9 },
 ];
 
 // A few short, common example words from a tier (for the level cards).
@@ -39,6 +44,32 @@ export function exampleWords(tier, n = 3) {
     .sort((a, b) => a.rank - b.rank)
     .slice(0, n)
     .map((w) => w.word);
+}
+
+// The shared level-select grid: a card per LEVEL showing label/age/example words, with
+// `selectedTier` highlighted. `onSelect(tier)` fires on tap (the card highlight is handled
+// here). Used by BOTH onboarding (first run) and Settings (re-aim any time) — §21-B.
+export function levelGrid(selectedTier, onSelect) {
+  return el(
+    'div',
+    { class: 'level-grid' },
+    ...LEVELS.map((lv) =>
+      el(
+        'button',
+        {
+          class: 'level-card' + (lv.tier === selectedTier ? ' on' : ''),
+          onClick: (e) => {
+            [...e.currentTarget.parentNode.children].forEach((n) => n.classList.remove('on'));
+            e.currentTarget.classList.add('on');
+            onSelect(lv.tier);
+          },
+        },
+        el('div', { class: 'level-label' }, lv.label),
+        el('div', { class: 'level-age' }, lv.age),
+        el('div', { class: 'level-examples' }, exampleWords(lv.tier).join(' · ')),
+      ),
+    ),
+  );
 }
 
 export function onboardingScreen(ctx) {
@@ -111,26 +142,9 @@ export function onboardingScreen(ctx) {
   // --- step 4: where to start (level select) -------------------------------
   function chooseLevel() {
     const line = "Where should we start digging? Pick the words that look about right — I'll figure out the rest from there.";
-    const cards = el(
-      'div',
-      { class: 'level-grid' },
-      ...LEVELS.map((lv) =>
-        el(
-          'button',
-          {
-            class: 'level-card' + (lv.tier === chosenLevel ? ' on' : ''),
-            onClick: (e) => {
-              chosenLevel = lv.tier;
-              [...e.currentTarget.parentNode.children].forEach((n) => n.classList.remove('on'));
-              e.currentTarget.classList.add('on');
-            },
-          },
-          el('div', { class: 'level-label' }, lv.label),
-          el('div', { class: 'level-age' }, lv.age),
-          el('div', { class: 'level-examples' }, exampleWords(lv.tier).join(' · ')),
-        ),
-      ),
-    );
+    const cards = levelGrid(chosenLevel, (tier) => {
+      chosenLevel = tier;
+    });
     body.replaceChildren(
       mascot('Where should we start?'),
       el('p', { class: 'field-hint', style: { maxWidth: '460px' } }, "Pick the words that look about right — the game finds the ones you don't know yet and adjusts."),
