@@ -6,6 +6,7 @@
 import { el, header, toast, createIdleGuard, pulse } from '../ui.js';
 import { lapsedWords } from '../engine/progress.js';
 import { streakIsLive } from '../engine/streak.js';
+import { dailyQuests, questProgress } from '../engine/quests.js';
 
 export function homeScreen(ctx) {
   const name = ctx.state.profile.name || 'Explorer';
@@ -19,6 +20,11 @@ export function homeScreen(ctx) {
   const gemsToday = ctx.store.gemsToday();
   const goalMet = gemsToday >= goal;
   const goalPct = Math.min(100, Math.round((gemsToday / goal) * 100));
+  // Daily quests summary (full list lives on Progress).
+  const quests = dailyQuests(today);
+  const questsDone = quests.filter((q) => questProgress(q, ctx.store.dayStats()).done).length;
+  const geodeReady = questsDone === quests.length && !ctx.store.geodeOpenedToday();
+
   const streakStrip = el(
     'div',
     { class: 'home-streak' },
@@ -28,6 +34,11 @@ export function homeScreen(ctx) {
       streak.count > 0 &&
         el('div', { class: 'streak-chip' + (live ? ' lit' : '') }, `🔥 ${streak.count}-day streak`),
       streak.freezes > 0 && el('div', { class: 'streak-chip lantern' }, `🏮 ×${streak.freezes}`),
+      el(
+        'button',
+        { class: 'streak-chip quest-chip' + (geodeReady ? ' lit' : ''), onClick: () => ctx.nav('progress') },
+        geodeReady ? '🎁 Geode ready!' : `🎯 Quests ${questsDone}/${quests.length}`,
+      ),
     ),
     el(
       'div',

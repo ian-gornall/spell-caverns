@@ -309,6 +309,7 @@ export function startRhythm(ctx) {
 
     if (correct) {
       combo = streak;
+      ctx.store.recordCombo(combo); // best combo today (daily quest)
       earned += verdict.points;
       ctx.store.addGems(verdict.points);
       audio.sfx(verdict.isCombo ? 'combo' : verdict.tier);

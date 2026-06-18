@@ -237,6 +237,68 @@ button {
   color: var(--ink-dim);
   font-weight: 700;
 }
+.quest-chip {
+  font-family: inherit;
+  cursor: pointer;
+}
+.quest-chip.lit {
+  color: var(--gold);
+  border-color: rgba(255, 210, 63, 0.5);
+  box-shadow: 0 0 18px -4px var(--gold);
+  animation: pop 0.6s ease;
+}
+
+/* daily quest rows (Progress screen) */
+.quest {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.quest + .quest {
+  border-top: 1px solid var(--panel-border);
+}
+.quest-ic {
+  font-size: 1.6rem;
+  width: 1.8rem;
+  text-align: center;
+}
+.quest-body {
+  flex: 1;
+  min-width: 0;
+}
+.quest-text {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+}
+.quest.done .quest-text {
+  color: var(--emerald);
+}
+.quest-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.quest-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--emerald), var(--cyan));
+  transition: width 0.4s ease;
+}
+.quest-count {
+  font-weight: 800;
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+.quest-note {
+  color: var(--ink-dim);
+  text-align: center;
+  margin: 10px 0 0;
+  font-weight: 700;
+}
 .home-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

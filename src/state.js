@@ -109,6 +109,40 @@ export function gemsToday() {
   return state.stats.byDay[day]?.gems || 0;
 }
 
+const todayKey = () => new Date().toISOString().slice(0, 10);
+// Get-or-create today's stat bucket (for mutators that count daily activity).
+function dayBucket() {
+  const k = todayKey();
+  return state.stats.byDay[k] || (state.stats.byDay[k] = { answers: 0, correct: 0 });
+}
+
+// Best combo reached today (drives the combo daily quest). Called by the play modes.
+export function recordCombo(n) {
+  const d = dayBucket();
+  d.bestCombo = Math.max(d.bestCombo || 0, n || 0);
+}
+
+// Today's snapshot for the daily quests (read-only; never creates a bucket).
+export function dayStats() {
+  const d = state.stats.byDay[todayKey()] || {};
+  return {
+    gems: d.gems || 0,
+    correct: d.correct || 0,
+    digs: d.digs || 0,
+    bestCombo: d.bestCombo || 0,
+    specimens: d.specimens || 0,
+  };
+}
+
+// The daily geode (all-quests-complete bonus) opens once per day.
+export function geodeOpenedToday() {
+  return !!(state.stats.byDay[todayKey()] || {}).geodeOpened;
+}
+export function markGeodeOpened() {
+  dayBucket().geodeOpened = true;
+  save();
+}
+
 // Tally one answer into lifetime + per-day stats (for the progress chart).
 export function recordAnswerStat(correct) {
   state.stats.answers += 1;
@@ -121,9 +155,9 @@ export function recordAnswerStat(correct) {
 
 export function recordSessionPlayed() {
   state.stats.sessionsPlayed += 1;
+  dayBucket().digs = (dayBucket().digs || 0) + 1; // digs today (daily quest)
   // A completed dig counts as "played today" — extends the daily streak.
-  const today = new Date().toISOString().slice(0, 10);
-  state.streak = updateStreak(state.streak, today);
+  state.streak = updateStreak(state.streak, todayKey());
 }
 
 export function addFeedback(entry) {
@@ -137,6 +171,7 @@ export function addSpecimen(spec) {
   if (!Array.isArray(state.specimens)) state.specimens = [];
   state.specimens.push({ ts: Date.now(), ...spec });
   if (state.specimens.length > 60) state.specimens = state.specimens.slice(-60);
+  dayBucket().specimens = (dayBucket().specimens || 0) + 1; // specimens today (daily quest)
   save();
   return state.specimens;
 }

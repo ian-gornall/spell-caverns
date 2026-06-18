@@ -358,6 +358,7 @@ export function startPuzzle(ctx, params = {}) {
 
     if (firstTry) {
       combo += 1;
+      ctx.store.recordCombo(combo); // best combo today (daily quest)
       const verdict = gradeAnswer({ correct: true, responseMs, combo, rng });
       earned += verdict.points;
       ctx.store.addGems(verdict.points);

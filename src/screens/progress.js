@@ -4,8 +4,10 @@
 // gems, cavern depth, the mastery SPECTRUM (progress.summary buckets, as a
 // friendly bar rather than raw numbers), and a tiny recent-days accuracy strip.
 // Buckets are display-only — never a gate.
-import { el, header } from '../ui.js';
+import { el, header, toast, burst } from '../ui.js';
 import { summary, lapsedWords } from '../engine/progress.js';
+import { mulberry32 } from '../engine/distractors.js';
+import { dailyQuests, questProgress, allQuestsDone, openGeode } from '../engine/quests.js';
 
 export function progressScreen(ctx) {
   const sum = summary(ctx.state.tracker);
@@ -85,6 +87,7 @@ export function progressScreen(ctx) {
           ),
         ),
       ),
+      questsPanel(ctx),
       el(
         'div',
         { class: 'panel' },
@@ -102,6 +105,50 @@ export function progressScreen(ctx) {
       specimenPanel(ctx),
     ),
   );
+}
+
+// Daily Cavern Quests + the all-complete "geode" bonus (research Tier 1 #4 / #8).
+function questsPanel(ctx) {
+  const today = new Date().toISOString().slice(0, 10);
+  const quests = dailyQuests(today);
+  const day = ctx.store.dayStats();
+  const allDone = allQuestsDone(quests, day);
+  const opened = ctx.store.geodeOpenedToday();
+
+  const openGeodeNow = () => {
+    const reward = openGeode(mulberry32((Date.now() >>> 0) || 1));
+    ctx.store.addGems(reward.gems);
+    ctx.store.markGeodeOpened();
+    ctx.save();
+    burst(window.innerWidth / 2, window.innerHeight / 2, reward.rare ? '#FFD23F' : '#36F1CD', reward.rare ? 32 : 18);
+    toast(`🎁 Geode cracked: +${reward.gems} gems${reward.rare ? ' ✨ RARE crystal!' : ''}!`);
+    ctx.nav('progress'); // re-render (geode now opened)
+  };
+
+  const rows = quests.map((q) => {
+    const pr = questProgress(q, day);
+    return el(
+      'div',
+      { class: 'quest' + (pr.done ? ' done' : '') },
+      el('span', { class: 'quest-ic' }, pr.done ? '✅' : q.icon),
+      el(
+        'div',
+        { class: 'quest-body' },
+        el('div', { class: 'quest-text' }, q.text),
+        el('div', { class: 'quest-bar' }, el('div', { class: 'quest-fill', style: { width: pr.pct + '%' } })),
+      ),
+      el('span', { class: 'quest-count' }, `${pr.have}/${pr.target}`),
+    );
+  });
+
+  const footer =
+    allDone && !opened
+      ? el('button', { class: 'btn primary', style: { width: '100%', marginTop: '6px' }, onClick: openGeodeNow }, '🎁 Open your geode!')
+      : opened
+        ? el('p', { class: 'quest-note' }, '🎉 Geode opened — fresh quests tomorrow!')
+        : el('p', { class: 'quest-note' }, 'Finish all three to crack open a geode! 🎁');
+
+  return el('div', { class: 'panel' }, el('h3', {}, 'Daily quests'), ...rows, footer);
 }
 
 // The Specimen Collection — crystals invented, spelled & drawn in the Crystal Lab.
