@@ -12,6 +12,7 @@ import { settingsScreen } from './screens/settings.js';
 import { progressScreen } from './screens/progress.js';
 import { startRhythm } from './modes/rhythm.js';
 import { startPuzzle } from './modes/puzzle.js';
+import { startLab } from './modes/lab.js';
 import { summary } from './engine/progress.js';
 
 const routes = {
@@ -20,6 +21,7 @@ const routes = {
   progress: progressScreen,
   rhythm: startRhythm,
   puzzle: startPuzzle,
+  lab: startLab,
 };
 
 let ctx = null;

@@ -3,7 +3,7 @@
 // Play (rhythm mode) is the live path; Crystal Lab + Feedback are stubbed for now
 // and surface a friendly "coming soon" toast (the engine for the Lab exists; the
 // screen comes later in the build order). Progress + Settings are wired.
-import { el, header, toast } from '../ui.js';
+import { el, header } from '../ui.js';
 
 export function homeScreen(ctx) {
   const name = ctx.state.profile.name || 'Explorer';
@@ -25,10 +25,10 @@ export function homeScreen(ctx) {
     ),
     el(
       'button',
-      { class: 'menu-card soon', onClick: () => toast('Crystal Lab coming soon! 🔮') },
+      { class: 'menu-card lab', onClick: () => ctx.nav('lab') },
       el('span', { class: 'ic' }, '🔮'),
       el('span', { class: 'lbl' }, 'Crystal Lab'),
-      el('span', { class: 'desc' }, 'Invent crystals'),
+      el('span', { class: 'desc' }, 'Invent, spell & draw crystals'),
     ),
     el(
       'button',

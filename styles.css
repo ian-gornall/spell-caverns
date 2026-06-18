@@ -228,6 +228,10 @@ button {
   background: linear-gradient(150deg, #1f6f4a55, #20285a);
   border-color: #2bb67366;
 }
+.menu-card.lab {
+  background: linear-gradient(150deg, #6a3ca855, #20285a);
+  border-color: #9d8df166;
+}
 .menu-card.soon {
   opacity: 0.7;
 }
@@ -523,6 +527,121 @@ button {
   padding: 10px 22px;
   font-size: 1.05rem;
   opacity: 0.92;
+}
+
+/* ------- crystal lab ------- */
+.lab-body {
+  display: flex;
+  flex-direction: column;
+}
+.lab-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+  padding: 8px 4px 16px;
+}
+.lab-emoji {
+  font-size: 3.4rem;
+}
+.lab-title {
+  font-size: clamp(1.5rem, 5.5vw, 2.2rem);
+  margin: 0;
+}
+.lab-lead {
+  color: var(--ink-dim);
+  font-size: 1.1rem;
+  max-width: 24ch;
+  margin: 0;
+}
+.hear-again.big {
+  font-size: 1.5rem;
+  padding: 18px 32px;
+}
+.lab-go {
+  min-width: 240px;
+}
+.lab-canvas {
+  border-radius: var(--radius);
+  border: 2px solid var(--panel-border);
+  background: #0b1233;
+  touch-action: none;
+  box-shadow: 0 12px 32px -12px #000a;
+  cursor: crosshair;
+}
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+.swatch {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  transition: transform 0.1s ease, border-color 0.12s ease;
+}
+.swatch.on {
+  border-color: #fff;
+  transform: scale(1.12);
+}
+.swatch:active {
+  transform: scale(0.92);
+}
+.lab-name {
+  text-align: center;
+  font-weight: 800;
+  max-width: 320px;
+}
+.lab-word {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--cyan);
+}
+.lab-preview {
+  width: 180px;
+  height: 180px;
+  border-radius: 18px;
+  border: 2px solid var(--panel-border);
+  object-fit: cover;
+}
+
+/* specimen collection (progress screen) */
+.specimen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 12px;
+}
+.specimen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.specimen-img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 14px;
+  border: 1px solid var(--panel-border);
+  object-fit: cover;
+  background: #0b1233;
+}
+.specimen-img.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+.specimen-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  word-break: break-word;
 }
 
 /* ------- wave-complete reward ------- */

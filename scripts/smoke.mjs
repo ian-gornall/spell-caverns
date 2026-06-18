@@ -184,6 +184,41 @@ try {
   );
   ok('puzzle advanced to the next word after a correct build');
 
+  // --- crystal lab: invent -> spell -> draw -> name -> save a specimen ---
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await page.click('.menu-card.lab');
+  await page.waitForSelector('.lab .lab-go', { timeout: 5000 });
+  ok('crystal lab opened (invent step)');
+  await page.click('.lab .lab-go'); // "Let's build it!"
+  await page.waitForSelector('.lab .slot', { timeout: 5000 });
+  const lcur = await page.evaluate(() => window.__labCurrent || null);
+  if (!lcur || !lcur.word) fail('lab test hook (window.__labCurrent) missing');
+  ok(`lab invented a nonsense word to spell: "${lcur.word}"`);
+  for (const ch of lcur.word) {
+    await page.locator(`.lab .tray-tile:not(.used)[data-letter="${ch}"]`).first().click({ timeout: 2000 });
+    await page.waitForTimeout(60);
+  }
+  await page.waitForSelector('.lab-canvas', { timeout: 5000 });
+  ok('spelled the crystal -> advanced to the draw step (canvas shown)');
+  // draw a stroke (exercises the canvas pointer handlers)
+  const cbox = await page.locator('.lab-canvas').boundingBox();
+  await page.mouse.move(cbox.x + cbox.width * 0.3, cbox.y + cbox.height * 0.3);
+  await page.mouse.down();
+  await page.mouse.move(cbox.x + cbox.width * 0.7, cbox.y + cbox.height * 0.65, { steps: 8 });
+  await page.mouse.up();
+  await page.click('.lab .lab-go'); // "Name it"
+  await page.waitForSelector('.lab-name', { timeout: 4000 });
+  await page.fill('.lab-name', 'Smoky Quartzite');
+  await page.click('.lab .lab-go'); // "Save specimen"
+  await page.waitForSelector('.lab-saved', { timeout: 4000 });
+  const savedCount = await page.evaluate(() => (window.__labCurrent && window.__labCurrent.specimens) || 0);
+  if (savedCount >= 1) ok(`specimen saved to the collection (count ${savedCount})`);
+  else fail(`specimen was not saved (count ${savedCount})`);
+  // and it shows up in Progress
+  await page.click('.lab-saved .btn:nth-child(2)'); // "My collection" -> progress
+  await page.waitForSelector('.specimen-grid .specimen', { timeout: 4000 });
+  ok('specimen appears in the Progress collection');
+
   await page.screenshot({ path: 'scripts/smoke.png', fullPage: false });
   ok('screenshot saved to scripts/smoke.png');
 } catch (e) {

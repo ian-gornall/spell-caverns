@@ -37,6 +37,7 @@ function defaults() {
     settings: defaultSettings(),
     gems: 0,
     feedback: [], // { ts, rating, difficulty, note }
+    specimens: [], // Crystal Lab collection: { ts, word, name, image(dataURL) }
     stats: { sessionsPlayed: 0, answers: 0, correct: 0, byDay: {} },
     tracker: createTracker(), // LIVE tracker (Map); serialized on save()
   };
@@ -110,6 +111,16 @@ export function recordSessionPlayed() {
 export function addFeedback(entry) {
   state.feedback.push({ ts: Date.now(), ...entry });
   save();
+}
+
+// Save a Crystal Lab specimen (with its drawing). Capped so the PNG dataURLs can't
+// grow localStorage without bound — oldest specimens drop off first.
+export function addSpecimen(spec) {
+  if (!Array.isArray(state.specimens)) state.specimens = [];
+  state.specimens.push({ ts: Date.now(), ...spec });
+  if (state.specimens.length > 60) state.specimens = state.specimens.slice(-60);
+  save();
+  return state.specimens;
 }
 
 // --- export / import (data leaves/returns via a JSON file) -------------------

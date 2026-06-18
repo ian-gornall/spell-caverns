@@ -85,6 +85,38 @@ export function progressScreen(ctx) {
         legend,
       ),
       el('div', { class: 'panel' }, el('h3', {}, 'Recent digs'), daysRow),
+      specimenPanel(ctx),
     ),
+  );
+}
+
+// The Specimen Collection — crystals invented, spelled & drawn in the Crystal Lab.
+function specimenPanel(ctx) {
+  const specimens = (ctx.state.specimens || []).slice().reverse(); // newest first
+  const body = specimens.length
+    ? el(
+        'div',
+        { class: 'specimen-grid' },
+        ...specimens.map((s) =>
+          el(
+            'div',
+            { class: 'specimen' },
+            s.image
+              ? el('img', { class: 'specimen-img', src: s.image, alt: s.name, loading: 'lazy' })
+              : el('div', { class: 'specimen-img placeholder' }, '🔮'),
+            el('div', { class: 'specimen-name' }, s.name || s.word),
+          ),
+        ),
+      )
+    : el(
+        'p',
+        { style: { color: 'var(--ink-dim)' } },
+        'Visit the 🔮 Crystal Lab to invent, spell and draw your first crystal!',
+      );
+  return el(
+    'div',
+    { class: 'panel' },
+    el('h3', {}, `Specimen collection (${specimens.length})`),
+    body,
   );
 }
