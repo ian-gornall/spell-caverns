@@ -1174,3 +1174,42 @@ run** (that triggers verifiable-parental-consent + policy + retention). Built in
   `netlify login` → `netlify link` → `netlify deploy --build --prod`. Verify with
   `/api/sync?code=TESTCODE` → `null` (not 404). Pure reconcile + picture-code are unit-tested; Netlify
   Blobs can't be exercised headlessly here.
+
+---
+
+## 20. SESSION UPDATE — 2026-06-18 (deployed + algorithm rework + MULTI-PROFILE) — READ FIRST
+
+Deploy is WORKING (Netlify CD from github.com/ian-gornall/spell-caverns; the build-killer
+was a bad `@netlify/blobs` version, now `^10.7.9`). Live at https://spell-caverns.netlify.app/.
+This session shipped a run of user-requested changes (all committed + pushed; **172 tests
+green**, smoke green; sw **csc-v12**):
+
+- **Mastery = accuracy, not speed.** `answerScore` → 1 for any correct answer, 0 for wrong.
+  Speed still drives gems/praise (praise.js), not what's "learned".
+- **Target-words algorithm.** progress.js tracks recent attempts/word; `isTarget` (missed in
+  last 3) + `targetWords`; `TARGET_CAP=10`. session.js `buildSession` is TARGET-FIRST: leads
+  with the ~10 words the learner is actually missing, introduces NEW words progressively from
+  the start tier until ~10 targets exist, PARKS correct-first-time words (spaced confirmation
+  later), revisits known words only after targets are handled. New `startTier` option.
+- **Grown-up family password** (not the picture password — reverted): a normal password set
+  once per device, saved locally; entering the same one elsewhere auto-joins (server merges).
+- **Clickable daily quests** → launch the matching activity (specimen→Lab, else→Play).
+- **MULTI-PROFILE (the big one).** schema-2 CONTAINER (engine/profiles.js, tested): family
+  (syncCode/consent/parentPassword) + per-profile (name/colour/**startLevel**/kidLock/snapshots
+  + game state + tracker). "Who's playing?" picker every launch when >1 explorer; per-profile
+  LEVEL-SELECT in onboarding (shows example words; sets the engine's start tier); Settings
+  Players panel (switch/add/reset). Sync is family-level (container-aware reconcile). Legacy
+  saves migrate to one profile. Auto dated snapshots per profile for parent rollback.
+
+### ▶️ DEFERRED (chosen design, data + helpers EXIST, UI not built yet)
+- **Kid-lock UI**: profiles can carry a `kidLock` code (the "who's playing" screen already
+  challenges it) but there's no screen to SET one yet. (User wanted the picture password to
+  return HERE as the optional per-kid lock.)
+- **Parent-password zone**: `parentPassword` + `setParentPassword` exist; no UI to set it or
+  to GATE sync changes / rollback behind it yet.
+- **Snapshot rollback UI**: snapshots auto-captured (state.js) + `listSnapshots`/`rollback`
+  exist; no parent screen to pick a restore point yet. (User chose "periodic snapshots +
+  rollback" for revert.)
+- Per-profile sync currently reconciles the whole family container by SUMMED progress
+  (coarse). The tested `profiles.mergeFamily` (true per-profile merge) is ready to wire into
+  the serverless function for divergent-multi-device correctness.
