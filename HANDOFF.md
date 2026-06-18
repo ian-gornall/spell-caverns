@@ -933,6 +933,20 @@ orphan `scripts/oneshot.mjs` (still intentionally untracked).
 6. **Home grid rebalanced** for the new Catalog card: Repair is now a full-width amber CTA banner and
    Feedback a half-card paired with Settings, so the 2-col grid is always balanced.
 
+### Plus polish (post-feature, each committed + QA'd)
+- **Catalog detail card**: tapping a crystal opens a preview (big art + rarity + real-world fact) with
+  a DELIBERATE "Unlock for 💎N" button — no accidental spends, nicer for admiring owned crystals.
+- **Settings → "Test voice"** button + auto-preview on voice change, so a parent can audition the
+  device voices and pick the clearest (the best quota-free lever on dictation quality).
+- **Rhythm wave-reward now links to 🔨 Craft** (puzzle already linked back to Mine) — the two modes
+  now alternate easily both ways (requirement #9).
+- **Review-driven correctness fixes**: returning users are auto-onboarded (old saves lacked
+  `profile.onboarded`); milestone crystals grant ONE PER LEVEL so a multi-depth jump skips none;
+  Geo has a solid-colour fallback if `color-mix()` is unsupported.
+- **QA tooling**: `qa.mjs` takes a custom viewport (`W=/H=`) for reduced-height sweeps; new probes
+  `qa_catalog.mjs` / `qa_boss.mjs` / `qa_readable.mjs` / `qa_settings_you.mjs` / `qa_progress_full.mjs`
+  / `qa_home_repair.mjs`. Verified portrait + landscape + reduced-height, 0 console/JS errors.
+
 New engine modules precached by `sw.js` (VERSION **csc-v5**): `catalog.js`, `narrative.js`,
 `screens/catalog.js`, `screens/onboarding.js`, `screens/boss.js`. New scratch QA tools committed:
 `qa_catalog.mjs`, `qa_boss.mjs`, `qa_readable.mjs`, `qa_home_repair.mjs`.

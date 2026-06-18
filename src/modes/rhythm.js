@@ -419,6 +419,9 @@ export function startRhythm(ctx, params = {}) {
       );
     }
     buttons.push(
+      // Cross-link to Craft so the two modes ALTERNATE easily (requirement #9: fast
+      // choices broken up by slower build puzzles). Puzzle already links back to Mine.
+      el('button', { class: 'btn', onClick: () => ctx.nav('puzzle') }, '🔨 Craft (build)'),
       el('button', { class: 'btn', onClick: () => ctx.nav('progress') }, '🗺️ Progress'),
       el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
     );
