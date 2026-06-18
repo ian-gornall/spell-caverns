@@ -302,6 +302,63 @@ button {
   margin: 10px 0 0;
   font-weight: 700;
 }
+
+/* cavern map — a visual depth path ("you are here" + next-level goal) */
+.cavern-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.depth-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.depth-dot {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+}
+.depth-node.done .depth-dot {
+  background: linear-gradient(160deg, #1f6f4a, #2bb673);
+  border-color: var(--emerald);
+}
+.depth-node.current .depth-dot {
+  background: linear-gradient(150deg, #5f7bff, #8a5cff);
+  border-color: var(--gold);
+  box-shadow: 0 0 18px -2px var(--gold);
+  transform: scale(1.12);
+}
+.depth-node.locked {
+  opacity: 0.5;
+}
+.depth-cap {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--ink-dim);
+}
+.depth-node.current .depth-cap {
+  color: var(--gold);
+}
+.depth-link {
+  flex: 1;
+  height: 4px;
+  margin: 0 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  align-self: flex-start;
+  margin-top: 21px;
+}
+.depth-link.lit {
+  background: var(--emerald);
+}
 .home-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

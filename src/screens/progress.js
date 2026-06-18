@@ -89,6 +89,7 @@ export function progressScreen(ctx) {
           ),
         ),
       ),
+      cavernMap(ctx),
       questsPanel(ctx),
       el(
         'div',
@@ -133,6 +134,45 @@ export function progressScreen(ctx) {
       ),
       el('div', { class: 'panel' }, el('h3', {}, 'Recent digs'), daysRow),
       specimenPanel(ctx),
+    ),
+  );
+}
+
+// Cavern map — a visual "how deep have I dug" path with "you are here" + the next
+// level as the goal (research Tier 2 #7: goal-gradient + endowed progress). Depth =
+// 1 + floor(known/8), matching app.js, so it's never at a bare zero (Depth 1 is lit).
+const WORDS_PER_DEPTH = 8;
+function cavernMap(ctx) {
+  const known = summary(ctx.state.tracker).counts.known;
+  const depth = ctx.depth();
+  const intoNext = known % WORDS_PER_DEPTH;
+  const toNext = WORDS_PER_DEPTH - intoNext;
+  const start = Math.max(1, depth - 2);
+
+  const nodes = [];
+  for (let d = start; d <= depth + 2; d++) {
+    const state = d < depth ? 'done' : d === depth ? 'current' : 'locked';
+    if (d > start) nodes.push(el('div', { class: 'depth-link' + (d <= depth ? ' lit' : '') }));
+    nodes.push(
+      el(
+        'div',
+        { class: 'depth-node ' + state },
+        el('div', { class: 'depth-dot' }, d === depth ? '⛏️' : d < depth ? '💎' : '🔒'),
+        el('div', { class: 'depth-cap' }, `D${d}`),
+      ),
+    );
+  }
+
+  return el(
+    'div',
+    { class: 'panel' },
+    el('h3', {}, 'Cavern map'),
+    el('div', { class: 'cavern-strip' }, ...nodes),
+    el('div', { class: 'goal-bar', style: { marginTop: '12px' } }, el('div', { class: 'goal-fill', style: { width: `${(intoNext / WORDS_PER_DEPTH) * 100}%` } })),
+    el(
+      'p',
+      { class: 'quest-note', style: { marginTop: '8px' } },
+      `You're at Depth ${depth} — master ${toNext} more word${toNext === 1 ? '' : 's'} to reach Depth ${depth + 1}!`,
     ),
   );
 }
