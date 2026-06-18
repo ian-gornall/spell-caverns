@@ -15,14 +15,17 @@
 // facet count, so `crystalSvg` returns a pure SVG string the screen injects. Imports
 // nothing browser-specific; covered by node --test.
 
-// Rarity ladder: ascending gem cost + a glow accent for the card. Costs are tuned
-// against the wave economy (~100-380 gems/wave) so commons land in a session or two
-// and legendaries are a multi-session goal — a real sink, never a grind wall.
+// Rarity ladder: ascending gem cost + a glow accent for the card. Costs tuned UP
+// (§17.D economy rebalance — the user found it too easy to buy everything) against the
+// rebalanced wave economy (~120-280 gems/wave, see praise.js BASE_POINTS): the first
+// common still lands in about a wave, but the FULL 24-mineral collection is now a
+// multi-WEEK goal (~19k gems total) — a real sink, never a grind wall (cheaper tiers
+// stay reachable, and depth milestones still grant some crystals free).
 export const RARITIES = {
-  common: { label: 'Common', cost: 100, glow: '#7AE582' },
-  rare: { label: 'Rare', cost: 280, glow: '#36F1CD' },
-  epic: { label: 'Epic', cost: 650, glow: '#9D8DF1' },
-  legendary: { label: 'Legendary', cost: 1400, glow: '#FFD23F' },
+  common: { label: 'Common', cost: 160, glow: '#7AE582' },
+  rare: { label: 'Rare', cost: 480, glow: '#36F1CD' },
+  epic: { label: 'Epic', cost: 1200, glow: '#9D8DF1' },
+  legendary: { label: 'Legendary', cost: 2600, glow: '#FFD23F' },
 };
 
 // The roster — real minerals, ordered by rarity then a sensible reveal order. `hue`

@@ -30,7 +30,7 @@ function defaultSettings() {
     voiceName: null, // chosen speechSynthesis voice (null = auto-pick English)
     themeColor: '#7AA2FF',
     readableText: false, // accessibility: extra letter-spacing/line-height on spelling text
-    dailyGoalGems: 80, // a TINY daily target (one short dig clears it) — momentum, not pressure
+    dailyGoalGems: 250, // a light daily target — ~1.5-2 digs (§17.D: 80 was cleared by one short wave); momentum, not pressure
   };
 }
 

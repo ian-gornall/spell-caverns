@@ -11,8 +11,13 @@
 // the returned {label, color} to the big on-screen flash; audio speaks {phrase}.
 // Randomness (phrase choice) is injected so replays/tests are reproducible.
 
-// Gem value of a base (combo-0, slowest-tier-equivalent) correct answer.
-export const BASE_POINTS = 10;
+// Gem value of a base (combo-0, slowest-tier-equivalent) correct answer. Tuned DOWN
+// from 10 (§17.D economy rebalance): per-answer gems were generous enough that the
+// Catalog could be bought out in a day. A flawless 10-word wave now mines ~280 gems
+// (speed ×3 and the combo ramp still make a great run feel like a big haul), and the
+// Catalog (raised in step) becomes a multi-week collection. Never punitive — just
+// slower-earned. See catalog.js RARITIES + state.js dailyGoalGems.
+export const BASE_POINTS = 6;
 
 // How a streak boosts points: each consecutive correct adds COMBO_STEP to the
 // multiplier, capped at COMBO_CAP so a long run can't run away with the score.

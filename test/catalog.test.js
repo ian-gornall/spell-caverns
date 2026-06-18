@@ -17,6 +17,7 @@ import {
   purchaseResult,
   crystalSvg,
 } from '../src/engine/catalog.js';
+import { projectedScore } from '../src/engine/praise.js';
 
 test('species table is well-formed (unique ids, valid rarity, hue range, fact)', () => {
   assert.ok(CRYSTAL_SPECIES.length >= 20, 'a worthwhile collection');
@@ -116,6 +117,21 @@ test('purchaseResult is a pure, validated transaction', () => {
   const ghost = purchaseResult([], 99999, 'ghost');
   assert.equal(ghost.ok, false);
   assert.equal(ghost.reason, 'unknown');
+});
+
+test('collecting the WHOLE catalog is a multi-week goal, not a single day (§17.D)', () => {
+  // The user's complaint: "too easy to buy all the gems." Guardrail: the full catalog
+  // must cost far more than even a flawless day of play, so it can't be bought out
+  // quickly. Denominator = a perfect 10-word wave (every answer fastest tier, a rising
+  // combo) — about the best a learner can earn in one wave.
+  const perfectWave = Array.from({ length: 10 }, (_, i) =>
+    projectedScore({ responseMs: 0, combo: i + 1 }).points,
+  ).reduce((a, b) => a + b, 0);
+  const totalCatalog = CRYSTAL_SPECIES.reduce((sum, s) => sum + cost(s), 0);
+  assert.ok(
+    totalCatalog > perfectWave * 30,
+    `catalog (${totalCatalog}) should cost > 30 flawless waves (${perfectWave} each) — got ${(totalCatalog / perfectWave).toFixed(1)}x`,
+  );
 });
 
 test('crystalSvg renders a deterministic, hue-tinted faceted gem', () => {
