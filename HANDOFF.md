@@ -681,15 +681,21 @@ left untracked).
    SW. ⚠️ SW only runs in a **secure context** (HTTPS/localhost) — over plain LAN http it
    installs + runs online but won't cache offline (documented in README).
 6. **`README.md`** — run-on-iPad guide, mode overview, test/dev, offline notes.
-7. **Engagement / on-task system (user-requested).** A child can't blank out or draw
-   forever. `ui.js` `createIdleGuard` (document-wide pointer/key watchdog) + `pauseOverlay`:
-   ~12s of no interaction → a gentle nudge (re-dictate + pulse the tiles); ~26s → a
-   BLOCKING "Paused — tap to resume" overlay. Wired into rhythm (pause freezes the speed
-   clock; resume = fresh read window, no penalty), puzzle, and the lab (per-step). The
-   open-ended LAB DRAW step also has a hard time cap — soft "wrap up" nudge at 25s,
-   auto-advance to naming at 50s. `app.js` gained a **`ctx.onLeave(fn)`** teardown registry
-   (run on nav) so guards/timers never leak. Thresholds scale via `window.__idleTest` for
-   the smoke test. (Constants: `ui.js` nudge/pause defaults; `lab.js` `DRAW_SOFT_MS`/`DRAW_HARD_MS`.)
+7. **Engagement / on-task system (user-requested).** A child can't blank out, draw
+   forever, OR stall on a menu. `ui.js` `createIdleGuard` (document-wide pointer/key
+   watchdog) + `pauseOverlay` + `pulse(node)`. Two escalation shapes:
+   - **Active play** (rhythm/puzzle/lab spell+draw): ~12s no interaction → nudge
+     (re-dictate + pulse tiles); ~26s → a BLOCKING "Paused — tap to resume" overlay.
+     Rhythm pause freezes the speed clock; resume = fresh read window (no penalty).
+   - **Menus** (home + the rhythm/puzzle wave-reward screens): pass `onTimeout` instead of
+     the overlay → ~9s highlight the primary/Play card, ~18s **auto-start the next thing**
+     ("let's go" → into a wave). Home gates auto-launch on `ctx.audio.isPrimed()` because
+     iOS needs a tap to unlock audio — before the first tap it just keeps highlighting Play.
+   - The open-ended LAB DRAW step also has a hard time cap — soft nudge at 25s, auto-advance
+     to naming at 50s. `app.js` gained a **`ctx.onLeave(fn)`** teardown registry (run on nav)
+     so guards/timers never leak. Thresholds scale via `window.__idleTest` for the smoke test.
+     (Constants: `ui.js` defaults; per-screen overrides in home/rhythm/puzzle; `lab.js`
+     `DRAW_SOFT_MS`/`DRAW_HARD_MS`.)
 
 **Home menu is now:** Play · Craft · Crystal Lab · Progress · Settings · Feedback (all
 live). Modes cross-link from their reward/finish screens.
