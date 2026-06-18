@@ -26,9 +26,21 @@ import * as lame from '@breezystack/lamejs';
 import { WORDS } from '../data/words.js';
 import { SPEED_TIERS, COMBO_PHRASES, GENTLE_PHRASES } from '../src/engine/praise.js';
 
+// Load GEMINI_API_KEY from the git-ignored .env if it isn't already in the env.
+if (!process.env.GEMINI_API_KEY) {
+  try {
+    const envText = fs.readFileSync(new URL('../.env', import.meta.url), 'utf8');
+    for (const line of envText.split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^['"]|['"]$/g, '');
+    }
+  } catch {
+    /* no .env — rely on the real environment */
+  }
+}
 const API_KEY = process.env.GEMINI_API_KEY;
 if (!API_KEY) {
-  console.error('Set GEMINI_API_KEY in the environment.');
+  console.error('Set GEMINI_API_KEY in the environment or in a .env file.');
   process.exit(1);
 }
 const MODELS = (
