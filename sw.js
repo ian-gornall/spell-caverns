@@ -12,7 +12,7 @@
 // home screen and runs online; true offline needs HTTPS. (See README.)
 //
 // Bump VERSION whenever a precached file changes, to retire the old cache.
-const VERSION = 'csc-v2';
+const VERSION = 'csc-v3';
 
 const CORE = [
   '/',
@@ -43,6 +43,7 @@ const CORE = [
   '/src/screens/feedback.js',
   '/data/words.js',
   '/data/patterns.js',
+  '/data/nonsense_blocklist.js',
 ];
 
 self.addEventListener('install', (event) => {

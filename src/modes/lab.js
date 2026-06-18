@@ -18,6 +18,11 @@ import { mulberry32 } from '../engine/distractors.js';
 import { makeNonsenseWord, NONSENSE_PATTERNS } from '../engine/nonsense.js';
 import { scrambleTray, gradeBuild } from '../engine/puzzle.js';
 import { getWord, REAL_WORDS } from '../engine/lexicon.js';
+import { NONSENSE_BLOCKLIST } from '../../data/nonsense_blocklist.js';
+
+// Exclude BOTH the game dataset AND the precomputed real-word blocklist, so the Lab
+// never invents a real English word as a "nonsense crystal" (QA I2).
+const NOT_NONSENSE = new Set([...REAL_WORDS, ...NONSENSE_BLOCKLIST]);
 
 // Gems for crafting a whole specimen (positive reinforcement; mastery is untouched).
 const SPECIMEN_GEMS = 15;
@@ -106,13 +111,13 @@ export function startLab(ctx) {
     const avoid = new Set(state.specimens.map((s) => s.word));
     word = '';
     for (const p of candidatePatterns(state.tracker)) {
-      const w = makeNonsenseWord(p, { realWords: REAL_WORDS, rng, avoid });
+      const w = makeNonsenseWord(p, { realWords: NOT_NONSENSE, rng, avoid });
       if (w) {
         word = w;
         break;
       }
     }
-    if (!word) word = makeNonsenseWord('short-a', { realWords: REAL_WORDS, rng }) || 'zib';
+    if (!word) word = makeNonsenseWord('short-a', { realWords: NOT_NONSENSE, rng }) || 'zib';
     imageData = null;
     setHook('invent');
 

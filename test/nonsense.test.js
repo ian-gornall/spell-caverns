@@ -18,6 +18,7 @@ import {
   NONSENSE_PATTERNS,
   makeNonsenseWord,
 } from '../src/engine/nonsense.js';
+import { NONSENSE_BLOCKLIST } from '../data/nonsense_blocklist.js';
 
 const hasVowel = (w) => /[aeiouy]/.test(w);
 
@@ -101,6 +102,29 @@ test('same seed + pattern + avoid is reproducible', () => {
   const a = makeNonsenseWord('ee-ea', { realWords: REAL_WORDS, rng: mulberry32(2026) });
   const b = makeNonsenseWord('ee-ea', { realWords: REAL_WORDS, rng: mulberry32(2026) });
   assert.equal(a, b);
+});
+
+// ----------------------------------------------- real-word blocklist (QA I2)
+// The generator can only ever produce onset+rime combos; some of those combos are
+// real English words outside the game dataset (e.g. "leaf", "greet") and used to
+// leak into the Lab as fake "crystals". data/nonsense_blocklist.js is the precomputed
+// set of those real-word combos; excluding it (plus REAL_WORDS) keeps the Lab clean.
+test('blocklist is well-formed and includes the documented leaks', () => {
+  assert.ok(Array.isArray(NONSENSE_BLOCKLIST) && NONSENSE_BLOCKLIST.length > 100);
+  for (const w of NONSENSE_BLOCKLIST) assert.ok(/^[a-z]{2,}$/.test(w), `bad blocklist entry ${w}`);
+  assert.ok(NONSENSE_BLOCKLIST.includes('leaf'), 'should block the real word "leaf"');
+  assert.ok(NONSENSE_BLOCKLIST.includes('greet'), 'should block the real word "greet"');
+});
+
+test('with the blocklist excluded, no pattern ever emits a real/blocked word', () => {
+  const exclude = new Set([...REAL_WORDS, ...NONSENSE_BLOCKLIST]);
+  for (const id of NONSENSE_PATTERNS) {
+    for (let seed = 1; seed <= 12; seed++) {
+      const w = makeNonsenseWord(id, { realWords: exclude, rng: mulberry32(seed * 13 + 1) });
+      assert.ok(w, `pattern ${id} (seed ${seed}) produced nothing after blocklist`);
+      assert.ok(!exclude.has(w), `pattern ${id}: emitted blocked/real word ${w}`);
+    }
+  }
 });
 
 // --------------------------------------------------------------- unsupported

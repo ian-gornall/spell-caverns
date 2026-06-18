@@ -1,6 +1,8 @@
 node_modules/
 data/_raw_freq.txt
 scripts/smoke.png
+# Cached dictionary download for scripts/build_nonsense_blocklist.mjs (regenerable).
+words_alpha_tmp.txt
 # Exploratory QA screenshots (scratch artifacts from scripts/qa.mjs — regenerable).
 scripts/qa/
 # Generated TTS audio — regenerable via scripts/gen_audio.mjs (committed once the
