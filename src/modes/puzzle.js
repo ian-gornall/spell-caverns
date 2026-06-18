@@ -451,7 +451,8 @@ export function startPuzzle(ctx, params = {}) {
     ctx.save();
     // Broke through to a new cavern depth? Hand off to the GEODE BOSS milestone.
     if (ctx.depth() > ctx.store.lastMilestoneDepth()) {
-      return ctx.nav('boss', { depth: ctx.depth(), earned, from: 'puzzle' });
+      // crack the NEXT uncracked level (one per boss, even if depth jumped several)
+      return ctx.nav('boss', { depth: ctx.store.lastMilestoneDepth() + 1, earned, from: 'puzzle' });
     }
     const grade = earned >= length * 18 ? '🏆' : earned > 0 ? '💎' : '⛏️';
     const moreToRepair = review && lapsedWords(state.tracker).length > 0;

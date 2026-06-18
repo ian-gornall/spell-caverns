@@ -67,7 +67,10 @@ export function load() {
     state = {
       ...base,
       ...data,
-      profile: { ...base.profile, ...(data.profile || {}) },
+      // A save already exists → this is a RETURNING user; treat them as onboarded so an
+      // upgrade never forces them through first-run onboarding (the field predates it).
+      // A brand-new user has no save at all and falls through to the `else` (onboarding).
+      profile: { ...base.profile, onboarded: true, ...(data.profile || {}) },
       settings: { ...base.settings, ...(data.settings || {}) },
       stats: { ...base.stats, ...(data.stats || {}) },
       streak: { ...base.streak, ...(data.streak || {}) },
@@ -219,14 +222,18 @@ export function purchaseCrystal(id) {
   return res;
 }
 
-// Grant the next un-owned crystal FREE when the learner reaches a NEW cavern depth
-// (endowed-progress milestone gift). Idempotent per depth via catalog.milestoneDepth;
-// returns the granted species (or null if nothing new to give / depth not advanced).
-export function grantMilestoneCrystal(depth) {
+// Grant the next un-owned crystal FREE for the NEXT uncracked depth gate, when the
+// learner's current depth is past it. Advances catalog.milestoneDepth by EXACTLY ONE
+// level per call (not straight to `currentDepth`), so a wave that jumps several depths
+// still yields one boss + crystal per level over subsequent waves — none is skipped
+// (review finding). Returns the granted species (or null if all collected / not past
+// the next gate). Idempotent: re-calling at the same depth past the gate keeps granting
+// one level at a time until milestoneDepth catches up to currentDepth.
+export function grantMilestoneCrystal(currentDepth) {
   const cat = ensureCatalog();
   const last = cat.milestoneDepth || 1;
-  if (!(depth > last)) return null;
-  cat.milestoneDepth = depth;
+  if (!(currentDepth > last)) return null;
+  cat.milestoneDepth = last + 1;
   const species = nextFreeCrystal(cat.owned);
   if (!species) {
     save();

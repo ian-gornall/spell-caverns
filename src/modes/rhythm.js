@@ -389,7 +389,8 @@ export function startRhythm(ctx, params = {}) {
     // (named-zone celebration + the free catalog mineral). Pending until cracked, so
     // leaving early never skips it. Otherwise show the normal wave reward.
     if (ctx.depth() > ctx.store.lastMilestoneDepth()) {
-      return ctx.nav('boss', { depth: ctx.depth(), earned, from: 'rhythm' });
+      // crack the NEXT uncracked level (one per boss, even if depth jumped several)
+      return ctx.nav('boss', { depth: ctx.store.lastMilestoneDepth() + 1, earned, from: 'rhythm' });
     }
 
     const cur = typeof settings.difficulty === 'string' ? settings.difficulty : null;
