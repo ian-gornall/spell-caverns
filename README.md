@@ -40,8 +40,9 @@ step, runs in iPad Safari.
 |---|---|
 | ⛏️ **Play** (rhythm) | The core fast loop. Hear a word, see its sentence with the word blanked, **tap the correct spelling** from the tiles before the gem meter runs down. Speed + combos = bigger gem hauls and louder praise. This is *recognition*. |
 | 🔨 **Craft** (puzzle) | The *production / recall* counterweight. Hear a word and **build it** from scrambled crystal letters (tap or drag). Gentle: keep the letters that fit, 💡 hint always available. |
+| 🔧 **Repair** (cracked crystals) | Appears once the learner has *missed* words. Re-spells exactly those words in **production** form (recall, not multiple choice) until they're reliably correct again — the strongest path to real, unaided spelling. |
 | 🔮 **Crystal Lab** | Creativity. The lab invents a **brand-new nonsense word** in a pattern the learner has been practising, they spell it, then **draw its made-up meaning** on a canvas and name it. Saved to the **Specimen Collection**. |
-| 🗺️ **Progress** | The same view for kid and grown-up: gems, cavern depth, a mastery spectrum, recent-days accuracy, and the specimen collection. |
+| 🗺️ **Progress** | The same view for kid and grown-up: gems, cavern depth, mastery spectrum, **daily quests**, **personal bests**, the **tricky words** still to repair, recent-days accuracy, and the specimen collection. |
 | ⚙️ **Settings** | The two kid levers — **difficulty** (harder levels *unlock* with mastery, never forced) and **session length** — plus voice, volume, name, and data export/import/reset. |
 | 💬 **Feedback** | A built-in rating + note so the learner (or parent) can tell us what to change; data can be exported as a JSON file. |
 
@@ -59,6 +60,11 @@ individual words. Harder difficulties **unlock** as words are mastered.
   the learner's actual responses take over as confidence builds.
 - **Blocked → interleaved.** Sessions open with a shuffled review, then group new
   words by spelling pattern and mix in confusable families as difficulty rises.
+- **Missed words come back, in production form.** A wrong answer "cracks" a crystal;
+  it resurfaces in the 🔧 Repair (build-the-word) flow until re-mastered — and the
+  rhythm loop always ends a card on the *correct* spelling so misspellings don't stick.
+- **Guilt-free momentum.** A daily streak ("glowing vein", with free freezes), a tiny
+  daily gem goal, and 3 rotating daily quests keep it inviting — never punitive.
 
 The full design rationale lives in **`HANDOFF.md`** (§4 especially) — read that before
 changing learning behaviour.
@@ -79,7 +85,7 @@ changing learning behaviour.
 ## Develop / test
 
 ```
-npm test            # the pure decision engine (Node's test runner) — 101 tests
+npm test            # the pure decision engine (Node's test runner) — 123 tests
 npm start           # serve the app for the iPad / a browser
 node scripts/smoke.mjs   # Playwright UI smoke test of every mode (server must be up)
 ```

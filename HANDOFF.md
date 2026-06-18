@@ -4,10 +4,12 @@
 > no prior context) can pick up and build the game without re-deriving any decisions.
 > Project root: `C:\Users\iango\spell`  •  Last updated 2026-06-18. The game is
 > **FEATURE-COMPLETE and installable** (all three play surfaces + feedback + progress +
-> settings + PWA). `npm test` green (**101 tests**); smoke-tested with Playwright across
-> every mode; an exploratory pass found **no console/JS errors**.
-> **⭐ NEXT: the user wants an EXPLORATORY VISUAL QA-AND-FIX pass — read §14 FIRST** (method +
-> `scripts/qa.mjs` harness + seeded issue backlog I1–I8). §13 = what's built; §12 = audio status.
+> settings + PWA). `npm test` green (**123 tests**); smoke-tested with Playwright across
+> every mode; exploratory visual QA found **no console/JS errors**.
+> **✅ The §14 QA-AND-FIX pass is DONE (I1–I8 + extras) AND a round of research-backed
+> improvements is DONE — read §15 FIRST** (it summarizes everything this session changed and
+> lists the deferred nice-to-haves). §14 = the QA method + (now-resolved) backlog. §13 = what's
+> built; §12 = audio status (still the only parked build item).
 
 ---
 
@@ -807,3 +809,77 @@ Screenshot refs `NN-*` are from that pass; re-run `qa.mjs` to regenerate them.
 ⚠️ The list above is a SEED, not the full set — the user expects the next session to keep
 exploring and **find the issues they didn't bother to enumerate.** Re-run `qa.mjs`, read the
 screenshots, and add what you see.
+
+---
+
+## 15. SESSION UPDATE — 2026-06-18 (QA fixes DONE + research-backed improvements DONE) — READ FIRST
+
+This session ran the §14 exploratory visual QA-and-fix loop to completion, then added a round
+of engagement/pedagogy improvements grounded in research on successful kids' literacy apps
+(Duolingo, Khan Kids, Teach Your Monster, Reading Eggs, Prodigy + learning-science studies).
+`npm test` = **123 green**; `npm run smoke` green; `node scripts/qa.mjs` = 0 console/JS errors.
+Every change verified by reading screenshots across iPad-10.2 / mini / landscape / reduced-height.
+All committed; tree clean except the long-standing orphan `scripts/oneshot.mjs`.
+
+### QA fixes (the §14 backlog I1–I8, all resolved + extras found)
+- **I1 (layout) ✅** — rhythm + puzzle no longer leave a big mid-screen void with tiles jammed at
+  the bottom. Play content lives in a `.play-body` (auto-margin-centered prompt zone + answer
+  zone); tile/slot/tray sizes + gaps scale with viewport height so two tile rows fit and stay off
+  the edge on short screens. (`styles.css`, `rhythm.js`, `puzzle.js`.)
+- **I2 (Lab real words) ✅** — the nonsense generator leaked real words (e.g. "leaf", "greet").
+  `scripts/build_nonsense_blocklist.mjs` precomputes the real-word combos → `data/nonsense_blocklist.js`
+  (3,608 words, 26 KB); the Lab excludes `REAL_WORDS ∪ blocklist`. Regenerate if `nonsense.js`
+  ONSETS/RIMES change. (`lab.js`, +2 tests.)
+- **I3 / I8 (polish) ✅** — Play/Craft/Lab/Repair card descriptions brightened (were near-invisible
+  on the gradients); puzzle Hint/Clear hide once a word is solved.
+- **I4 (engagement timings) ✅, decision made** — every idle threshold lengthened so it never
+  interrupts a weak speller mid-think: active play nudge 12→15s, blocking overlay 26→45s; menus
+  nudge 9→13s, auto-continue 18→30-32s; Lab draw cap 25/50→40/90s. The user's "menus pull kids in"
+  auto-launch was KEPT (deliberate feature) but softened. **If the user still finds auto-launch
+  intrusive, it can be turned into nudge-only — surfaced for their call but not blocked on.**
+- **I5 (economy/progression) ✅** — added a monotonic `knownPeak` to the tracker so difficulty
+  UNLOCKS never regress when recency-weighted mastery dips (they used to re-lock — felt broken).
+  Gem economy left as-is (big "haul" numbers motivate; no spend sink yet to scale against).
+- **I7 (content) ✅** — all 13 sentences that used a morphological variant or were off-topic now
+  contain their exact word (overrides in `data/supplement.js`, re-merged). 0/2919 sentences now
+  lack their word.
+- **I6 (touch) ✅** — touch-DRAG verified in puzzle/lab via Playwright `hasTouch` + real pointer
+  drags across all viewports (`scripts/qa_probe.mjs`).
+- **Extra (found in exploration):** long answer words (e.g. "communications") clipped in rhythm
+  tiles → font max lowered + `overflow-wrap` so they shrink/wrap, never clip (`scripts/qa_probe2.mjs`).
+
+### Research-backed improvements (the "improve as much as possible" pass)
+A full research brief lives in **`RESEARCH.md`** (prioritized, cited). Implemented (highest value first):
+1. **Anti-imprinting (rhythm)** — seeing misspellings imprints them (Roediger & Marsh 2005); after
+   every answer the wrong tiles fade and the CORRECT spelling is spotlighted, so the last thing on
+   screen is always right. (`rhythm.js`, `styles.css`.)
+2. **"Cracked crystals" — production review of missed words (the big pedagogy win).** A miss tags a
+   word `lapsed`; it resurfaces for PRODUCTION practice (build-the-word, recall ≠ recognition) until
+   re-mastered. A SELECTOR over the continuous tracker, NOT a new SRS scheduler (honors §4).
+   Surfaced as an amber **Repair (N)** home card + a Craft `{review:true}` mode + a Progress count.
+   (`progress.js` `lapsedWords`, `session.js` `buildReviewSession`, `puzzle.js`, `home.js`, +5 tests.)
+3. **Guilt-free daily streak + tiny daily gem goal** — `engine/streak.js` (free "lantern" freezes
+   earned at milestones, lapse just resets to 1, "best N" remembered). Home streak chip + goal bar;
+   Progress streak stat. (+8 tests.)
+4. **Daily Cavern Quests + variable geode** — `engine/quests.js`: 3 date-seeded quests over
+   today's tracked actions; finishing all opens a variable, always-positive geode once/day. Home
+   "🎯 N/3 → 🎁 ready" chip; Progress quest panel + open button. (+5 tests.)
+5. **Personal bests + tricky-words list + haptics** — best combo / best haul records (Progress);
+   the ACTUAL cracked words shown as chips (shared kid+parent transparency, §4); subtle
+   `navigator.vibrate()` paired with SFX (no-op on iPad Safari, adds feel on Android/Chromebook).
+   `prefers-reduced-motion` was already fully handled.
+
+New pure engine modules are precached by `sw.js` (VERSION **csc-v4**) for offline. New scratch QA
+tools committed: `scripts/qa_probe.mjs` (viewports/overflow/touch-drag), `scripts/qa_probe2.mjs`
+(long-word overflow). `words_alpha_tmp.txt` (the dictionary cache for the blocklist build) is
+git-ignored.
+
+### ▶️ Deferred nice-to-haves (from RESEARCH.md — not blockers; pick up anytime)
+- **Cavern-map progress PATH** with "you are here" + endowed progress (goal-gradient motivation).
+- **Crystal Catalog** (extend specimens with milestone-unlocked, procedurally-recoloured crystals).
+- **First-run onboarding** (name + miner-colour choice + a guaranteed-win first wave + a named
+  mascot speaking the welcome). NOTE: would change the boot flow — update `scripts/smoke.mjs` too.
+- **Light narrative spine + a "Geode Boss"** milestone wave at each depth gate.
+- **Process/effort praise** phrases ("you worked it out") mixed into `praise.js` pools (growth mindset).
+- **Audio generation** is still the only parked BUILD item (Gemini free-tier daily cap — §12; device
+  voice covers it meanwhile). ⚠️ Still remind the user to **rotate the Gemini API key** pasted in chat.
