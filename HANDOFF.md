@@ -1094,3 +1094,27 @@ reduced-height) and the touch-drag probe = 0 console/JS errors. All committed; t
 - **Regenerate the 722 existing audio clips** at normalized loudness (Gemini quota-gated — only with
   the user's awareness). New clips are already normalized. ⚠️ Still **rotate the Gemini API key**.
 - New scratch QA tools committed: `qa_welcome.mjs`; `qa_probe.mjs` now seeds an onboarded save.
+
+### 18b. Cloud sync / backup (COPPA-compliant) — added same session at the user's request
+The user asked "where's the data?" → it's all on-device `localStorage`, no backend (deliberate,
+§4). They then asked for **cloud sync/backup that stays COPPA-compliant**. The compliant design:
+**keep data parent-controlled; do NOT become an operator that stores a child's data on a server we
+run** (that triggers verifiable-parental-consent + policy + retention). Built in two phases (161 tests):
+- **Phase 1 (committed): parent-controlled backup + data minimization.** `engine/backup.js` (+6
+  tests: versioned envelope adds only marker/version/timestamp, validated restore, reminder logic);
+  `state.js` enveloped export / validated import / `lastBackupAt`/`markBackedUp`/`hasProgress`;
+  Settings **"Parents & privacy"** panel (Back up → a file the parent keeps in their OWN iCloud/Drive,
+  Restore, Delete all data, "backed up N days ago" + due highlight); name reframed as a NICKNAME (no
+  real PII); **`PRIVACY.md`**.
+- **Phase 2 (committed): optional Google-Drive auto-sync, still parent-owned.** `engine/cloudsync.js`
+  (+6 tests: `progressScore`+`reconcile`, never-lose-progress push/pull); `src/cloud_drive.js` (Google
+  Identity Services token flow — client ID only, no secret/backend — + Drive `appDataFolder` read/
+  write + `syncNow`; GIS lazy-loaded only on connect; token in memory only); Settings "Auto-sync to
+  your Google Drive" subsection (paste Client ID → Connect/Sync now/Disconnect, dormant until set up);
+  `app.js` best-effort SILENT pull on open when connected; **`CLOUD_SYNC_SETUP.md`**. `settings.cloudClientId`
+  + `cloudConnected`. `sw.js` → **csc-v8**.
+- ⚠️ **NOT yet verified live:** the Google OAuth/Drive round-trip needs the parent's Client ID + a
+  deployed HTTPS origin (can't be exercised headlessly). The PURE reconcile core IS unit-tested. To
+  verify: deploy, follow `CLOUD_SYNC_SETUP.md`, Connect, then check a second device pulls the progress.
+  Conflict rule = more learning-history wins (ties → newer); concurrent heavy OFFLINE play on two
+  devices is the only lossy case (rare for one kid; manual file backup is the safety net).
