@@ -1149,6 +1149,16 @@ run** (that triggers verifiable-parental-consent + policy + retention). Built in
   is being replaced by **Git-connected Netlify** (push repo to GitHub → connect on Netlify → it builds
   functions + bundles `@netlify/blobs`). `netlify.toml` gains a `[functions]` dir + a `/api/sync`
   redirect. (Static `deploy/` bundle stays usable for the no-backend fallback.)
-- STATUS: building this now — function (`netlify/functions/sync`), client adapter, "Family sync" UX
-  (create/enter code, sync now, delete from cloud, consent gate), boot wiring, docs. Live verification
-  needs the Git-connected deploy with Blobs enabled (can't run Netlify Blobs locally without `netlify dev`).
+- STATUS: **BUILT + committed (162 tests green, sw csc-v9).** `netlify/functions/sync.mjs` (v2,
+  `/api/sync`, GET/PUT/DELETE, Blobs, server-merge via `reconcile`); `src/cloud_sync_backend.js`
+  (generate/pull/push/remove/syncNow); Settings "Family sync" (consent gate + create/enter code + sync
+  now + stop + delete cloud); `app.js` pull-on-open + push-on-hidden; `engine/cloudsync.js`
+  code helpers (+tests). Drive path removed (`src/cloud_drive.js` deleted). `netlify.toml` build+functions,
+  `package.json` adds `@netlify/blobs`. Docs: `CLOUD_SYNC_SETUP.md` rewritten, `PRIVACY.md` operator
+  section now ACTIVE, README updated.
+- ⏳ **LIVE VERIFICATION PENDING (needs the user):** the function only ships from a **Git-connected
+  Netlify build** (drag-and-drop can't bundle it) — the current `spell-caverns.netlify.app` was a
+  manual deploy, so it has NO `/api/sync` yet. To finish: push the repo to GitHub → link it on Netlify
+  → deploy → hit `/api/sync?code=TESTCODE` (should return `null`, not 404) → then create a family code
+  on one device and enter it on another. Steps in `CLOUD_SYNC_SETUP.md`. The pure reconcile + code
+  helpers are unit-tested; Netlify Blobs can't be exercised headlessly here.
