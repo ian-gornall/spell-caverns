@@ -2,11 +2,13 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with
 > no prior context) can pick up and build the game without re-deriving any decisions.
-> Project root: `C:\Users\iango\spell`  •  Last updated 2026-06-17 after the **PWA shell +
-> rhythm mode were built & verified, and the Gemini-TTS audio pipeline was added**.
-> `npm test` green (**92 tests**); UI smoke-tested with Playwright (`npm run smoke`).
-> The game is PLAYABLE with real voice on common words. **⚠️ Read §12 (SESSION UPDATE) —
-> it has the latest audio status, the next-turn focus (build more game), and an open bug.**
+> Project root: `C:\Users\iango\spell`  •  Last updated 2026-06-17 after **ALL THREE play
+> surfaces (rhythm + puzzle + Crystal Lab), the feedback screen, the PWA packaging
+> (manifest/service-worker/icons), the README, and the praise-clipping bug fix were built
+> & verified**. `npm test` green (**101 tests**); UI smoke-tested with Playwright
+> (`npm run smoke`) across every mode. **The game is FEATURE-COMPLETE and installable.**
+> **⚠️ Read §13 (latest SESSION UPDATE) for the current state; audio generation is the
+> only parked item.** §12 has the audio status + history.
 
 ---
 
@@ -42,18 +44,13 @@
     errors). Run: `npm start` then `node scripts/smoke.mjs`. (Playwright installed `--no-save`, so
     `package.json` stays dependency-free; `node_modules` + `scripts/smoke.png` are git-ignored.)
 
-**→ NEXT ACTION — keep going down the build order (§6 steps 4, 6, 7, 8, 9):**
-1. **`src/screens/assess.js`** is OPTIONAL as a separate screen: per §4 the pre-assessment is just
-   the COLD-START of rhythm mode (empty tracker → only `easy` unlocked → low-tier words from one
-   family), so the first wave already *is* the assessment. A dedicated gamified intro that runs
-   `engine/assessment.js` explicitly (no "test" framing) is a nice-to-have, not a blocker.
-2. **`src/modes/puzzle.js`** (drag-OR-tap unscramble / fill-the-blank; UX.md §0 forgiving drag) then
-   **`src/modes/lab.js`** (nonsense-word spell + draw-a-meaning canvas → Specimen Collection).
-   Alternate rhythm ↔ puzzle within a session.
-3. **`src/screens/feedback.js`** (emoji rating + too-hard/just-right/too-easy + note; `state.addFeedback`
-   already exists). Flesh out **progress.js** (specimen collection, pattern map).
-4. **PWA packaging**: `manifest.webmanifest` + `sw.js` (offline cache) + home-screen icons; test
-   install on the iPad. Then **README.md**. Final pass.
+**→ NEXT ACTION — the game is now FEATURE-COMPLETE. ⇒ Read §13 (latest session update)
+for exactly what's built and the small/optional items left.** In short: all three play
+surfaces (rhythm/puzzle/lab), feedback, progress (with specimen gallery), settings, and
+the PWA packaging are done and smoke-verified; the praise-clipping bug is fixed. The only
+real parked item is **bulk audio generation** (Gemini free-tier daily cap — §12; the
+device voice covers everything meanwhile; run only with the user's awareness). Remaining
+work is **polish, not new surfaces** — see §13's "What's LEFT".
 
 Build **test-first where it's pure**, keep `npm test` green (the **test gate hook runs `npm test`
 before every `git commit`**), **verify UI changes with `scripts/smoke.mjs`**, and **commit per milestone**.
@@ -647,3 +644,57 @@ Keep `npm test` green, verify UI with `npm run smoke`, commit per milestone.
 - A dev server may be left running on `:5173` (`npm start`). `node_modules`, `audio/`, `tools/`,
   `scripts/smoke.png` are git-ignored. Tooling (`playwright`, `@breezystack/lamejs`) is in
   devDependencies; the shipped app stays zero-runtime-dependency.
+
+---
+
+## 13. SESSION UPDATE — 2026-06-17 (game surfaces complete) — READ THIS FIRST
+
+This session built out the rest of the game. **It is now feature-complete and
+installable.** `npm test` = **101 green**; `npm run smoke` drives every mode in a real
+browser and passes. All committed; tree clean except the orphan experiment
+`scripts/oneshot.mjs` (an untracked one-shot TTS test from the audio work — unrelated,
+left untracked).
+
+**Built + verified this session (each its own commit):**
+1. **`src/modes/puzzle.js` — Craft mode (production / recall).** Hear a word, BUILD it
+   from scrambled letter tiles (tap-to-place + pointer-drag). Answers the §12 pedagogy
+   concern (recognition ≠ recall). Gentle: a wrong full build keeps the letters that fit
+   + returns the rest; 💡 hint always available. Honest mastery — only a clean first try
+   counts as a correct production. Pure core extracted to **`src/engine/puzzle.js`**
+   (`scrambleTray` + `gradeBuild`), test-first in **`test/puzzle.test.js`** (9 tests).
+2. **Praise-clipping bug FIXED** (was the §12 open bug). `audio.speakPraise` now takes an
+   `{onDone}`; rhythm holds the next word's dictation until praise finishes (floor + cap
+   backstop). No more cut-off "Combo x5!".
+3. **`src/modes/lab.js` — Crystal Lab (creativity, requirement #7).** invent (nonsense
+   word in a practised pattern, pattern never named) → spell (unscramble) → DRAW its
+   meaning on a `<canvas>` (palette + erase/clear) → name + SAVE as a specimen. Earns
+   gems; **never touches the mastery tracker** (nonsense words aren't real). Specimens
+   persist (`state.specimens`, capped 60, drawing downscaled to a 220px PNG) and show in
+   **Progress** (new specimen gallery).
+4. **`src/screens/feedback.js` — built-in feedback (requirement #11).** emoji rating +
+   too-easy/just-right/too-hard + note + "export my data". Uses `state.addFeedback`.
+5. **PWA packaging (installable + offline).** `manifest.webmanifest`, `sw.js` (precaches
+   the whole app shell + word data + icons; cache-first; **skips `/audio/`** to avoid
+   ranged-media bugs — falls back to device voice offline), and **`icons/`** (a faceted-
+   crystal SVG rasterized to 192/512 + a 180 apple-touch-icon via
+   `scripts/gen_icons.mjs`, headless-Chromium, no image libs). `index.html` registers the
+   SW. ⚠️ SW only runs in a **secure context** (HTTPS/localhost) — over plain LAN http it
+   installs + runs online but won't cache offline (documented in README).
+6. **`README.md`** — run-on-iPad guide, mode overview, test/dev, offline notes.
+
+**Home menu is now:** Play · Craft · Crystal Lab · Progress · Settings · Feedback (all
+live). Modes cross-link from their reward/finish screens.
+
+### ▶️ What's LEFT (small / optional)
+- **Audio generation is the only real parked item** — still gated by the Gemini free-tier
+  daily cap; the device voice covers everything meanwhile. See §12 for the plan
+  (`npm run gen:audio`, run only with the user's awareness — [[approval-before-consuming-limits]]).
+  ⚠️ Still remind the user to **rotate the Gemini API key** pasted in chat earlier.
+- **Nice-to-haves, not blockers:** within-a-single-session rhythm↔puzzle *alternation*
+  (today they cross-link via buttons, but a session is still one mode); a dedicated
+  gamified assessment intro (cold-start already happens inside rhythm — §0/§4); advanced
+  2-axis custom difficulty screen; the §3 7-sentence content nit; the nonsense real-word
+  exclusion polish (§2). The §12 PEDAGOGY/transference concern is now partly answered by
+  Craft (production), but real-world transfer testing is still unbuilt.
+- If picking up: the engine + all UI are done and verified — focus is polish + audio, not
+  new surfaces. Keep `npm test` green, verify UI with `npm run smoke`, commit per milestone.
