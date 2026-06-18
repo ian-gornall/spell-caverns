@@ -452,9 +452,14 @@ button {
      bottom edge) on short screens — landscape / pre-install Safari chrome (QA I1) */
   min-height: clamp(84px, 11vh, 116px);
   border-radius: var(--radius);
-  font-size: clamp(1.6rem, 6vw, 2.4rem);
+  /* smaller max + wrap-anywhere so a long word (e.g. "communications", 14ch) shrinks
+     and breaks instead of clipping at the tile edge — there's no space to wrap on */
+  font-size: clamp(1.2rem, 5vw, 2.05rem);
+  line-height: 1.1;
+  padding: 8px 12px;
+  overflow-wrap: anywhere;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   background: linear-gradient(160deg, #243164, #1b2350);
   border: 2px solid var(--panel-border);
   box-shadow: 0 8px 22px -10px #000a;
