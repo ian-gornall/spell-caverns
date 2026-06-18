@@ -357,8 +357,9 @@ export function startPuzzle(ctx, params = {}) {
     locked = true;
     controlsEl.style.display = 'none'; // Hint/Clear are meaningless once solved (QA I8)
     const responseMs = startTime ? performance.now() - startTime : 0;
-    // honest mastery signal: only a clean first try is a real RECALL success
-    recordAnswer(state.tracker, target, firstTry, { responseMs });
+    // CRAFTING is the SOURCE OF TRUTH for mastery (§21-A): a clean first-try build = known,
+    // a missed/assisted build = a target. (Recognition/mining never sets this — only craft.)
+    recordAnswer(state.tracker, target, firstTry, { responseMs, source: 'craft' });
     ctx.store.recordAnswerStat(firstTry);
 
     if (firstTry) {

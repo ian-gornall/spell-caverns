@@ -18,8 +18,8 @@
 // Distractor similarity adapts per word from predicted success. UI module — verified
 // with Playwright, not node.
 import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
-import { buildSession, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
-import { buildOptions, mulberry32, shuffle } from '../engine/distractors.js';
+import { buildSession, buildFirstWave, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
+import { buildOptions, mulberry32 } from '../engine/distractors.js';
 import { byRank } from '../engine/lexicon.js';
 import { gradeAnswer, projectedScore } from '../engine/praise.js';
 import { recordAnswer, predictedSuccess, tierToPrior, summary } from '../engine/progress.js';
@@ -56,14 +56,12 @@ export function startRhythm(ctx, params = {}) {
   const difficulty = firstRun ? 'easy' : settings.difficulty;
   const length = firstRun ? 5 : settings.length || 10;
 
-  // First run: hand-pick the most common, easiest, spellable words (tier ≤2, 3-6
-  // letters) so the welcome wave is a sure win — the level builder optimises for a
-  // mastery TARGET and can surface a harder word, which we don't want here.
+  // First run: a guaranteed-WIN welcome wave of common, easy, spellable words — but at the
+  // level the grown-up just picked (buildFirstWave honours startLevel; §21-C fix — the old
+  // hard-coded tier ≤2 made a high level look ignored until a data reset). Distractors are
+  // forced obvious below, so it stays a sure win at any level.
   const session = firstRun
-    ? shuffle(
-        byRank().filter((w) => w.tier <= 2 && w.word.length >= 3 && w.word.length <= 6).slice(0, 14),
-        rng,
-      ).slice(0, length)
+    ? buildFirstWave(byRank(), { startTier: state.startLevel || 1, length, rng })
     : buildSession(state.tracker, { difficulty, length, rng, startTier: state.startLevel || 1 });
 
   // --- static structure -----------------------------------------------------
@@ -321,8 +319,10 @@ export function startRhythm(ctx, params = {}) {
     const streak = correct ? combo + 1 : 0;
     const verdict = gradeAnswer({ correct, responseMs, combo: streak, rng });
 
-    // feed the continuous mastery tracker + lifetime stats (same path as assessment)
-    recordAnswer(state.tracker, entry.word, correct, { responseMs });
+    // MINING is RECOGNITION, not production — it drives gems/praise/engagement + the speed
+    // reading, but it must NOT establish mastery or create targets (§21-A: only crafting
+    // does). source:'mine' keeps the mastery tracker out of it; lifetime stats still count.
+    recordAnswer(state.tracker, entry.word, correct, { responseMs, source: 'mine' });
     ctx.store.recordAnswerStat(correct);
 
     if (correct) {

@@ -32,6 +32,7 @@ import {
   isUnlocked,
   buildSession,
   buildReviewSession,
+  buildFirstWave,
 } from '../src/engine/session.js';
 
 // --- synthetic word pools (only word/rank/tier/pattern matter to the builder) ---
@@ -154,7 +155,7 @@ test('hard interleaves patterns (adjacent words usually differ)', () => {
 });
 
 // --------------------------------------------------- target-first session model
-test('the session leads with TARGET words (the ones missed recently)', () => {
+test('the session always INCLUDES the craft-missed targets (repair is guaranteed)', () => {
   const words = pool([{ pattern: 'short-a', tier: 1, count: 40 }]);
   const t = createTracker();
   // miss three specific words -> they become targets
@@ -163,6 +164,55 @@ test('the session leads with TARGET words (the ones missed recently)', () => {
   const s = buildSession(t, { difficulty: 'easy', length: 10, rng: mulberry32(5), words });
   const got = new Set(s.map((w) => w.word));
   for (const m of missed) assert.ok(got.has(m), `target "${m}" should be in the session`);
+});
+
+// ----------------------------------------------- chosen LEVEL drives the content (§21-A/B/C)
+test('the chosen start level drives what new words are served', () => {
+  // a dense pool (8 words per tier) so there's plenty of material at every level
+  const words = pool(Array.from({ length: 9 }, (_, i) => ({ pattern: 'short-a', tier: i + 1, count: 8 })));
+  const t = createTracker();
+  const low = buildSession(t, { difficulty: 'easy', length: 12, rng: mulberry32(11), words, startTier: 1 });
+  const high = buildSession(t, { difficulty: 'easy', length: 12, rng: mulberry32(11), words, startTier: 8 });
+  const avgTier = (s) => s.reduce((a, w) => a + w.tier, 0) / s.length;
+  assert.ok(avgTier(high) > avgTier(low) + 2, `high level should serve harder tiers: ${avgTier(high)} vs ${avgTier(low)}`);
+  assert.ok(high.every((w) => w.tier >= 8), 'a high start level should not serve baby (low-tier) words');
+});
+
+test('chosen-level new material LEADS but craft-missed targets are still reserved a place', () => {
+  // 40 easy words; only ONE craft-missed target. The session must lead with fresh
+  // chosen-level words AND still include the single target (reserved repair slot).
+  const words = pool([{ pattern: 'short-a', tier: 1, count: 40 }]);
+  const t = createTracker();
+  const target = words[7].word;
+  recordAnswer(t, target, false, { responseMs: 5000, source: 'craft' });
+  const s = buildSession(t, { difficulty: 'easy', length: 10, rng: mulberry32(12), words });
+  assert.ok(s.some((w) => w.word === target), 'the one craft-missed target is reserved a slot');
+  const fresh = s.filter((w) => !getRecord(t, w.word)).length;
+  assert.ok(fresh >= 5, `most of the session should be fresh chosen-level material, got ${fresh}/10`);
+});
+
+// ------------------------------------------------- guaranteed-win FIRST wave honours level
+test('buildFirstWave honours the chosen start level (no tier-1 baby words at high levels)', () => {
+  // SHORT spellable words (buildFirstWave filters to 3–8 letters), 6 per tier 1..9
+  const words = [];
+  let rank = 1;
+  for (let tr = 1; tr <= 9; tr++) for (let k = 0; k < 6; k++) words.push({ word: `wx${tr}${k}`, rank: rank++, tier: tr, pattern: 'p' });
+  const low = buildFirstWave(words, { startTier: 1, length: 5, rng: mulberry32(1) });
+  const high = buildFirstWave(words, { startTier: 7, length: 5, rng: mulberry32(1) });
+  assert.equal(low.length, 5);
+  assert.equal(high.length, 5);
+  assert.ok(low.every((w) => w.tier <= 2), `a "just starting" first wave stays easy, got ${low.map((w) => w.tier)}`);
+  assert.ok(high.every((w) => w.tier >= 7), `a high-level first wave reflects the level, got ${high.map((w) => w.tier)}`);
+});
+
+test('buildFirstWave never starves: falls back to easy words when a tier is too thin', () => {
+  // only a couple of words at the very top tier — must still return `length` words
+  const words = pool([
+    { pattern: 'short-a', tier: 1, count: 12 },
+    { pattern: 'ai-ay', tier: 9, count: 2 },
+  ]);
+  const s = buildFirstWave(words, { startTier: 9, length: 5, rng: mulberry32(3) });
+  assert.equal(s.length, 5, 'tops up from easier words rather than returning a short wave');
 });
 
 test('correct-first-time words are PARKED while there is fresh material to do', () => {

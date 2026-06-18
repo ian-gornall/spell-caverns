@@ -69,9 +69,25 @@ export function confidence(tracker, word) {
   return rec ? rec.confidence : 0;
 }
 
-// Record one answer for `word`, updating its recency-weighted mastery + confidence.
-// opts: { responseMs, fast }. Returns the updated record.
+// Record one answer for `word`. opts: { responseMs, fast, source }.
+//
+// `source` decides whether this answer ESTABLISHES MASTERY (user 2026-06-18, §21-A):
+//   - 'mine'  (rhythm multiple-choice, RECOGNITION) → SPEED/engagement only. It must
+//             NEVER raise mastery or make a word a target (recognition ≠ production). So
+//             a mine answer only records a speed reading on an ALREADY-tracked word and
+//             touches nothing else — a word the kid has only mined stays untracked/unknown.
+//   - 'craft' / 'assess' / undefined (the default) → the mastery-bearing path below.
+//             CRAFTING (building from letters) is the sole source of truth for "known".
+// Returns the updated/looked-up record (or undefined for an untracked mined word).
 export function recordAnswer(tracker, word, correct, opts = {}) {
+  if (opts.source === 'mine') {
+    const existing = tracker.records.get(word);
+    if (existing && Number.isFinite(opts.responseMs)) {
+      existing.recentMs =
+        existing.recentMs == null ? opts.responseMs : existing.recentMs + ALPHA * (opts.responseMs - existing.recentMs);
+    }
+    return existing; // recognition practice never moves mastery/targets
+  }
   const s = answerScore({ correct, responseMs: opts.responseMs, fast: opts.fast });
   let rec = tracker.records.get(word);
   if (!rec) {

@@ -192,14 +192,41 @@ function orderMain(words, spread, rng) {
 // masteryTarget (a "harder" preset) reaches further ahead; "easy" stays at the start.
 const REACH = 3;
 
+// buildFirstWave(words, { startTier, length, rng }) -> the guaranteed-win FIRST wave.
+//
+// The onboarding first wave must be a sure win (SDT competence — the very first
+// experience), but it must ALSO reflect the level the grown-up just picked (§21-C bug:
+// the old first wave hard-picked tier ≤2 words, so a high starting level looked ignored
+// until a data reset). So we take the most FREQUENT (= easiest to recognise) short,
+// spellable words AT/above the chosen tier, closest tier first. The caller still applies
+// obviously-wrong distractors, so it stays a win at any level. Never starves: if the top
+// tier is thin it tops up from easier words. Pure + deterministic given `rng`.
+export function buildFirstWave(words = byRank(), opts = {}) {
+  const { startTier = 1, length = 5, rng = Math.random } = opts;
+  const start = Math.min(9, Math.max(1, Math.round(startTier)));
+  const spellable = (w) => w.word.length >= 3 && w.word.length <= 8;
+  let pool = words.filter((w) => w.tier >= start && spellable(w));
+  if (pool.length < length) pool = words.filter(spellable); // fallback: never return a short wave
+  if (pool.length < length) pool = words.slice(); // last resort
+  // closest-to-start tier first, then most common (lowest rank) — the easiest at the level
+  pool = pool.slice().sort((a, b) => a.tier - b.tier || a.rank - b.rank);
+  // keep the wave within the EASIEST two tiers available at/above the level (so a high
+  // level never shows baby words and a low level stays easy), shuffled for variety.
+  const lowest = pool[0].tier;
+  let band = pool.filter((w) => w.tier <= lowest + 1);
+  if (band.length < length) band = pool; // widen if that band is thin
+  return shuffle(band, rng).slice(0, length);
+}
+
 // buildSession(tracker, { difficulty, length, rng, words, startTier }) -> ordered words.
 //
-// TARGET-FIRST model (user 2026-06-18): the session leads with the learner's TARGET words
-// — the ones truly not known yet (missed within their last few attempts) — grouped by
-// pattern and interleaved per spread. While fewer than ~TARGET_CAP words are being
-// targeted, it introduces NEW words PROGRESSIVELY from the starting tier upward (to find
-// more of what they don't know). Words answered correctly are PARKED and only resurface
-// for spaced confirmation AFTER the targets are handled. `startTier` (from level-select)
+// CHOSEN-LEVEL-LED model (user 2026-06-18, §21-A/B/C): the level a grown-up picks is the
+// primary driver of WHAT is served — the session LEADS with fresh words at/above the
+// chosen start tier (introduced progressively), so changing the level changes the content
+// immediately. Craft-missed TARGETS (the words truly not known yet — and, since mining no
+// longer establishes mastery, targets come ONLY from crafting) are always RESERVED a share
+// of the session so repair is never crowded out. Words answered correctly are PARKED and
+// only resurface for spaced confirmation after level + targets are handled. `startTier`
 // anchors where new words begin; difficulty's masteryTarget sets how far above to reach.
 export function buildSession(tracker, opts = {}) {
   const { difficulty = 'easy', length = 12, rng = Math.random, words = byRank(), startTier = 1 } = opts;
@@ -209,15 +236,16 @@ export function buildSession(tracker, opts = {}) {
   const byWord = new Map(words.map((w) => [w.word, w]));
   const rec = (w) => getRecord(tracker, w.word);
 
-  // 1. Targets present in this dataset, worst-first.
+  // 1. Craft-missed targets present in this dataset, worst-first (the repair set).
   const targets = targetWords(tracker).map((w) => byWord.get(w)).filter(Boolean);
 
-  // 2. Seed patterns from the targets (what the learner is struggling with); if none yet,
-  //    from the words at/above the start tier (cold start). Expand by spread.
-  let seed = [...new Set(targets.map((t) => t.pattern))];
-  if (seed.length === 0) {
-    seed = choosePatterns(words.filter((w) => w.tier >= startTier), psFn, masteryTarget, 1);
-  }
+  // 2. Seed patterns: LEAD from the chosen level (so the picked level drives the new
+  //    material), then add the patterns the learner is currently MISSING (repair focus).
+  //    Expand by spread (prefers confusable cluster-mates for discrimination practice).
+  const levelSeed = choosePatterns(words.filter((w) => w.tier >= startTier), psFn, masteryTarget, 1);
+  const targetSeed = [...new Set(targets.map((t) => t.pattern))];
+  let seed = [...new Set([...levelSeed, ...targetSeed])];
+  if (seed.length === 0) seed = choosePatterns(words, psFn, masteryTarget, 1);
   const chosenPatterns = expandPatterns(seed, words, patternCount(patternSpread));
   const chosen = new Set(chosenPatterns);
 
@@ -231,18 +259,26 @@ export function buildSession(tracker, opts = {}) {
     }
   };
 
-  // (a) targets lead — those in the chosen patterns first, then any other target.
+  // New chosen-level material (never-seen words at/above the anchor, progressive). Still
+  // hunt for unknowns only while fewer than ~TARGET_CAP words are actively being repaired.
+  const hunting = targets.length < TARGET_CAP;
+  const newAtLevel = hunting
+    ? orderNewByAnchor(words.filter((w) => chosen.has(w.pattern) && !rec(w)), anchor)
+    : [];
+  // Reserve up to half the session (capped by how many targets exist) for repair, so the
+  // chosen-level lead never crowds the craft-missed words out.
+  const reserve = Math.min(targets.length, Math.ceil(length / 2));
+
+  // (a) chosen-level NEW material LEADS, up to the non-reserved slots.
+  newAtLevel.slice(0, Math.max(0, length - reserve)).forEach(add);
+  // (b) craft-missed TARGETS next — those in the chosen patterns first, then any other.
   targets.filter((t) => chosen.has(t.pattern)).forEach(add);
   targets.forEach(add);
+  // (c) more chosen-level new material to top up the session.
+  newAtLevel.forEach(add);
 
-  // (b) new material — keep introducing (progressively, from the anchor up) only while
-  //     we have room AND fewer than ~TARGET_CAP active targets (still hunting unknowns).
-  if (picked.length < length && targets.length < TARGET_CAP) {
-    orderNewByAnchor(words.filter((w) => chosen.has(w.pattern) && !rec(w)), anchor).forEach(add);
-  }
-
-  // (c) parked/known words come back only AFTER targets: DUE (rested past cooldown) seen
-  //     words in the chosen patterns, least-recently-seen (most overdue) first.
+  // (d) parked/known words come back only AFTER level + targets: DUE (rested past cooldown)
+  //     seen words in the chosen patterns, least-recently-seen (most overdue) first.
   if (picked.length < length) {
     words
       .filter((w) => chosen.has(w.pattern) && !seen.has(w.word) && (rec(w)?.attempts ?? 0) > 0 && isEligible(tracker, w.word))
@@ -250,7 +286,7 @@ export function buildSession(tracker, opts = {}) {
       .forEach(add);
   }
 
-  // (d) never starve: any never-seen word (progressive, ignore pattern), then the
+  // (e) never starve: any never-seen word (progressive, ignore pattern), then the
   //     most-overdue resting words. Rare on the full lexicon; matters for small pools.
   if (picked.length < length) {
     orderNewByAnchor(words.filter((w) => !seen.has(w.word) && !rec(w)), anchor).forEach(add);

@@ -54,6 +54,57 @@ test('answerScore: a correct answer is full credit with or without timing info',
   assert.equal(answerScore({ correct: false }), 0);
 });
 
+// --------------------------------------------- source: MINING vs CRAFTING (§21-A)
+// Mastery is ESTABLISHED only by CRAFTING (production / building from letters). MINING
+// (rhythm multiple-choice) is recognition — helpful practice for SPEED/engagement, but it
+// must NEVER mark a word "known" or make it a target (recognition ≠ production; user
+// 2026-06-18). So a 'mine' answer records a speed reading and nothing that affects the
+// learning model; only crafting/assessment move mastery, confidence, attempts, targets.
+test("a MINING answer never establishes mastery (no record, no target, no attempts)", () => {
+  const t = createTracker();
+  // a correct mine answer must NOT create a tracked/known word
+  recordAnswer(t, 'cave', true, { responseMs: 400, source: 'mine' });
+  assert.equal(getRecord(t, 'cave'), undefined, 'mining a new word tracks nothing for mastery');
+  assert.equal(mastery(t, 'cave'), 0, 'mining never raises mastery');
+  assert.equal(isTarget(t, 'cave'), false, 'a mined word is not a target');
+  // a WRONG mine answer must NOT make the word a target either
+  recordAnswer(t, 'gem', false, { responseMs: 5000, source: 'mine' });
+  assert.equal(isTarget(t, 'gem'), false, 'a missed MINE answer does not create a target');
+  assert.deepEqual(targetWords(t), [], 'mining contributes nothing to the working set');
+  assert.equal(summary(t).counts.tracked, 0, 'mining does not pollute the progress buckets');
+});
+
+test('CRAFTING is the source of truth for mastery; a missed craft is a target', () => {
+  const t = createTracker();
+  recordAnswer(t, 'island', true, { responseMs: 3000, source: 'craft' }); // clean build -> known-ish
+  recordAnswer(t, 'rhythm', false, { responseMs: 6000, source: 'craft' }); // missed build -> target
+  assert.ok(mastery(t, 'island') >= 0.9, 'a clean crafted build raises mastery');
+  assert.equal(isTarget(t, 'island'), false, 'a clean craft is not a target');
+  assert.equal(isTarget(t, 'rhythm'), true, 'a missed craft IS a target');
+  // crafting after mining: mining left no record, craft establishes it
+  recordAnswer(t, 'cave', false, { responseMs: 5000, source: 'craft' });
+  assert.equal(isTarget(t, 'cave'), true, 'crafting a word the kid keeps missing makes it a target');
+});
+
+test("mining records a SPEED reading on an already-CRAFTED word (no mastery change)", () => {
+  const t = createTracker();
+  recordAnswer(t, 'quartz', false, { responseMs: 6000, source: 'craft' }); // crafted, a target
+  const before = { ...getRecord(t, 'quartz') };
+  recordAnswer(t, 'quartz', true, { responseMs: 500, source: 'mine' }); // mine it fast
+  const after = getRecord(t, 'quartz');
+  assert.equal(after.attempts, before.attempts, 'mining does not add a mastery attempt');
+  assert.equal(after.mastery, before.mastery, 'mining does not change mastery');
+  assert.equal(isTarget(t, 'quartz'), true, 'still a target — only crafting can clear it');
+  assert.ok(Number.isFinite(after.recentMs), 'mining did record a speed reading');
+});
+
+test("default (no source) stays mastery-bearing so assessment/legacy paths are unchanged", () => {
+  const t = createTracker();
+  recordAnswer(t, 'cat', true, { responseMs: 500 }); // no source -> mastery path
+  assert.ok(mastery(t, 'cat') >= 0.9);
+  assert.equal(getRecord(t, 'cat').attempts, 1);
+});
+
 // --------------------------------------------------------------- empty tracker
 test('an unseen word has zero mastery/confidence and falls back to the prior', () => {
   const t = createTracker();
