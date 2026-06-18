@@ -17,7 +17,7 @@
 // The session's words come from session.buildSession (the two-axis level builder).
 // Distractor similarity adapts per word from predicted success. UI module — verified
 // with Playwright, not node.
-import { el, header, burst, toast, createIdleGuard } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
 import { buildSession, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { buildOptions, mulberry32 } from '../engine/distractors.js';
 import { gradeAnswer, projectedScore } from '../engine/praise.js';
@@ -417,6 +417,20 @@ export function startRhythm(ctx) {
     );
     if (newly.length > 0) audio.sfx('combo');
     else if (earned > 0) audio.sfx('great');
+
+    // Don't let them stall on the reward: highlight the primary action, then
+    // auto-continue into another wave ("let's go" — keep them mining).
+    const primaryAction = nextHarder ? goHarder : () => ctx.nav('rhythm');
+    const rewardGuard = createIdleGuard({
+      nudgeMs: 9000,
+      pauseMs: 18000,
+      onNudge: () => pulse(reward.querySelector('.btn.primary')),
+      onTimeout: () => {
+        toast('⛏️ Back to mining!');
+        primaryAction();
+      },
+    });
+    ctx.onLeave(() => rewardGuard.stop());
   }
 
   present();

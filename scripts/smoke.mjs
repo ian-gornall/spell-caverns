@@ -281,6 +281,19 @@ try {
   ok('tapping Resume dismissed the pause overlay');
   await idlePage.close();
 
+  // --- engagement: staring at the MENU auto-starts mining ("let's go") ---
+  const menuPage = await browser.newPage({ viewport: { width: 820, height: 1180 } });
+  menuPage.on('pageerror', (e) => errors.push('pageerror(menu): ' + e.message));
+  await menuPage.addInitScript(() => {
+    window.__idleTest = 0.04; // home nudge ~360ms, auto-launch ~720ms
+  });
+  await menuPage.goto(URL, { waitUntil: 'networkidle' });
+  await menuPage.click('.home-title'); // a harmless tap unlocks audio so it WILL launch
+  // now sit idle on the menu — it should highlight Play then drop into a wave on its own
+  await menuPage.waitForSelector('.rhythm .tile', { timeout: 5000 });
+  ok('idle on the home menu auto-started mining (Play) on its own');
+  await menuPage.close();
+
   await page.screenshot({ path: 'scripts/smoke.png', fullPage: false });
   ok('screenshot saved to scripts/smoke.png');
 } catch (e) {

@@ -9,7 +9,7 @@
 // (recall ≠ recognition, the §12 pedagogy concern). A clean build earns full
 // speed/combo gems; a build that needed help still earns a small "you crafted it"
 // reward (positive reinforcement, never shaming). UI module — verified with Playwright.
-import { el, header, burst, toast, createIdleGuard } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
 import { buildSession } from '../engine/session.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { gradeAnswer, GENTLE_PHRASES } from '../engine/praise.js';
@@ -449,6 +449,19 @@ export function startPuzzle(ctx) {
       reward,
     );
     if (earned > 0) audio.sfx('great');
+
+    // Don't let them stall on the reward: highlight the primary action, then
+    // auto-continue into another round ("let's go" — keep them crafting).
+    const rewardGuard = createIdleGuard({
+      nudgeMs: 9000,
+      pauseMs: 18000,
+      onNudge: () => pulse(reward.querySelector('.btn.primary')),
+      onTimeout: () => {
+        toast('🔨 Keep crafting!');
+        ctx.nav('puzzle');
+      },
+    });
+    ctx.onLeave(() => rewardGuard.stop());
   }
 
   present();

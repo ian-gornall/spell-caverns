@@ -3,7 +3,7 @@
 // Play (rhythm mode) is the live path; Crystal Lab + Feedback are stubbed for now
 // and surface a friendly "coming soon" toast (the engine for the Lab exists; the
 // screen comes later in the build order). Progress + Settings are wired.
-import { el, header } from '../ui.js';
+import { el, header, toast, createIdleGuard, pulse } from '../ui.js';
 
 export function homeScreen(ctx) {
   const name = ctx.state.profile.name || 'Explorer';
@@ -53,7 +53,7 @@ export function homeScreen(ctx) {
     ),
   ];
 
-  return el(
+  const node = el(
     'div',
     { class: 'screen home' },
     header(ctx, {}),
@@ -65,4 +65,30 @@ export function homeScreen(ctx) {
     ),
     el('div', { class: 'home-grid' }, ...cards),
   );
+
+  // Don't let them stare at the menu: highlight Play, then auto-start mining ("let's
+  // go!"). iOS unlocks audio only on a tap, so BEFORE the first tap we can't start the
+  // dictated game — we just keep highlighting Play until they tap once; after that, an
+  // idle menu auto-drops them straight into a wave.
+  const guard = createIdleGuard({
+    nudgeMs: 9000,
+    pauseMs: 18000,
+    onNudge: () => {
+      pulse(node.querySelector('.menu-card.play'));
+      toast('💎 Ready to mine some gems? Tap Play!');
+    },
+    onTimeout: () => {
+      if (ctx.audio.isPrimed && ctx.audio.isPrimed()) {
+        toast('⛏️ Let’s go mining!');
+        ctx.nav('rhythm');
+      } else {
+        pulse(node.querySelector('.menu-card.play'));
+        toast('👆 Tap Play to hear your first word!');
+        guard.poke(); // keep gently highlighting until they tap (audio needs a gesture)
+      }
+    },
+  });
+  ctx.onLeave(() => guard.stop());
+
+  return node;
 }

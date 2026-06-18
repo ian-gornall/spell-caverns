@@ -115,13 +115,25 @@ export function pauseOverlay({ onResume } = {}) {
   return overlay;
 }
 
+// A gentle "do something" pulse on a node (used by idle nudges to highlight a card
+// or the primary button). No-op for a missing node.
+export function pulse(node) {
+  if (!node) return;
+  node.classList.remove('pulse');
+  void node.offsetWidth;
+  node.classList.add('pulse');
+  setTimeout(() => node.classList.remove('pulse'), 1600);
+}
+
 // Keep a child ENGAGED. Watches document-wide pointer/key activity; after `nudgeMs`
-// of NO activity it fires `onNudge` (a gentle prompt / re-dictate), and after
-// `pauseMs` it shows the blocking pause overlay (`onPause` when it appears,
-// `onResume` when the child taps to resume). Self-manages its listeners + overlay —
-// call `.stop()` on leaving the screen (register it via ctx.onLeave). `.poke()`
-// resets the timer manually. Thresholds scale by window.__idleTest (smoke testing).
-export function createIdleGuard({ nudgeMs = 12000, pauseMs = 26000, onNudge, onPause, onResume } = {}) {
+// of NO activity it fires `onNudge` (a gentle prompt / re-dictate). Then at `pauseMs`:
+//   - if `onTimeout` is given, it calls that instead (e.g. a MENU auto-starts the game
+//     — "let's go") and shows NO overlay;
+//   - otherwise it shows the blocking pause overlay (`onPause` when it appears,
+//     `onResume` when the child taps to resume) — for active play, so they can't zone out.
+// Self-manages its listeners + overlay — call `.stop()` on leaving the screen (register
+// it via ctx.onLeave). `.poke()` resets the timer. Thresholds scale by window.__idleTest.
+export function createIdleGuard({ nudgeMs = 12000, pauseMs = 26000, onNudge, onPause, onResume, onTimeout } = {}) {
   const scale = (typeof window !== 'undefined' && Number(window.__idleTest)) || 1;
   nudgeMs *= scale;
   pauseMs *= scale;
@@ -141,6 +153,10 @@ export function createIdleGuard({ nudgeMs = 12000, pauseMs = 26000, onNudge, onP
     if (onNudge) nudgeT = setTimeout(() => { if (!stopped && !overlay) onNudge(); }, nudgeMs);
     pauseT = setTimeout(() => {
       if (stopped || overlay) return;
+      if (onTimeout) {
+        onTimeout(); // menu auto-advance ("let's go") — no blocking overlay
+        return;
+      }
       if (onPause) onPause();
       overlay = pauseOverlay({
         onResume: () => {
