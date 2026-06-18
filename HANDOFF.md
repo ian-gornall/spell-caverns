@@ -3,9 +3,10 @@
 > Read this top-to-bottom before continuing. It is written so a fresh session (with
 > no prior context) can pick up and build the game without re-deriving any decisions.
 > Project root: `C:\Users\iango\spell`  •  Last updated 2026-06-17 after the **PWA shell +
-> the rhythm-mode vertical slice were built and verified in a real browser**.
-> Git HEAD `44b4e90`; tree clean; `npm test` green (**90 tests**); UI smoke-tested with
-> Playwright (`node scripts/smoke.mjs`, server running). The game is now PLAYABLE.
+> rhythm mode were built & verified, and the Gemini-TTS audio pipeline was added**.
+> `npm test` green (**92 tests**); UI smoke-tested with Playwright (`npm run smoke`).
+> The game is PLAYABLE with real voice on common words. **⚠️ Read §12 (SESSION UPDATE) —
+> it has the latest audio status, the next-turn focus (build more game), and an open bug.**
 
 ---
 
@@ -578,3 +579,71 @@ puzzle mode, the Crystal Lab, and progress/settings/feedback screens — themed 
 mining adventure, designed per **`UX.md`** (touch-first, big targets, tap-or-drag, gentle).
 Verify UI with **Playwright**; run on the iPad with `npm start`. Keep `npm test` green; commit per
 milestone.
+
+---
+
+## 12. SESSION UPDATE — 2026-06-17 (audio pipeline + what's next) — READ THIS
+
+**The game is playable on the iPad and the user confirmed "it works."** This session added a
+real-voice TTS pipeline and surfaced the next priorities. Git: several commits past the shell
+(serialize tracker → shell+rhythm → play-test fixes → batched audio gen). `npm test` = **92 green**.
+
+### Audio — current state & the PLAN (voice exploration is TABLED; stick with Kore)
+- **Voice = "Kore"** via Gemini model **`gemini-3.1-flash-tts-preview`**. Decided to **stick with
+  Kore for now** — do NOT keep auditioning voices (user tabled it to make game progress).
+- **What's generated:** **242 word clips (top-242 by frequency) + 28 praise/gentle phrases**, in
+  `audio/` (git-ignored), listed in `audio/manifest.json`. **2,677 words still pending.**
+- **Runtime (`src/audio.js`) plays `/audio/{words,phrases}/<slug>.mp3` when present, else Web Speech.**
+  So uncovered words use the browser voice until their clip exists. `server.js` serves `.mp3`.
+- **Generation = `scripts/gen_audio.mjs`** (`GEMINI_API_KEY=… npm run gen:audio`). It BATCHES ~30
+  words/request and SPLITS the audio at the N-1 longest silences (proven clean). Resumable.
+- **THE BLOCKER = Gemini FREE tier: 10 requests/DAY *per model*.** We exhausted today's flash quota.
+  The pro TTS model is **free-tier `limit: 0`** (paid only). So bulk generation is gated.
+  - **PLAN the user chose:** *periodically re-run the SAME batched method (Kore, `gen_audio.mjs`,
+    single model `gemini-3.1-flash-tts-preview`) "every so often" to detect when the daily quota
+    has reset, then let it generate more.* Each run resumes (skips the 242 done). ⚠️ Only run with
+    the user's awareness — see the [[approval-before-consuming-limits]] memory: NEVER spin a
+    quota-consuming job unattended, and stop the moment it walls (no-audio / 429). **RECOMMENDED
+    small fix before the next retry: add a fail-fast guard to `gen_audio.mjs`** so a retry that hits
+    the wall stops after 1–2 empty/429 responses instead of looping.
+  - **The real unblock = enable BILLING** on the Gemini API (→ Tier 1, huge limits) → full set in
+    ~1hr for **~$1–2 one-time** (pay-as-you-go, NOT a subscription). KEY FINDING: **Google AI Pro
+    (the consumer monthly plan) does NOT raise API rate limits** — API tiers are billing-based only
+    (rate-limits doc). The AI Studio *interactive* UI caps generation at ~10s; only the API (Tier 1)
+    does bulk. User is still deciding billing vs. waiting; do not enable it for them.
+- **Style prompts (not yet used):** Gemini TTS supports a "scene/sample context" style steer (AI
+  Studio exposes it). Our API calls used NONE (plain Kore). If we later want slower/clearer
+  dictation + cheerful feedback, pass a style instruction — but VERIFY it isn't spoken (would add a
+  leading segment and break the silence-split). Suggested style text is in the chat log.
+- **Local TTS (Piper) was tried and REJECTED** by the user as "terrible computer voice." The
+  binary + voices live in `tools/` (git-ignored). Kept only as a fallback; not the path.
+- ⚠️ **The user's Gemini API key was pasted in chat earlier — remind them to ROTATE it.**
+
+### 🐞 OPEN BUG (reported this session): praise audio clipped
+- Symptom: spoken praise (e.g. "Combo x5!") is **cut off** — the next word's dictation starts before
+  the praise finishes.
+- Cause: in `src/modes/rhythm.js`, after a correct answer we `audio.speakPraise(...)`, then ~850ms
+  later `present()` runs and calls `audio.say(nextWord)`, which cancels/replaces the in-progress
+  voice (both `speakTTS` → `speechSynthesis.cancel()` and `playClip` reuse the same `<audio>` el).
+- Fix options (next turn): (a) don't speak praise + dictate so close together — lengthen the
+  post-correct delay when `verdict.isCombo`/spoken praise fired, or chain (speak praise → on its
+  `onDone`, then advance + dictate); (b) give praise its own player (already `praiseEl` separate
+  from `clipEl`) AND make `say()` not cancel the praise player — but the ~850ms advance is the real
+  culprit, so sequencing/longer delay is the clean fix.
+
+### ▶️ NEXT TURN FOCUS (what the user wants built next): MORE GAME
+Audio is parked. Spend the next turn building game surfaces (all NO-API, pure front-end/engine):
+1. **`src/modes/puzzle.js`** — drag-OR-tap-to-BUILD the word from letter tiles (UX.md §0 forgiving
+   drag + tap-to-place; big snap zones). This is the **production/recall** mode that answers the
+   pedagogy concern (recognition ≠ recall). Wire to `progress.recordAnswer` + `praise`.
+2. **`src/modes/lab.js`** — Crystal Lab: `nonsense.makeNonsenseWord` → spell with tap tiles → draw
+   meaning on `<canvas>` → save to Specimen Collection (shown in Progress).
+3. **`src/screens/feedback.js`** — emoji rating + too-hard/just-right/too-easy + note (`state.addFeedback` exists).
+4. Polish: rhythm ↔ puzzle alternation in a session; the clipping bug fix; progress specimen view.
+5. **PWA packaging** (`manifest.webmanifest`, `sw.js` offline cache incl. `audio/`, icons) + README.
+Keep `npm test` green, verify UI with `npm run smoke`, commit per milestone.
+
+### Server / housekeeping
+- A dev server may be left running on `:5173` (`npm start`). `node_modules`, `audio/`, `tools/`,
+  `scripts/smoke.png` are git-ignored. Tooling (`playwright`, `@breezystack/lamejs`) is in
+  devDependencies; the shipped app stays zero-runtime-dependency.
