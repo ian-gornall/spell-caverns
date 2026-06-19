@@ -223,9 +223,15 @@ Categories: **new/unseen → learning → known → mastered**, plus **tricky** 
 does NOT know. Change it to balance **known / learning / tricky** in the productive-struggle zone,
 but with the **focus on the 10 "learning" words**. ANY word may appear in craft; learning is the
 priority. When a learning word becomes known, a different word rotates into learning.
-- **Hints cost GEMS** (a real decision point that still relieves frustration). If the student is
-  **not making progress, highlight the hint**. The hint also **auto-fires after a set period** even
-  if not pressed — and still costs gems.
+- **Hints cost GEMS, charged as a % of the word given away (CLARIFIED 2026-06-19d).** A hint
+  reveals one letter and **reduces the word's earned gems by `2 × wordPoints / wordLength` per
+  letter** — i.e. revealing **half the word's letters consumes 100% of its points**, after which
+  **crafting that word earns 0** (but still completes — eases frustration). **Never goes negative**
+  (earned gems floored at 0; hints are never deducted from the existing balance). Example: a
+  4-letter word worth 20 → each hinted letter costs 10; 2 hints → 0 points left.
+- **Hint timing (CLARIFIED):** timers reset whenever a CORRECT letter is placed. After **4s** with
+  no correct letter placed → **highlight the hint button**. After **8s** with no correct letter →
+  **auto-fire a hint** (reveals a letter). **Auto-fired hints cost the same** as tapped ones.
 
 **C. MINING mode (recognition) = known-words only + slower, less-pressured.**
 - Only serves **known** words (crafted correctly 2× in a row).
@@ -265,9 +271,12 @@ match). ✅ adaptive cadence = medium.
 tricky (when exhausted) → else level-up; tricky only via deliberate reintroduction or the
 pattern-mastery trigger (adopted).
 
+**MORE ANSWERED (2026-06-19d):** ✅ hint cost = 2×wordPoints/wordLength per revealed letter (half
+the word → 0 points, floored, never negative); highlight hint @4s, auto-fire @8s without a correct
+letter placed (timers reset on each correct letter); auto-fire costs the same.
+
 **STILL OPEN (asking one at a time, NO answer choices per Ian):**
 - Default **set size** (10?) and whether it's a grown-up-configurable setting.
-- **Hint economy**: gem cost per hint + the auto-fire delay (and whether cost scales).
 - **Mining timer** exact numbers (drain start + ~5s window) and whether it's per-difficulty.
 - **Mastery draw UX**: how many candidate letters to offer; behaviour on low-confidence / redraw.
 - **Settings/category display** layout for a grown-up.
