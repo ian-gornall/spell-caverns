@@ -29,7 +29,9 @@
 //      fallback). Stops the "deployed but I still see the old app" stale-cache problem.
 // v15: learning-model rework — mastery=crafting-not-mining, level-led sessions, 9 levels,
 //      Settings level control (§21-A/B/C/D). JS+CSS changed, so retire the old cache.
-const VERSION = 'csc-v15';
+// v16: phone/PWA responsive fixes — in-game header no longer clips the depth chip, level
+//      grid respects panel padding, header pills shrink on phones. CSS+ui.js changed.
+const VERSION = 'csc-v16';
 
 const CORE = [
   '/',

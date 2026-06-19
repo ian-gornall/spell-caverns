@@ -89,6 +89,12 @@ body {
   font-size: 1.3rem;
   font-weight: 700;
   flex: 1;
+  /* let the title shrink (flexbox defaults to min-width:auto = won't shrink below its
+     text) so the gem/depth chips can never be pushed off the right edge on a phone. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .header-stats {
   margin-left: auto;
@@ -122,6 +128,35 @@ body {
   30% {
     transform: scale(1.5);
     color: var(--gold);
+  }
+}
+
+/* Phones: the in-game header is back-button + title + gem/depth chips. At iPad size the
+   chips fit, but on a phone the two full-size pills run the "Depth N" chip off the right
+   edge. Shrink the pills (and let the title ellipsize) so the header always fits. */
+@media (max-width: 480px) {
+  .app-header {
+    gap: 8px;
+    padding: 4px 2px 12px;
+  }
+  .header-title {
+    font-size: 1.1rem;
+  }
+  .header-stats {
+    gap: 6px;
+  }
+  .stat {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    gap: 5px;
+  }
+  .stat .icon {
+    font-size: 1rem;
+  }
+  /* drop the "Depth" word on phones (the ⛏️ icon + number is enough) so the title has
+     room and never has to ellipsize on the common short screens. */
+  .depth-word {
+    display: none;
   }
 }
 
@@ -1753,7 +1788,11 @@ select {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
-  width: min(520px, 94vw);
+  /* fill the container (so it respects Settings panel padding instead of overflowing on a
+     phone) but cap + center on wide screens like the onboarding full-width step. */
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
 }
 .level-card {
   text-align: left;

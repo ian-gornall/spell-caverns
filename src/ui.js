@@ -124,7 +124,9 @@ export function header(ctx, { title, onBack } = {}) {
         'div',
         { class: 'stat depth', title: 'Cavern depth' },
         el('span', { class: 'icon' }, '⛏️'),
-        el('span', {}, 'Depth ' + depth),
+        // the word "Depth" is hidden on phones (CSS) to keep the header from clipping —
+        // the ⛏️ icon + number still reads as the cavern depth there.
+        el('span', {}, el('span', { class: 'depth-word' }, 'Depth '), String(depth)),
       ),
     ),
   );
