@@ -31,7 +31,10 @@
 //      Settings level control (§21-A/B/C/D). JS+CSS changed, so retire the old cache.
 // v16: phone/PWA responsive fixes — in-game header no longer clips the depth chip, level
 //      grid respects panel padding, header pills shrink on phones. CSS+ui.js changed.
-const VERSION = 'csc-v16';
+// v17: PWA UPDATE FLOW — registration moved to src/pwa.js (updateViaCache:none + update on
+//      foreground + reload-on-controllerchange) so installed apps (Android) pick up deploys
+//      without a reload button; visible app/cache VERSION in Settings (GET_VERSION below).
+const VERSION = 'csc-v17';
 
 const CORE = [
   '/',
@@ -45,6 +48,8 @@ const CORE = [
   '/src/ui.js',
   '/src/state.js',
   '/src/audio.js',
+  '/src/pwa.js',
+  '/src/version.js',
   '/src/engine/lexicon.js',
   '/src/engine/distractors.js',
   '/src/engine/praise.js',
@@ -85,6 +90,14 @@ self.addEventListener('install', (event) => {
       await self.skipWaiting();
     })(),
   );
+});
+
+// Let the page read the active cache version (Settings shows it next to the app-code
+// version; a mismatch means a stale cache / pending update). See src/pwa.js swCacheVersion.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'GET_VERSION') {
+    event.ports[0] && event.ports[0].postMessage({ version: VERSION });
+  }
 });
 
 self.addEventListener('activate', (event) => {

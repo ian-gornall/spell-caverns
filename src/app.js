@@ -19,6 +19,7 @@ import { startRhythm } from './modes/rhythm.js';
 import { startPuzzle } from './modes/puzzle.js';
 import { startLab } from './modes/lab.js';
 import { summary } from './engine/progress.js';
+import { registerServiceWorker } from './pwa.js';
 
 const routes = {
   home: homeScreen,
@@ -96,6 +97,9 @@ function boot() {
   };
 
   setRoot(document.getElementById('app'));
+  // Register the service worker + the update-and-reload flow (src/pwa.js): an installed PWA
+  // re-checks for a deploy on every foreground and reloads when a new version takes over.
+  registerServiceWorker();
   // Prime audio/speech on the first tap anywhere — iOS unlocks media only inside a user
   // gesture (HANDOFF §4). `{ once:true }` removes the listener after.
   window.addEventListener('pointerdown', () => audio.prime(), { once: true });

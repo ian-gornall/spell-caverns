@@ -1149,6 +1149,19 @@ select {
   color: var(--ink-dim);
   font-size: 0.9rem;
 }
+/* build version (Settings → Parents & privacy footer) — dim + centered; turns amber when
+   the cached SW version is behind the running code (an update is pending). */
+.version-line {
+  margin: 14px 2px 0;
+  text-align: center;
+  color: var(--ink-dim);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.version-line.stale {
+  color: var(--gold);
+  font-weight: 700;
+}
 .cloud-sync {
   margin-top: 16px;
   padding-top: 14px;

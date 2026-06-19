@@ -20,14 +20,8 @@
   </head>
   <body>
     <div id="app" aria-live="polite"></div>
+    <!-- app.js registers the service worker (src/pwa.js) with the update-and-reload flow,
+         so an installed PWA picks up new deploys without a reload button. -->
     <script type="module" src="/src/app.js"></script>
-    <!-- Offline support (only registers in a secure context: HTTPS or localhost). -->
-    <script>
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("/sw.js").catch(() => {});
-        });
-      }
-    </script>
   </body>
 </html>

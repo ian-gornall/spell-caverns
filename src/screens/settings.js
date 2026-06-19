@@ -11,6 +11,8 @@ import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
 import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
 import { COLOURS, levelGrid, LEVELS } from './onboarding.js';
+import { APP_VERSION } from '../version.js';
+import { swCacheVersion } from '../pwa.js';
 
 const LENGTHS = [6, 10, 15, 20];
 
@@ -486,6 +488,21 @@ export function settingsScreen(ctx) {
     );
   }
 
+  // Visible build version (so a grown-up can confirm the app updated). Shows the running
+  // CODE version and the SERVICE-WORKER cache version; if they differ, an update is pending
+  // (reopen the app to apply). Updates async once the SW answers.
+  const versionLine = el('p', { class: 'version-line' }, `Version ${APP_VERSION}`);
+  swCacheVersion().then((sw) => {
+    if (!sw) {
+      versionLine.textContent = `Version ${APP_VERSION}`;
+    } else if (sw === APP_VERSION) {
+      versionLine.textContent = `Version ${APP_VERSION} · up to date ✓`;
+    } else {
+      versionLine.textContent = `Version ${APP_VERSION} · cached ${sw} — reopen the app to finish updating`;
+      versionLine.classList.add('stale');
+    }
+  });
+
   const dataPanel = el(
     'div',
     { class: 'data-actions' },
@@ -502,6 +519,7 @@ export function settingsScreen(ctx) {
         'delete any time. See PRIVACY.md for details.',
     ),
     cloudSyncBlock,
+    versionLine,
   );
 
   // --- Players (multi-user): switch, add, reset this explorer -------------------
