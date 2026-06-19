@@ -77,30 +77,34 @@
 - ⚠️ **Per-origin data**: spell.pryzmio.com is a NEW origin vs the old netlify URL — localStorage
   doesn't carry over. To move a kid's progress: Settings → Back up (old) → Restore (new), or use
   family sync. (Tell the user; the old Netlify site should be deleted.)
-- `npm test` = **212 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
+- `npm test` = **220 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
   `node scripts/qa.mjs` = 0 console/JS errors; `node scripts/qa_responsive.mjs` = 0 horizontal
   overflow at 7 viewports (360–820px); **`node scripts/qa_fold.mjs` = all primary actions above the
-  fold** (the VERTICAL-fold regression guard added in §27). sw VERSION **csc-v23** (bump on any precached change —
-  AND bump `src/version.js` `APP_VERSION` to match; Settings shows both). **Before major UI
-  changes, follow `QA.md`** (interactive view-as-you-go QA + the phone device matrix).
-- ✅ §24 (the §23 backlog + multi-user UI) is all **pushed and LIVE** (csc-v21, verified on prod).
+  fold** (the VERTICAL-fold regression guard added in §27); `node scripts/qa_s28.mjs` = §28 checks
+  pass. sw VERSION **csc-v26** (bump on any precached change — AND bump `src/version.js` `APP_VERSION`
+  to match; Settings shows both). **Before major UI changes, follow `QA.md`** (interactive
+  view-as-you-go QA + the phone device matrix).
+- ✅ Everything through §28 is **pushed and LIVE on prod** (current sw **csc-v26**, verified).
 
 **What exists**
 - **Data:** `data/words.js` = 2,919 frequency-ordered words (ages 5–13), 63 pattern families;
   rebuild via `node scripts/merge.mjs`. (§3)
 - **Pure engine** (`src/engine/`, all unit-tested): `lexicon · distractors · praise · assessment ·
   progress · session · nonsense · puzzle · streak · quests · catalog · narrative · backup ·
-  cloudsync · profiles`. Learning model: CONTINUOUS mastery, established ONLY by CRAFTING
+  cloudsync · profiles · printables · webpush`. Learning model: CONTINUOUS mastery, established ONLY by CRAFTING
   (production) — MINING (recognition) drives speed/gems/engagement but never mastery or
   targets (§22). CHOSEN-LEVEL-LED session selection: lead with fresh words at/above the
   picked start tier, RESERVE a share for craft-missed targets (repair), park correct ones.
   `buildFirstWave` gives a guaranteed-win first wave AT the chosen level. (§4, §20, §22)
-- **UI** (`src/`): `app.js` (boot/router/ctx + family sync), `state.js` (MULTI-PROFILE container —
-  see below), `audio.js` (clip/Web-Speech dictation + synth SFX; configurable voice speed), `ui.js`.
+- **UI** (`src/`): `app.js` (boot/router/ctx + family sync + the `/?view=feedback` admin deep-link),
+  `state.js` (MULTI-PROFILE container — see below), `audio.js` (clip/Web-Speech dictation + synth SFX;
+  configurable voice speed), `ui.js`, `push.js` (daily-reminder + `registerAdmin`), `feedback_client.js`
+  (best-effort feedback POST + offline queue), `admin.js` (developer feedback-archive helpers).
   Screens: `home · onboarding · profiles ("who's playing") · settings · progress · feedback ·
-  catalog · boss · geode`. Modes: `rhythm · puzzle · lab`. The home leads with the **CRAFT hero**
-  (the assessment); the daily **geode** (`screens/geode.js`) is the ratcheting balanced-play reward.
-  Reusable `ui.picturePad` powers the kid-lock. (§24)
+  catalog · boss · geode · printables · admin_feedback`. Modes: `rhythm · puzzle · lab`. The home leads
+  with the **CRAFT hero** (the assessment); the daily **geode** (`screens/geode.js`) is the ratcheting
+  balanced-play reward. Reusable `ui.picturePad` powers the kid-lock. `screens/admin_feedback.js` is the
+  hidden developer feedback archive (7-tap the Settings version line; §28.A). (§24, §28)
 - **Multi-profile:** one device/family, many kids, each with own progress; "Who's playing?" each
   launch; per-profile level-select; family-password cloud sync (KV). Each kid can set a **picture-
   password kid-lock**; a grown-up can set an optional **parent password** gating the Parents panel
@@ -108,24 +112,28 @@
 - **Privacy/COPPA:** on-device by default; opt-in family sync stores only pseudonymous data behind
   a parental-consent gate; deletable. (PRIVACY.md, §18b)
 
-**→ NEXT ACTION — build the §28 user backlog** (feedback-to-Ian, pricier crystals, offline
-printables, always-ask "Who's playing?"+add-player). See **§28** for per-item current-state +
-recommended approach; a few items need Ian's input first (feedback delivery channel, new price
-numbers, which printables). Everything below is the prior history. The §23 App-Store-quality
-backlog (A/B/C/D) and the long-deferred multi-user UI are **all DONE, deployed, and QA'd**
-(see §24). What an earlier session did:
-1. ✅ **§23-A App-Store polish** — sustained phone iteration loops: CRAFT crystal sockets (was a
-   web form), level-select depth-ladder, home utility-card depth, the play-body top-clip bug fix,
-   treasure-tile Progress haul, colour-swatch glow. 0 console errors, 0 overflow at all viewports.
-2. ✅ **§23-B pedagogy** — CRAFT is the home hero + the best-paid path (`CRAFT_MULT` gems) + the
-   most-nudged action (idle route + mining-reward CTA both steer to craft); mining reframed "Practice".
-3. ✅ **§23-C daily geode** — tap-to-open + burst animation + ratcheting harder goals each crack
-   (`dailyQuests({round})`, always craft-led), via the new `src/screens/geode.js`.
-4. ✅ **§23-D word discovery** — once-crafted-but-unproven words (`needsCraftConfirmation`,
-   `MIN_CRAFT_PROOF`) get a short cooldown + a reserved confirmation slot so they come back to prove.
-5. ✅ **Multi-user UI (was deferred)** — kid-lock PICTURE password (set in Settings, enforced on
-   "Who's playing?"), an optional grown-up password gate over the Parents panel, and a snapshot
-   **Time machine** (rollback). All wired to the pre-existing tested engine helpers.
+**→ OPEN BACKLOG (what's actually left — everything else is DONE + LIVE):**
+
+1. **Free-first SERVICES AUDIT** (user-requested 2026-06-19, [[prefer-free-services]]) — do a pass
+   over every third-party/service dependency and confirm each is free at this scale / has no
+   surprise cliff, or flag + replace: Cloudflare Workers + Static Assets (hosting/CD), Cloudflare
+   **KV** `FAMILY_SYNC` (family sync + push subs + feedback), **web push / VAPID**, **Gemini** TTS
+   (audio generation only, build-time), and the **dormant Resend** email hook (wired but OFF). Output
+   a short table: dep → what it's used for → free-tier limits → headroom → action. Agent-doable.
+2. **AUDIO TAIL** — finish the remaining ~1241 TTS clips on the FREE multi-day path (resume log +
+   exact steps in §25; was due 2026-06-20, now available). Re-run `npm run gen:audio`, commit the new
+   `audio/` clips, bump `sw.js`/`version.js`, push. ⚠️ reinstall `@breezystack/lamejs` first.
+3. **§26-B — professional ASSETS** (the still-open half of the §25 research; §26-A design polish
+   already SHIPPED in §27). Drop pro art/animation/audio into the existing vanilla surfaces WITHOUT
+   touching `src/engine/**`. ⚠️ paid packs/commissions → [[approval-before-consuming-limits]] (get
+   per-purchase OK; prefer CC0/Kenney first). Detail in "NEXT STEPS (§26)" below.
+4. **Deferred polish:** §26-A item #8 (slim the child-facing Settings, ★★) — small, not started.
+
+History (all ✅ DONE, deployed, QA'd): **§28** user backlog (this section — pricier crystals,
+always-ask who's-playing, offline printables, feedback-to-Ian + in-app archive); **§27** §26-A
+design brief + audio-manifest retry fix; **§24** §23 App-Store polish + daily geode + word
+discovery + the multi-user UI (kid-lock, grown-up gate, time machine); **§22/§20/§17** learning
+model, multi-profile, family sync, economy/deploy.
 
 **§25 — 2026-06-19 (csc-v22): the long-deferred user-gated items, now done where an agent can.**
 - 🔑 **Gemini key rotated** by Ian (his Google action). Repo stays key-free (`gen_audio.mjs` reads
@@ -154,10 +162,9 @@ backlog (A/B/C/D) and the long-deferred multi-user UI are **all DONE, deployed, 
   `push`/`notificationclick`, Worker `/api/push/subscribe` + `/api/push/test` + daily `scheduled()`
   sender, cron `0 16 * * *` (`wrangler.toml`). Subs reuse `FAMILY_SYNC` KV under a `push:` prefix.
   Validated end-to-end in local `workerd` (encrypt + VAPID sign run; routes return correctly).
-  **Ian's two steps to go live (CLI is `npx wrangler`, NOT a global cmd): `npx wrangler login`
-  then `npx wrangler secret put VAPID_PRIVATE` (value in `.env`) — the secret takes effect with NO
-  redeploy (cron + routes already live; prod `/api/push/test` returns 503 until the secret is set).
-  See `PUSH_SETUP.md`, then verify on a real installed PWA (iOS 16.4+ Home-Screen app).**
+  ✅ **NOW LIVE (§28.A session, 2026-06-19):** `VAPID_PRIVATE` secret is SET; daily-reminder cron is
+  active; web push verified end-to-end on Ian's real devices (the feedback-alert path rides the same
+  infra). `PUSH_SETUP.md` retained for reference.
 - 📄 **Design + engine-migration research** delivered: `DESIGN_ANALYSIS.md` (pro UX critique vs
   best-in-class, cited) and `ENGINE_MIGRATION.md` (verdict: **stay vanilla**, upgrade assets/feel;
   PixiJS v8 / Phaser 4 only if a renderer is ever justified). Both built from live exploratory QA.
@@ -166,89 +173,52 @@ backlog (A/B/C/D) and the long-deferred multi-user UI are **all DONE, deployed, 
 
 ## §28 — USER BACKLOG (user 2026-06-19) — ✅ SHIPPED (code done + QA'd; see top banner)
 
-> All four items below are BUILT, unit-tested, and visually QA'd (csc-v24, 220 tests). Decisions
-> Ian made: prices ~2.5× (400/1200/3000/6500); printables = all four types; feedback delivery =
-> KV + push (email DROPPED, free-first — see [[prefer-free-services]]); always-ask who's-playing
-> = always-on for count≥1. The original briefs are kept below for reference.
+> All four items below are BUILT, unit-tested, visually QA'd, and LIVE (csc-v24→v26, 220 tests).
+> Decisions Ian made: prices ~2.5× (400/1200/3000/6500); printables = all four types; feedback
+> delivery = KV + push + in-app archive (email DROPPED, free-first — see [[prefer-free-services]]);
+> always-ask who's-playing = always-on for count≥1.
 
-Four items Ian asked for after the §27 ship. Each below has the ask, the CURRENT state I
-verified read-only, and a recommended approach + the files to touch. Build test-first where
-it's pure engine; follow `QA.md` (interactive view-as-you-go) + `node --check` + Playwright-load
-for any screen/CSS change; bump `sw.js` + `src/version.js` (keep equal) on any precached change;
-commit per milestone; `git push` to deploy (Cloudflare CD, ~30s; confirm with Ian before pushing).
+Four items Ian asked for after the §27 ship — all SHIPPED + LIVE (csc-v24→v26). What each became:
 
-### A. Feedback must actually reach Ian (currently it doesn't)
-- **Ask:** "Feedback needs to come to me." The in-app feedback should be DELIVERED to Ian, not
-  just left on the device.
-- **Current state:** `src/screens/feedback.js` `send()` only calls `ctx.store.addFeedback(...)`
-  (`src/state.js:341` — pushes `{ts, rating, difficulty, note}` into local `state.feedback[]`).
-  The ONLY way it leaves the iPad today is the grown-up **"Export my data"** button (downloads a
-  JSON file). So Ian never sees feedback unless he manually exports on the child's device. This
-  is the gap.
-- **Recommended approach:** add a backend endpoint and POST feedback to it (the infra already
-  exists — `worker.js` Cloudflare Worker + `FAMILY_SYNC` KV + the same pattern as `/api/push`).
-  - Add `worker.js` route `POST /api/feedback` → store under a `feedback:<ts>` KV prefix (and/or
-    email Ian). Keep it pseudonymous (nickname only — COPPA, see `PRIVACY.md`).
-  - In `feedback.js send()`, `fetch('/api/feedback', {POST, body})` best-effort; on failure keep
-    the local copy + a "will send when online" note (don't block the kid / don't lose data).
-  - **Delivery to Ian:** simplest = KV he can read via `wrangler kv` or a tiny gated admin view;
-    "email me" needs an email service (e.g. MailChannels/Resend from the Worker) — surface the
-    choice to Ian. Web Push to Ian's own device is another option (push infra already built).
-  - ⚠️ Sending feedback off-device is a privacy posture change — keep it minimal/pseudonymous and
-    note it in `PRIVACY.md`. Confirm the delivery channel with Ian before building.
+### A. Feedback must actually reach Ian — ✅ DONE
+`POST /api/feedback` (`worker.js`) stores each feedback durably in KV under `feedback:<ts>-<id>`,
+web-pushes the developer's admin device(s) instantly, and (dormant) emails. Client
+`src/feedback_client.js` POSTs best-effort + queues unsent + flushes on next open;
+`src/screens/feedback.js` sends the pseudonymous payload (nickname only). **In-app archive:**
+`src/screens/admin_feedback.js` lists ALL feedback newest-first; reached by tapping a feedback
+notification (deep-link `/?view=feedback`, handled in `app.js` boot) or the **7-tap version-line
+unlock** in Settings. `src/admin.js` remembers the `ADMIN_KEY` on the admin device (localStorage
+`csc_admin_key`). Admin push subs live under KV `adminpush:` (separate from family `push:`), gated
+by `POST /api/push/admin` (`x-admin-key`). `GET /api/feedback` (gated) reads the archive.
+**Email DROPPED** (free-first); see `FEEDBACK_SETUP.md` + `PRIVACY.md`. Secrets: `ADMIN_KEY`,
+`VAPID_PRIVATE` set. Verified end-to-end on prod (KV + push to laptop + phone).
 
-### B. Make crystals more expensive
-- **Ask:** lengthen the collection grind — crystals cost more gems.
-- **Current state:** `src/engine/catalog.js` `RARITIES` costs = **common 160 / rare 480 / epic
-  1200 / legendary 2600** (`cost(species)` reads these). Economy context: `praise.BASE_POINTS`,
-  `CRAFT_MULT`, `dailyGoalGems` 250 (see §17/§22). `test/catalog.test.js` exists — check for a
-  cost guardrail/assertion and update it.
-- **Recommended approach:** pick new (higher) costs with Ian — e.g. raise each tier ~1.5–2×
-  (rough: 250 / 800 / 2000 / 4500) so the 24-mineral set is a multi-week goal at the current
-  earn rate. Pure constant change + update any test that pins the numbers. Sanity-check the
-  affordable-glow/"can afford" logic still reads well in the catalog at the new prices.
+### B. Make crystals more expensive — ✅ DONE
+`src/engine/catalog.js` `RARITIES` now **400 / 1200 / 3000 / 6500** (~2.5×; was 160/480/1200/2600).
+Full 24-mineral set ≈47k gems (multi-month goal). `test/catalog.test.js` uses relative assertions
+(ascending + ratio), still green.
 
-### C. Offline-mode printables
-- **Ask:** printable practice materials for offline use.
-- **Current state:** nothing exists. The app is an offline PWA; there is no print path.
-- **Recommended approach (stay no-build, offline):** a "Printables" entry (Settings or a new home
-  card) that opens a print-friendly view and calls `window.print()` (browser → PDF/printer). No
-  PDF lib. Decide WHAT to print with Ian — strong candidates that reuse existing engine data:
-  - this learner's **current target words** (the ~10 it's working on — `session`/`progress`),
-  - a **pattern-family word list** (`data/patterns.js` / `lexicon.wordsByPattern`),
-  - a blank **look-cover-write-check** practice grid for a chosen word set,
-  - a tier word list (`lexicon.wordsByTier`).
-  Render a clean `@media print` stylesheet (hide chrome, black-on-white, big type). Keep it
-  child-safe + grown-up-initiated. Pure where possible (the word-set selection is engine logic →
-  testable); the print view itself is a screen (Playwright-load it).
+### C. Offline printables — ✅ DONE
+Pure `src/engine/printables.js` (8 tests) resolves a sheet spec into a capped word list; 3 sources
+(current target words / pattern family / age tier) × 2 formats (word list / look-cover-write-check
+grid). `src/screens/printables.js` renders + `window.print()`; `@media print` CSS hides all chrome
+(big black-on-white). Entry: Settings → "Practice sheets". `scripts/qa_s28.mjs` covers it.
 
-### D. Always ask "Who's playing?" on open + expose Add-player
-- **Ask:** "Ask who is playing on each opening and add player option."
-- **Current state (important):** the picker + add-player ALREADY EXIST, but routing hides them
-  for a single-profile family. `src/app.js` boot (~line 110): `count===0`→onboarding;
-  **`count===1`→straight to home (NO picker)**; `count>=2`→`profiles` ("Who's playing?") every
-  launch. `src/screens/profiles.js` already renders a **"Add explorer"** card
-  (`profile-card add` → `nav('onboarding')`). So a one-child family NEVER sees the picker OR the
-  add-player button — which is exactly what Ian is hitting.
-- **Recommended approach:** change the boot routing so the `profiles` "Who's playing?" screen
-  shows whenever `count>=1` (not just `>=2`) — that single change satisfies BOTH halves of the
-  ask (it always asks who's playing AND always surfaces the existing "Add explorer" option).
-  Touch only the `count===1` branch in `src/app.js`. ⚠️ UX tradeoff: a solo kid now taps once
-  more each open — consider whether that's always-on (Ian seems to want it) or a Settings toggle;
-  default to always-on per the ask, and keep `refreshActive()`/`maybeBootSync()` wired. Verify
-  the add-player flow returns to the right place and per-profile progress still loads.
-
-> All four are agent-doable. A/B/D are small; C is a new (small) surface. The only things needing
-> Ian's input first: the feedback DELIVERY channel (KV vs email vs push) + privacy note (A), the
-> new price numbers (B), and which printables to include (C).
+### D. Always ask "Who's playing?" + Add-player — ✅ DONE
+`src/app.js` boot now routes to the `profiles` picker for **any count≥1** (was `>=2`; solo kids
+were skipping straight to home). The picker already had the "Add explorer" card, so this one change
+satisfies both halves. Only exception: a single profile still mid-onboarding resumes onboarding.
+`scripts/qa_fold.mjs` was updated to tap through the picker.
 
 ---
 
-## NEXT STEPS (§26 — planned, NOT yet started)
+## NEXT STEPS (§26 — from the §25 research)
 
-Two independent workstreams come out of the §25 research. They do not depend on each other.
+Two independent workstreams came out of the §25 research. **Workstream A (DESIGN polish) is ✅
+SHIPPED — see §27.** Workstream B (professional ASSETS) is the remaining open item (see OPEN
+BACKLOG #3 in §0). Workstream A is kept below as the record of what was done.
 
-### A. Act on the DESIGN brief — fix, then verify with a fresh design agent
+### A. Act on the DESIGN brief — ✅ SHIPPED in §27 (kept for reference)
 1. **Read `DESIGN_ANALYSIS.md` in full** and triage its prioritized table (impact × effort). The
    headline "free polish we can do now" items, in the report's own priority order:
    - **Landscape / short-phone top-heaviness** — phone-landscape home + wave-reward push ALL primary
@@ -288,8 +258,10 @@ assets** dropped into the current vanilla app. From `ENGINE_MIGRATION.md`:
 > Prefer CC0/free (Kenney) first. Both workstreams are agent-doable except the actual purchase
 > approvals + any real-device design check.
 
-**Still genuinely user-gated (agent cannot do):** finish the audio tail on the paid quota (above);
-the two `wrangler` push-deploy steps + real-device push verification (above).
+**Still genuinely user-gated (agent cannot do):** any PAID asset purchase (workstream B,
+[[approval-before-consuming-limits]]); enabling Gemini billing IF the audio tail is ever rushed
+(the free multi-day path needs no gating). (The old `wrangler` push-deploy steps + real-device
+push verification are now ✅ DONE — §28.A.)
 
 Build **test-first where it's pure**, keep `npm test` green (a **PreToolUse gate runs `npm test`
 before Bash**), **follow `QA.md` (interactive view-as-you-go QA) before shipping major UI**,
