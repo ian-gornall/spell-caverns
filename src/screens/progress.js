@@ -4,10 +4,9 @@
 // gems, cavern depth, the mastery SPECTRUM (progress.summary buckets, as a
 // friendly bar rather than raw numbers), and a tiny recent-days accuracy strip.
 // Buckets are display-only — never a gate.
-import { el, header, toast, burst } from '../ui.js';
+import { el, header, toast } from '../ui.js';
 import { summary, lapsedWords } from '../engine/progress.js';
-import { mulberry32 } from '../engine/distractors.js';
-import { dailyQuests, questProgress, allQuestsDone, openGeode } from '../engine/quests.js';
+import { dailyQuests, questProgress, allQuestsDone } from '../engine/quests.js';
 import { catalogSummary } from '../engine/catalog.js';
 
 export function progressScreen(ctx) {
@@ -199,24 +198,16 @@ function cavernMap(ctx) {
 // Daily Cavern Quests + the all-complete "geode" bonus (research Tier 1 #4 / #8).
 function questsPanel(ctx) {
   const today = new Date().toISOString().slice(0, 10);
-  const quests = dailyQuests(today);
+  // The geode "round" ratchets each crack today, so quests get harder each cycle (§C).
+  const round = ctx.store.geodeRound();
+  const quests = dailyQuests(today, { round });
   const day = ctx.store.dayStats();
   const allDone = allQuestsDone(quests, day);
-  const opened = ctx.store.geodeOpenedToday();
 
-  const openGeodeNow = () => {
-    const reward = openGeode(mulberry32((Date.now() >>> 0) || 1));
-    ctx.store.addGems(reward.gems);
-    ctx.store.markGeodeOpened();
-    ctx.save();
-    burst(window.innerWidth / 2, window.innerHeight / 2, reward.rare ? '#FFD23F' : '#36F1CD', reward.rare ? 32 : 18);
-    toast(`🎁 Geode cracked: +${reward.gems} gems${reward.rare ? ' ✨ RARE crystal!' : ''}!`);
-    ctx.nav('progress'); // re-render (geode now opened)
-  };
-
-  // Tapping a quest jumps straight into the activity that works toward it (a specimen
-  // quest -> the Lab; everything else -> Play/rhythm). (User 2026-06-18.)
-  const questNav = { specimens: 'lab' };
+  // Tapping a quest jumps straight into the activity that works toward it: craft + repair
+  // quests -> Craft (the assessment, §B); a specimen quest -> the Lab; the fast ones ->
+  // Practice/rhythm.
+  const questNav = { crafted: 'puzzle', specimens: 'lab' };
   const rows = quests.map((q) => {
     const pr = questProgress(q, day);
     return el(
@@ -236,14 +227,18 @@ function questsPanel(ctx) {
     );
   });
 
-  const footer =
-    allDone && !opened
-      ? el('button', { class: 'btn primary', style: { width: '100%', marginTop: '6px' }, onClick: openGeodeNow }, '🎁 Open your geode!')
-      : opened
-        ? el('p', { class: 'quest-note' }, '🎉 Geode opened — fresh quests tomorrow!')
-        : el('p', { class: 'quest-note' }, 'Finish all three to crack open a geode! 🎁');
+  const footer = allDone
+    ? el(
+        'button',
+        { class: 'btn primary', style: { width: '100%', marginTop: '6px' }, onClick: () => ctx.nav('geode') },
+        '🎁 Crack your geode!',
+      )
+    : round > 0
+      ? el('p', { class: 'quest-note' }, `Round ${round + 1} — tougher goals! Finish them to crack another geode 🎁`)
+      : el('p', { class: 'quest-note' }, 'Finish all three to crack open a geode! 🎁');
 
-  return el('div', { class: 'panel' }, el('h3', {}, 'Daily quests'), ...rows, footer);
+  const heading = round > 0 ? `Daily quests · Round ${round + 1}` : 'Daily quests';
+  return el('div', { class: 'panel' }, el('h3', {}, heading), ...rows, footer);
 }
 
 // The Specimen Collection — crystals invented, spelled & drawn in the Crystal Lab.

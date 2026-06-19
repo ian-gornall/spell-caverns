@@ -82,6 +82,7 @@ const CORE = [
   '/src/screens/onboarding.js',
   '/src/screens/profiles.js',
   '/src/screens/boss.js',
+  '/src/screens/geode.js',
   '/data/words.js',
   '/data/patterns.js',
   '/data/nonsense_blocklist.js',

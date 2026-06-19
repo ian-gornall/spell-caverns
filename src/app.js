@@ -15,6 +15,7 @@ import { progressScreen } from './screens/progress.js';
 import { feedbackScreen } from './screens/feedback.js';
 import { catalogScreen } from './screens/catalog.js';
 import { bossScreen } from './screens/boss.js';
+import { geodeScreen } from './screens/geode.js';
 import { startRhythm } from './modes/rhythm.js';
 import { startPuzzle } from './modes/puzzle.js';
 import { startLab } from './modes/lab.js';
@@ -33,6 +34,7 @@ const routes = {
   onboarding: onboardingScreen,
   profiles: profilesScreen,
   boss: bossScreen,
+  geode: geodeScreen,
 };
 
 let ctx = null;

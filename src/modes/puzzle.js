@@ -360,7 +360,7 @@ export function startPuzzle(ctx, params = {}) {
     // CRAFTING is the SOURCE OF TRUTH for mastery (§21-A): a clean first-try build = known,
     // a missed/assisted build = a target. (Recognition/mining never sets this — only craft.)
     recordAnswer(state.tracker, target, firstTry, { responseMs, source: 'craft' });
-    ctx.store.recordAnswerStat(firstTry);
+    ctx.store.recordAnswerStat(firstTry, 'craft'); // clean builds feed the "craft N words" quest
 
     if (firstTry) {
       combo += 1;

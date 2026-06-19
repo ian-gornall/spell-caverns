@@ -40,10 +40,13 @@ export function homeScreen(ctx) {
   const gemsToday = ctx.store.gemsToday();
   const goalMet = gemsToday >= goal;
   const goalPct = Math.min(100, Math.round((gemsToday / goal) * 100));
-  // Daily quests summary (full list lives on Progress).
-  const quests = dailyQuests(today);
+  // Daily quests summary (full list lives on Progress). The "round" ratchets each time
+  // a geode is cracked today, so the goals get harder (§C). Opening the geode advances
+  // the round → the new (harder) quests aren't done yet, so "ready" naturally resets.
+  const round = ctx.store.geodeRound();
+  const quests = dailyQuests(today, { round });
   const questsDone = quests.filter((q) => questProgress(q, ctx.store.dayStats()).done).length;
-  const geodeReady = questsDone === quests.length && !ctx.store.geodeOpenedToday();
+  const geodeReady = questsDone === quests.length;
 
   const streakStrip = el(
     'div',
@@ -56,7 +59,7 @@ export function homeScreen(ctx) {
       streak.freezes > 0 && el('div', { class: 'streak-chip lantern' }, `🏮 ×${streak.freezes}`),
       el(
         'button',
-        { class: 'streak-chip quest-chip' + (geodeReady ? ' lit' : ''), onClick: () => ctx.nav('progress') },
+        { class: 'streak-chip quest-chip' + (geodeReady ? ' lit' : ''), onClick: () => ctx.nav(geodeReady ? 'geode' : 'progress') },
         geodeReady ? '🎁 Geode ready!' : `🎯 Quests ${questsDone}/${quests.length}`,
       ),
     ),

@@ -293,23 +293,38 @@ export function dayStats() {
     digs: d.digs || 0,
     bestCombo: d.bestCombo || 0,
     specimens: d.specimens || 0,
+    crafted: d.crafted || 0,
   };
 }
 
-export function geodeOpenedToday() {
-  return !!(state.stats.byDay[todayKey()] || {}).geodeOpened;
+// Returns the number of geodes opened today (0 if none).
+export function geodeRound() {
+  return (state.stats.byDay[todayKey()] || {}).geodesOpened || 0;
 }
+
+// Boolean accessor: true once any geode has been opened today.
+export function geodeOpenedToday() {
+  return geodeRound() > 0;
+}
+
+// Increment the per-day geode counter (was a boolean toggle — now a count).
 export function markGeodeOpened() {
-  dayBucket().geodeOpened = true;
+  const d = dayBucket();
+  d.geodesOpened = (d.geodesOpened || 0) + 1;
   save();
 }
 
-export function recordAnswerStat(correct) {
+// `source` is optional. When correct && source === 'craft', increment crafted counters.
+export function recordAnswerStat(correct, source) {
   state.stats.answers += 1;
   if (correct) state.stats.correct += 1;
   const d = dayBucket();
   d.answers += 1;
   if (correct) d.correct += 1;
+  if (correct && source === 'craft') {
+    d.crafted = (d.crafted || 0) + 1;
+    state.stats.crafted = (state.stats.crafted || 0) + 1;
+  }
 }
 
 export function recordSessionPlayed() {

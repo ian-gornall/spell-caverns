@@ -323,7 +323,7 @@ export function startRhythm(ctx, params = {}) {
     // reading, but it must NOT establish mastery or create targets (§21-A: only crafting
     // does). source:'mine' keeps the mastery tracker out of it; lifetime stats still count.
     recordAnswer(state.tracker, entry.word, correct, { responseMs, source: 'mine' });
-    ctx.store.recordAnswerStat(correct);
+    ctx.store.recordAnswerStat(correct, 'mine');
 
     if (correct) {
       combo = streak;

@@ -2006,6 +2006,57 @@ select {
   flex-wrap: wrap;
   justify-content: center;
 }
+.boss .earned {
+  font-size: 1.5rem;
+  color: var(--gold);
+  font-weight: 800;
+}
+
+/* Daily geode (§C): compact the reveal so the gem haul, the next goals AND the primary
+   "Keep crafting" CTA all fit a phone without a hunt-scroll. */
+.geode-day .boss-body {
+  gap: 12px;
+  padding: 16px 18px max(16px, env(safe-area-inset-bottom));
+}
+.geode-day .boss-emoji {
+  font-size: 4.2rem;
+}
+.geode-day .boss-crystal-name {
+  font-size: 1.7rem;
+}
+.geode-day .mascot {
+  margin: 0;
+}
+/* The "next goals" preview shown after cracking — a tidy list of the ratcheted-up
+   quests, with the craft goal highlighted as the headline. */
+.geode-goals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(360px, 88vw);
+}
+.geode-goal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  text-align: left;
+}
+.geode-goal.craft {
+  background: linear-gradient(120deg, #7b5cff33, #b14bff22);
+  border-color: #b14bff66;
+}
+.geode-goal-ic {
+  font-size: 1.5rem;
+  flex: 0 0 auto;
+}
+.geode-goal-text {
+  font-weight: 700;
+  font-size: 1.02rem;
+}
 
 /* ------- accessibility: easy-read text ------- */
 /* Extra letter-spacing + line-height on the spelling-critical text, to help a

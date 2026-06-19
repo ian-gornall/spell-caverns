@@ -8,11 +8,16 @@
 //
 // Pure + browser-agnostic: the date (todayISO) and the day's stat snapshot are passed
 // in, so this is fully testable. metric names index into a {gems,correct,digs,
-// bestCombo,specimens} snapshot the store builds from per-day stats.
+// bestCombo,specimens,crafted} snapshot the store builds from per-day stats.
 import { mulberry32, shuffle } from './distractors.js';
 
-// One template PER metric (so a day's 3 picks are always distinct kinds of goal).
+// Growth multiplier applied per ratchet round. Exported so UI can show "×N" labels.
+export const ROUND_GROWTH = 1.6;
+
+// One template PER metric (so a day's picks are always distinct kinds of goal).
+// The CRAFT quest is handled separately — it is always the headline/first quest.
 export const QUEST_POOL = [
+  { id: 'craft', metric: 'crafted', target: 5, icon: '🔨', label: (t) => `Craft ${t} words from scratch`, craft: true },
   { id: 'gems', metric: 'gems', target: 150, icon: '💎', label: (t) => `Mine ${t} gems today` },
   { id: 'correct', metric: 'correct', target: 15, icon: '✅', label: (t) => `Spell ${t} words right` },
   { id: 'digs', metric: 'digs', target: 2, icon: '⛏️', label: (t) => `Finish ${t} digs` },
@@ -38,13 +43,42 @@ function seedFromDate(dateISO) {
   return (h >>> 0) || 1;
 }
 
-// The 3 quests for `dateISO` — deterministic for the day (stable across reloads),
-// fresh each day. Each carries a ready-to-show `text`.
-export function dailyQuests(dateISO, { count = 3 } = {}) {
-  const rng = mulberry32(seedFromDate(dateISO));
-  return shuffle(QUEST_POOL, rng)
-    .slice(0, count)
-    .map((q) => ({ id: q.id, metric: q.metric, target: q.target, icon: q.icon, text: q.label(q.target) }));
+// Scale a base target up for ratchet `round`. round 0 returns base exactly.
+// Uses Math.max(base+round, round(base * ROUND_GROWTH^round)) so even tiny targets
+// (digs:2, specimens:1) grow strictly every round.
+function scaledTarget(base, round) {
+  if (round === 0) return base;
+  return Math.max(base + round, Math.round(base * Math.pow(ROUND_GROWTH, round)));
+}
+
+// Build a single quest object with scaled target and display text.
+function buildQuest(q, round) {
+  const target = scaledTarget(q.target, round);
+  return {
+    id: q.id,
+    metric: q.metric,
+    target,
+    icon: q.icon,
+    text: q.label(target),
+    craft: !!q.craft,
+  };
+}
+
+// The daily quests for `dateISO`:
+//   - CRAFT quest is always first (headline quest nudges balanced craft play).
+//   - Remaining (count-1) quests are date+round-seeded picks from the non-craft pool.
+//   - round=0 matches the "no round" default; targets scale up strictly per round.
+export function dailyQuests(dateISO, { count = 3, round = 0 } = {}) {
+  const craftQuest = QUEST_POOL.find((q) => q.id === 'craft');
+  const nonCraftPool = QUEST_POOL.filter((q) => q.id !== 'craft');
+
+  // Include round in seed so different rounds can vary the non-craft mix.
+  const seed = (seedFromDate(dateISO) ^ (round * 2654435761)) >>> 0 || 1;
+  const rng = mulberry32(seed);
+
+  const picks = shuffle(nonCraftPool, rng).slice(0, count - 1);
+
+  return [craftQuest, ...picks].map((q) => buildQuest(q, round));
 }
 
 // Progress of one quest against today's snapshot.
@@ -63,11 +97,14 @@ export function allQuestsDone(quests, dayStats = {}) {
 }
 
 // Crack a geode: a variable, always-positive bonus. Seeded rng -> reproducible.
-export function openGeode(rng = Math.random) {
+// round=0 is identical to the no-opts path (backward compatible).
+export function openGeode(rng = Math.random, { round = 0 } = {}) {
   const total = GEODE_TIERS.reduce((s, t) => s + t.weight, 0);
   let r = rng() * total;
+  let tier = GEODE_TIERS[0];
   for (const t of GEODE_TIERS) {
-    if ((r -= t.weight) <= 0) return { gems: t.gems, rare: t.rare };
+    if ((r -= t.weight) <= 0) { tier = t; break; }
   }
-  return { gems: GEODE_TIERS[0].gems, rare: false };
+  const gems = round === 0 ? tier.gems : Math.max(1, Math.round(tier.gems * (1 + round * 0.6)));
+  return { gems, rare: tier.rare };
 }
