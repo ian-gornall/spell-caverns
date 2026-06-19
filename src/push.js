@@ -87,6 +87,39 @@ export async function enable() {
   }
 }
 
+// DEVELOPER-ONLY: register THIS device to receive instant in-app FEEDBACK alerts (§28.A).
+// Hidden behind a 7-tap unlock on the Settings version line + gated by the ADMIN_KEY secret, so
+// it never appears for families and can't be triggered without the key. Ensures a push
+// subscription exists (subscribing if needed), then posts it to the gated /api/push/admin route.
+// Returns { ok, reason } — 'forbidden' = wrong key, 'denied' = notifications blocked.
+export async function registerAdmin(adminKey) {
+  if (!isSupported()) return { ok: false, reason: 'unsupported' };
+  if (!adminKey) return { ok: false, reason: 'no-key' };
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return { ok: false, reason: 'denied' };
+    const reg = await registration();
+    if (!reg || !reg.pushManager) return { ok: false, reason: 'no-sw' };
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
+      });
+    }
+    const res = await fetch('/api/push/admin', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-admin-key': adminKey },
+      body: JSON.stringify(sub.toJSON()),
+    });
+    if (res.status === 403) return { ok: false, reason: 'forbidden' };
+    if (!res.ok) return { ok: false, reason: 'server' };
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: 'error' };
+  }
+}
+
 // Ask the Worker to push a one-off test notification to THIS device right now, so a grown-up
 // can confirm reminders actually arrive (rather than waiting for the daily cron). Returns
 // { ok, reason } — 'not-subscribed' if reminders aren't on, 'server' if the Worker refused.

@@ -54,7 +54,14 @@
 //      (letter-distinct spelling font) + fuller dyslexia "Easy-read" mode. ALSO: audio
 //      manifest load now RETRIES on failure (was once-and-never-retry) so a long-lived
 //      installed-PWA session can't get permanently stuck on the robotic device voice.
-const VERSION = 'csc-v24';
+// v24 (§28 user backlog): crystal prices ~2.5× (catalog.js); "Who's playing?" shown for any
+//      count≥1 (app.js); OFFLINE PRINTABLES (engine/printables.js + screens/printables.js +
+//      @media print); feedback now reaches the developer (worker /api/feedback → KV + push,
+//      src/feedback_client.js, src/screens/feedback.js, src/state.js).
+// v25 (§28.A follow-up): hidden developer unlock — tap the Settings version line 7× to register
+//      THIS device for instant feedback push (push.registerAdmin, gated by ADMIN_KEY). No
+//      visible UI (single-admin app). push.js + screens/settings.js changed.
+const VERSION = 'csc-v25';
 
 const CORE = [
   '/',

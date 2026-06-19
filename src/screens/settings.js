@@ -745,6 +745,30 @@ export function settingsScreen(ctx) {
   // CODE version and the SERVICE-WORKER cache version; if they differ, an update is pending
   // (reopen the app to apply). Updates async once the SW answers.
   const versionLine = el('p', { class: 'version-line' }, `Version ${APP_VERSION}`);
+  // Hidden DEVELOPER unlock (§28.A): tap the version line 7× to register THIS device for instant
+  // feedback alerts. Invisible to families; still requires the ADMIN_KEY secret, so a curious kid
+  // tapping it achieves nothing. No on-screen affordance — by design (Android-style build-tap).
+  let versionTaps = 0;
+  let versionTapTimer = null;
+  versionLine.addEventListener('click', () => {
+    versionTaps += 1;
+    clearTimeout(versionTapTimer);
+    versionTapTimer = setTimeout(() => {
+      versionTaps = 0;
+    }, 1500);
+    if (versionTaps < 7) return;
+    versionTaps = 0;
+    const key = window.prompt('Developer: enter admin key to send feedback alerts to this device');
+    if (!key) return;
+    toast('Registering this device…');
+    push.registerAdmin(key.trim()).then((r) => {
+      if (r.ok) toast('✅ Feedback alerts will come to this device');
+      else if (r.reason === 'forbidden') toast('Wrong admin key 🔒');
+      else if (r.reason === 'denied') toast('Allow notifications first, then retry');
+      else if (r.reason === 'unsupported') toast('This device can’t receive push (install the app first)');
+      else toast('Could not register this device 😕');
+    });
+  });
   swCacheVersion().then((sw) => {
     if (!sw) {
       versionLine.textContent = `Version ${APP_VERSION}`;
