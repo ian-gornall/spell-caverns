@@ -1815,13 +1815,14 @@ select {
 }
 .colour-swatch.on {
   border-color: #fff;
-  transform: scale(1.08);
+  transform: scale(1.1);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.28), 0 0 22px -2px var(--accent), 0 8px 22px -6px rgba(0, 0, 0, 0.7);
 }
 .colour-swatch .colour-name {
   font-size: 0.82rem;
   font-weight: 800;
-  color: rgba(0, 0, 0, 0.6);
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.35);
+  color: rgba(0, 0, 0, 0.72);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.45);
 }
 .colour-swatch.small {
   width: 52px;
