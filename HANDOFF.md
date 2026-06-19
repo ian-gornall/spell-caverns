@@ -125,8 +125,16 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
   On a narrow 320-360px phone the clipped title is ~55-95px wider than its box, so the title element
   itself **panned right under a finger** (the page didn't — `doc=0,winX=0`). Only bites at narrow
   widths (the A55/Fold at 480/928px were clean) — fits "narrow Samsung." Fix = `overflow:clip`
-  (keeps the ellipsis, creates no scroll container). After: **0 pan on every Galaxy × every screen.**
-  This is almost certainly the user's exact "scroll a bit right / oversize" symptom.
+  (keeps the ellipsis, creates no scroll container). Then a hardened `qa_overflow.mjs` (a DEFINITIVE
+  `scrollLeft`-pannability test, touch-action-aware) found the SAME class on more surfaces and they
+  were ALL fixed (csc-v33): the **"Who's playing?" picker / onboarding** screen was touch-pannable
+  ~33-39px EVERY launch (its `.onboarding::before` glow `inset:-10%` ≈33px, clipped-but-pannable
+  under `overflow:hidden`) → `overflow:clip`; **level cards** → `overflow:clip` + grids →
+  `minmax(0,1fr)` (long labels clip, don't expand the grid); **`.onboard-body`** y-scroller (CSS
+  won't clip-x while it scrolls-y) → `touch-action: pan-y` (blocks sideways drags at the input
+  layer). **After: 0 horizontal pan on every Galaxy device descriptor × every screen** (incl. the
+  picker), verified by `qa_galaxy.mjs` against PROD with active pan attempts. This set is almost
+  certainly the user's exact "scroll a bit right / oversize" symptom.
 - ✅ **Defensive root guards (csc-v27/v29):** `overflow-x: clip` on `html, body, #app`; clipped
   `.onboard-body` (its level-card shadows caused a ~3px phantom inner pan). `scripts/qa_overflow.mjs`
   = DEEP guard catching **inner-scroller** overflow `qa_responsive.mjs` can't see (+1.3× text scale +

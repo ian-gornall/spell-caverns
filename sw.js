@@ -81,7 +81,12 @@
 //      i.e. its own touch-scroll container that panned ~55-95px on narrow (320-360px) phones.
 //      overflow:clip keeps the ellipsis but makes it un-pannable. Reproduced + fixed via real
 //      Galaxy device descriptors (scripts/qa_galaxy.mjs), now 0 pan on every Galaxy × screen.
-const VERSION = 'csc-v32';
+// v33: the SAME touch-pannable class on more surfaces, caught by a hardened qa_overflow that
+//      now does a DEFINITIVE scrollLeft-pannability test (+touch-action awareness): the
+//      onboarding/"Who's playing?" glow (.onboarding inset:-10% ::before) and level cards were
+//      pannable ~33-39px every launch -> overflow:clip; grids -> minmax(0,1fr) so long labels
+//      clip not expand; .onboard-body -> touch-action:pan-y. 0 pan on every Galaxy × screen.
+const VERSION = 'csc-v33';
 
 const CORE = [
   '/',

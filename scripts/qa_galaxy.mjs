@@ -27,7 +27,10 @@ async function panProbe(page) {
     const de = document.documentElement;
     let worst = { sel: null, left: 0 };
     for (const e of document.querySelectorAll('*')) {
-      if (e.scrollLeft > worst.left) {
+      // a finger can only pan horizontally where touch-action permits it (pan-y/none block it)
+      const ta = getComputedStyle(e).touchAction;
+      const touchPanX = /\bpan-x\b/.test(ta) || ta === 'auto' || ta === 'manipulation';
+      if (touchPanX && e.scrollLeft > worst.left) {
         const cls = (e.className && typeof e.className === 'string') ? '.' + e.className.trim().split(/\s+/)[0] : '';
         worst = { sel: e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + cls, left: e.scrollLeft };
       }
@@ -53,7 +56,15 @@ for (const name of NAMES) {
   await page.evaluate((s) => localStorage.setItem('crystal-spell-caverns:v1', JSON.stringify(s)), SEED);
   await page.goto(URL, { waitUntil: 'networkidle' });
   await page.waitForTimeout(500);
-  if (await page.locator('.profile-card:not(.add)').count()) await page.locator('.profile-card:not(.add)').first().click().catch(() => {});
+  // probe the "Who's playing?" picker FIRST — it's shown every launch (its decorative glow used
+  // to make the whole screen touch-pannable ~33-39px). Then select the explorer to reach home.
+  if (await page.locator('.profile-card:not(.add)').count()) {
+    const rp = await panProbe(page);
+    const pan = Math.max(rp.winScrollX, rp.docPannable, rp.worstInnerLeft);
+    console.log(`  ${name.padEnd(16)} ${'picker'.padEnd(9)} vw=${rp.vw} visual=${rp.vvw} ${pan > 1 ? `⚠ PAN=${pan} (${rp.worstSel})` : 'ok'}`);
+    if (pan > 1) findings.push(`${name} [picker]: PAN=${pan} (${rp.worstSel})`);
+    await page.locator('.profile-card:not(.add)').first().click().catch(() => {});
+  }
   await page.waitForSelector('.menu-card.play', { timeout: 8000 }).catch(() => {});
 
   const screens = [['home', null], ['settings', '.menu-card.settings'], ['catalog', '.menu-card.catalog'], ['practice', '.menu-card.play']];

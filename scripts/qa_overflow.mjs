@@ -46,9 +46,25 @@ async function scan(page, label) {
     for (const e of document.querySelectorAll('*')) {
       const cs = getComputedStyle(e);
       if (cs.display === 'none' || cs.visibility === 'hidden') continue;
-      // inner horizontal scroll container (the bug class qa_responsive can't see)
-      if (e.scrollWidth - e.clientWidth > 1 && /(auto|scroll)/.test(cs.overflowX)) {
-        out.scrollers.push(`${path(e)} scrollW=${e.scrollWidth} clientW=${e.clientWidth} (+${e.scrollWidth - e.clientWidth})`);
+      // DEFINITIVE horizontal-pannability test: try to push scrollLeft and see if it sticks.
+      // This catches BOTH auto/scroll containers AND overflow:hidden boxes (e.g. a long
+      // ellipsised .header-title) that a finger can still pan right — the exact bug class
+      // qa_responsive (document-level) and an overflow-x value check both miss. `clip` and
+      // `visible` boxes can't hold a scroll offset, so they're correctly ignored. Restore after.
+      if (e.scrollWidth - e.clientWidth > 1) {
+        const before = e.scrollLeft;
+        e.scrollLeft = 99999;
+        const panned = e.scrollLeft;
+        e.scrollLeft = before;
+        // A finger can only pan horizontally if touch-action permits it. `pan-y`/`none` block
+        // sideways drags at the input layer, so such a box is NOT user-pannable even if
+        // scrollLeft is programmatically settable (a harmless sub-pixel artifact). Only count
+        // elements that BOTH hold a scroll offset AND allow horizontal touch panning.
+        const ta = cs.touchAction;
+        const touchPanX = /\bpan-x\b/.test(ta) || ta === 'auto' || ta === 'manipulation';
+        if (panned > 1 && touchPanX) {
+          out.scrollers.push(`${path(e)} PANNABLE +${panned} (scrollW=${e.scrollWidth} clientW=${e.clientWidth}, overflowX=${cs.overflowX}, touch-action=${ta})`);
+        }
       }
       // painting past the TRUE viewport edge = a real right-side cut-off. Skip the root boxes
       // (html/body/#app legitimately span the full viewport; only their CONTENT is inset).

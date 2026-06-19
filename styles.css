@@ -456,7 +456,11 @@ button.quest {
 }
 .home-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* minmax(0,1fr) — NOT 1fr: a bare 1fr column has min-width:auto, so a long unbreakable label
+     (e.g. a level card's "information") sets a min-content floor that pushes the GRID wider than
+     its box, making the scroll parent x-pannable. minmax(0,1fr) lets columns shrink so the text
+     clips (cards are overflow:clip) instead of expanding the grid. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   padding-bottom: 12px;
 }
@@ -1816,7 +1820,12 @@ select {
 .onboarding {
   justify-content: center;
   position: relative;
-  overflow: hidden;
+  /* clip — NOT hidden. The decorative ::before glow uses inset:-10% (≈33px beyond the content
+     box), and `overflow:hidden` clips it VISUALLY but leaves the whole onboarding/"Who's playing?"
+     screen touch-PANNABLE by ~33-39px on every phone width — a big contributor to the reported
+     right-side pan (it's the first screen every launch). `overflow:clip` clips the glow AND
+     creates no scroll container, so it can't pan. The inner .onboard-body keeps its own y-scroll. */
+  overflow: clip;
 }
 /* The mascot block centres, but on a tall screen the space below read as an empty void
    (DESIGN_ANALYSIS rec #7). Give it PURPOSE: a few faint, slowly-drifting gem glows in the
@@ -1846,9 +1855,14 @@ select {
   flex-direction: column;
   align-items: center;
   justify-content: safe center;
-  /* y scrolls; x is CLIPPED so the level-card shadows/outlines can't create a few-px phantom
-     horizontal pan (an overflow-y:auto box otherwise computes overflow-x:auto). */
-  overflow: hidden auto;
+  /* y scrolls; x must not. CSS won't let a y-scroller also clip-x (overflow-x:clip computes to
+     hidden when overflow-y:auto), and a few-px sub-pixel content artifact then leaves it touch-
+     pannable. `touch-action: pan-y` settles it at the INPUT layer: the browser allows only vertical
+     finger-panning here, so the screen can't be dragged sideways regardless of scrollWidth. (This
+     screen is taps + vertical scroll only — no horizontal drag — so pan-y is safe.) */
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
   gap: 26px;
   padding: 24px;
   text-align: center;
@@ -2025,7 +2039,11 @@ select {
    the 9 levels (one per tier) stay compact and don't push the screen too tall (§21-D). */
 .level-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* minmax(0,1fr) — NOT 1fr: a bare 1fr column has min-width:auto, so a long unbreakable label
+     (e.g. a level card's "information") sets a min-content floor that pushes the GRID wider than
+     its box, making the scroll parent x-pannable. minmax(0,1fr) lets columns shrink so the text
+     clips (cards are overflow:clip) instead of expanding the grid. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   /* fill the container (so it respects Settings panel padding instead of overflowing on a
      phone) but cap + center on wide screens like the onboarding full-width step. */
@@ -2035,7 +2053,9 @@ select {
 }
 .level-card {
   position: relative;
-  overflow: hidden;
+  /* clip not hidden — clips the absolute depth-stripe while staying un-pannable even when the
+     card's age/word text overflows slightly at large OS text scale (else the card itself pans). */
+  overflow: clip;
   text-align: left;
   padding: 12px 16px 12px 20px;
   border-radius: 16px;
