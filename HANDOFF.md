@@ -95,9 +95,17 @@ QA'd** (see §24). What's done this session:
   (`audio/_oneshot/` scratch stays ignored). Generated up to **1678 words + 32 phrases** (the
   frequency-TOP words — the ones actually dictated most); the free-tier preview-TTS models cap at
   ~3 req/min so the tail (~1271 least-frequent words) walled. The runtime already falls back to the
-  device voice for any word without a clip, so this is purely additive. **To finish the tail:** enable
-  billing on the Gemini project then `npm run gen:audio` once (≈$1–3, ~1hr), OR re-run free on later
-  days (it skips done clips). [[approval-before-consuming-limits]] still applies to the paid path.
+  device voice for any word without a clip, so this is purely additive.
+  **TAIL PLAN — Ian chose the FREE multi-day path** (decided 2026-06-19): just re-run
+  `npm run gen:audio` on a later day (it skips the **1708** clips done so far and grabs the next free
+  batch), then commit the new `audio/` clips + bump `sw.js`/`version.js` + push. No re-asking needed.
+  - 📅 **AUDIO-TAIL RESUME LOG** (update this each run):
+    - 2026-06-19: generated 960 clips → **1708/≈2949** done; daily free quota **SPENT** for the day.
+    - **Next run due: 2026-06-20 or later** (free quota is ~960 clips/day; resets daily). ~1241 left.
+    - ⚠️ Before running, reinstall the codec: `npm i --no-save @breezystack/lamejs` (a stray
+      `npm i --no-save` prunes it — see the gotcha note).
+  - (Fast alt if Ian ever changes his mind: enable billing on the Gemini project → one `gen:audio`
+    run finishes the tail in ~1hr for ≈$1–3; [[approval-before-consuming-limits]] governs that path.)
 - 🔔 **Web push BUILT + runtime-validated** (deploy is account-gated). RFC 8291 (`aes128gcm`) + RFC
   8292 (VAPID) in `src/engine/webpush.js` on WebCrypto (runs on Workers AND `node --test`);
   `test/webpush.test.js` reproduces the RFC 8291 Appendix-A vector **byte-for-byte** (+ round-trip +
