@@ -67,20 +67,29 @@
 - **Privacy/COPPA:** on-device by default; opt-in family sync stores only pseudonymous data behind
   a parental-consent gate; deletable. (PRIVACY.md, §18b)
 
-**→ NEXT ACTION — finish the multi-user UI (the only DEFERRED work; design already chosen):**
-1. **Kid-lock setter** — profiles carry a `kidLock` code and "Who's playing?" already challenges it;
-   build the screen to SET one (the picture-password idea belongs here, as the optional per-kid lock).
-2. **Parent-password zone** — `parentPassword` + `setParentPassword` exist; build the UI to set it and
-   GATE sync changes + rollback behind it.
-3. **Snapshot-rollback UI** — per-profile dated snapshots auto-save; `listSnapshots`/`rollback` exist;
-   build the parent screen to pick a restore point.
-4. (Optional) wire `profiles.mergeFamily` into `netlify/functions/sync.mjs` for true per-profile sync
-   merge (currently the whole family container reconciles by summed progress — coarse but works).
-   Then: web-push re-engagement (needs the backend), regenerate the 722 audio clips, rotate the Gemini key.
+**→ NEXT ACTION — ⭐ APP-STORE-QUALITY POLISH (user's top priority 2026-06-19). Deployment is
+DONE; the work now is making this FEEL like a premium kids' app, not "a janky website on a
+phone." See §23 for the full brief.** In short:
+1. **Phone UI is still broken / amateur-looking.** Run real iteration loops (per `QA.md`:
+   navigate→screenshot→LOOK→fix→re-verify) on a PHONE until it reads as an App-Store-quality
+   game. iPad is assumed OK (verify). Visual problems / lack of polish are creeping back or were
+   never fixed — treat this as a sustained polish campaign, not a one-shot.
+2. **Pedagogy rebalance (user): MINING = practice, CRAFTING = the assessment.** Pushing kids to
+   CRAFT and prove their spelling is the KEY — crafting should be the MOST REWARDED and MOST
+   NUDGED-toward path. Keep some mining variety for engagement, but the loop should steer to craft.
+3. **Daily geode** = the balanced-play reward: add TAP-TO-OPEN + a satisfying animation, then it
+   RESETS with harder goals — always encouraging balanced (craft-leaning) play.
+4. **Word discovery/testing**: keep iterating + piloting ideas for finding and testing the words
+   that actually need testing (builds on §21-A craft-is-mastery).
+
+Deferred (was the old NEXT ACTION, now lower priority): multi-user UI — kid-lock setter,
+parent-password zone, snapshot-rollback UI (data + tested helpers exist; only screens unbuilt);
+then web-push, regenerate the 722 audio clips, rotate the Gemini key.
 
 Build **test-first where it's pure**, keep `npm test` green (a **PreToolUse gate runs `npm test`
-before Bash**), **verify UI with `scripts/smoke.mjs` + `qa*.mjs` screenshots**, **commit per
-milestone**, and `git push` to deploy. Bump `sw.js` VERSION whenever a precached file changes.
+before Bash**), **follow `QA.md` (interactive view-as-you-go QA) before shipping major UI**,
+**commit per milestone**, and `git push` to deploy (Cloudflare CD). Bump `sw.js` VERSION **and**
+`src/version.js` `APP_VERSION` (keep them equal) whenever a precached file changes.
 
 ---
 
@@ -1360,3 +1369,78 @@ device-specific reports, get a screenshot from the real phone.
 Kid-lock setter UI, parent-password zone, snapshot-rollback UI (all have data + tested helpers;
 only the screens are unbuilt). Then: wire `profiles.mergeFamily` into the sync function, web-push,
 regenerate 722 audio clips, rotate the Gemini key.
+
+---
+
+## 23. NEXT-SESSION BACKLOG — APP-STORE QUALITY + craft-as-assessment (user 2026-06-19) — READ FIRST
+
+Recorded verbatim-intent; NOT yet implemented. **Deployment is now settled** (Cloudflare Worker,
+LIVE at https://spell.pryzmio.com, family sync working — see §0). The user's focus has shifted to
+**quality and pedagogy**. This is the current top priority (ahead of the §20/§22 deferred
+multi-user UI). Treat it as a SUSTAINED iteration campaign, not a one-shot.
+
+### A. Make it feel like an APP, not a janky website (the #1 ask)
+User, verbatim intent: *"it just looks like a janky website on a phone, not an app… it's very
+broken still on the phone… a lot of the QA issues, visual problems, lack of polish, are either
+creeping back in or were never fixed. We need to run iteration loops until this thing is app store
+ready, like Apple App Store quality. This still looks like an amateur web application, not an
+engaging spelling game for kids."*
+- **Bar = Apple App Store quality** for a kids' game. Premium, polished, engaging — not a web form.
+- **Phone is the broken surface.** iPad is *assumed* OK ("I hope so") — VERIFY it, but spend the
+  effort on PHONE (portrait, the installed-PWA standalone view). 
+- **Regressions are real**: polish that was fixed is creeping back. Each iteration must RE-VERIFY
+  earlier fixes, not just add new ones. (The CSS-specificity gotcha in §22 is one reason fixes
+  silently reverted — phone overrides must stay in the single end-of-file `@media` block.)
+- **Process (mandatory): run real iteration LOOPS per `QA.md`** — drive the app on a phone
+  viewport, screenshot, LOOK, fix, RE-VERIFY, repeat; walk the device matrix (360×740, 390×844,
+  landscape) + the iPad target; check dynamic states (verdict flashes, transitions, rewards), not
+  just idle screens. Don't declare done off green numbers — green overflow checks passed while the
+  app still felt amateur (that's exactly what triggered this).
+- Likely focus areas (investigate, don't assume): typography/scale hierarchy on phones, spacing &
+  rhythm, the play surfaces (Mining/Crafting) feeling cramped or web-form-ish, motion/animation
+  polish, tap feedback, color/contrast/theming consistency, iOS standalone safe-area (notch/home
+  bar — only testable on a REAL device; ask the user for on-device screenshots when needed),
+  empty/edge states, and overall "is this delightful for a kid" gut-check from the screenshots.
+
+### B. MINING = practice, CRAFTING = the assessment (pedagogy rebalance — user)
+User, verbatim intent: *"the mining is more like practice whereas the crafting is more of the
+assessment. Pushing the kids to craft and prove their spelling is right is the key, so that should
+be the most rewarded, most nudged towards, etc. But keeping some variety is good for engagement."*
+- This BUILDS ON §21-A (already shipped: mining no longer establishes mastery; crafting is the
+  source of truth via `recordAnswer source:'craft'` vs `'mine'`). Now extend it to the REWARD +
+  NUDGE + flow layer:
+  - **Crafting should be the most REWARDED** (gems/praise/celebration) and the most NUDGED-toward
+    (home prominence, end-of-wave CTAs, idle auto-routing, copy). Today Mining ("Play") is the
+    full-width hero card and the idle auto-launch target — reconsider so CRAFT is the headline act.
+  - **Keep mining as engaging PRACTICE / variety** — don't remove it; it's the fast fun loop. The
+    balance should STEER toward craft while keeping variety so it doesn't feel like a test.
+  - Touch points to revisit: `screens/home.js` (card hierarchy/prominence + idle auto-route),
+    `modes/rhythm.js` & `modes/puzzle.js` (reward sizing, cross-mode CTAs), praise/gem economy,
+    and the quests/geode goals (below) to reward balanced, craft-leaning play.
+
+### C. Daily GEODE reward — tap-to-open + animation + resetting harder goals (user)
+User, verbatim intent: *"that daily award with the geode, if we can get that to include the
+tapping to open and some nice animation, would be lovely, and then it resets with some harder
+goals, so we are always encouraging that balanced play."*
+- Today: daily quests (`engine/quests.js`, date-seeded) + a "geode ready" state when all done
+  (`home.js` geodeReady, `store.geodeOpened`/`markGeodeOpened`); the Geode BOSS milestone screen
+  (`screens/boss.js`) already has a tap-to-crack interaction we can draw from.
+- Build the DAILY geode as a delightful moment: **tap-to-open + a satisfying animation** (juice:
+  particles/burst/shine — see `ui.burst`), reveal the reward, **then reset with HARDER goals** for
+  the next cycle — a ratcheting daily loop that keeps encouraging BALANCED (craft-leaning) play.
+- Tie the goals to §B: weight them toward crafting (e.g. "craft N words" worth more) so the daily
+  loop reinforces the assessment behavior while staying varied.
+
+### D. Word discovery & testing — keep piloting (user)
+User, verbatim intent: *"the other issue, of really discovering and testing the words that need to
+be tested. I think we can continue iterating on that as well, kind of piloting different ideas."*
+- Ongoing/experimental (builds on §21-A craft-is-mastery + the §20 target-words algorithm in
+  `engine/session.js`/`progress.js`). Pilot different strategies for surfacing exactly the words a
+  kid needs to prove (via crafting), measuring/iterating rather than a one-and-done change. Keep it
+  test-first where the logic is pure.
+
+### Process reminder for whoever picks this up
+Iterate in small, verified loops; commit per milestone; bump `sw.js` VERSION **and**
+`src/version.js` APP_VERSION together; push → Cloudflare CD deploys to spell.pryzmio.com; then
+confirm live (version + the screen you changed). Follow `QA.md`. When something can only be judged
+on a real iPhone/iPad (standalone safe-area, true feel), ASK the user for an on-device screenshot.
