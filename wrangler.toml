@@ -17,11 +17,8 @@ compatibility_date = "2024-11-01"
 directory = "./deploy"
 binding = "ASSETS"
 
-# Family-sync storage (worker.js handleSync, engine/cloudsync reconcile). OPTIONAL — the site
-# works without it (/api/sync returns 503; client sync is best-effort). To enable:
-#   1) npx wrangler kv namespace create FAMILY_SYNC      (prints an id)
-#   2) uncomment below + paste the id, commit (Git deploys honour wrangler.toml bindings)
-#
-# [[kv_namespaces]]
-# binding = "FAMILY_SYNC"
-# id = "<paste-the-namespace-id-here>"
+# Family-sync storage (worker.js handleSync, engine/cloudsync reconcile). Namespace created
+# 2026-06-18 via `wrangler kv namespace create FAMILY_SYNC`. Git deploys honour this binding.
+[[kv_namespaces]]
+binding = "FAMILY_SYNC"
+id = "8646bafb7f3c43a28808b93b8007ce4d"
