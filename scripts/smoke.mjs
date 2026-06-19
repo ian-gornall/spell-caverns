@@ -148,10 +148,11 @@ try {
   const rewardText = (await page.locator('.reward h2').textContent())?.trim();
   ok(`reached wave-complete reward: "${rewardText}"`);
 
-  // --- reward keeps the loop going (Keep mining) ---
+  // --- the mining (practice) reward STEERS to crafting (§B): the primary CTA opens a
+  //     craft round ("prove the words you just practised"), not another mining wave ---
   await page.click('.reward .btn.primary');
-  await page.waitForSelector('.rhythm .tile', { timeout: 5000 });
-  ok('"Keep mining" started a fresh wave');
+  await page.waitForSelector('.puzzle .slot', { timeout: 8000 });
+  ok('mining reward primary CTA steers into a crafting round (§B nudge)');
 
   // --- pre-generated TTS clip wiring: a clip is a valid, loadable MP3 in-browser ---
   const clipOk = await page.evaluate(async () => {
@@ -317,7 +318,7 @@ try {
   ok('tapping Resume dismissed the pause overlay');
   await idlePage.close();
 
-  // --- engagement: staring at the MENU auto-starts mining ("let's go") ---
+  // --- engagement: staring at the MENU auto-starts CRAFTING (the headline act, §B) ---
   const menuPage = await browser.newPage({ viewport: { width: 820, height: 1180 } });
   menuPage.on('pageerror', (e) => errors.push('pageerror(menu): ' + e.message));
   await menuPage.addInitScript(() => {
@@ -329,9 +330,9 @@ try {
   });
   await menuPage.goto(URL, { waitUntil: 'networkidle' });
   await menuPage.click('.home-title'); // a harmless tap unlocks audio so it WILL launch
-  // now sit idle on the menu — it should highlight Play then drop into a wave on its own
-  await menuPage.waitForSelector('.rhythm .tile', { timeout: 5000 });
-  ok('idle on the home menu auto-started mining (Play) on its own');
+  // now sit idle on the menu — it should highlight Craft then drop into a craft round on its own
+  await menuPage.waitForSelector('.puzzle .slot', { timeout: 5000 });
+  ok('idle on the home menu auto-started crafting (the headline act) on its own');
   await menuPage.close();
 
   await page.screenshot({ path: 'scripts/smoke.png', fullPage: false });
