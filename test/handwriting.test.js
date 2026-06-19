@@ -16,6 +16,11 @@ import {
   recognize,
   DIST_SCALE,
   DEFAULT_MIN_CONFIDENCE,
+  pointsToGrid,
+  diceScore,
+  strokesToGrid,
+  recognizeGrid,
+  GRID_N,
 } from '../src/engine/handwriting.js';
 
 // ---- shape generators (return dense point arrays the way a canvas captures a drag) ----
@@ -125,4 +130,64 @@ test('recognize: caps the candidate list at maxCandidates', () => {
 test('DIST_SCALE and DEFAULT_MIN_CONFIDENCE are exported and sane', () => {
   assert.ok(DIST_SCALE > 0);
   assert.ok(DEFAULT_MIN_CONFIDENCE > 0 && DEFAULT_MIN_CONFIDENCE < 1);
+});
+
+// ------------------------------------------------------ GRID recognizer (draw-mode UI)
+test('pointsToGrid rasterises into an N×N grid, uniformly scaled + centred', () => {
+  const g = pointsToGrid(line(5, 0, 5, 10), GRID_N, 0); // a vertical line
+  assert.equal(g.length, GRID_N * GRID_N);
+  // it has ink, and the ink is a NARROW vertical band near the centre column
+  let cols = new Set();
+  let rows = 0;
+  for (let y = 0; y < GRID_N; y++)
+    for (let x = 0; x < GRID_N; x++)
+      if (g[y * GRID_N + x]) { cols.add(x); rows += 1; }
+  assert.ok(rows > 0);
+  assert.ok(cols.size <= 2, 'a vertical line occupies ~one column (uniform scale, not stretched)');
+});
+
+test('diceScore is 1 for identical grids, 0 for disjoint, and partial in between', () => {
+  const a = pointsToGrid(line(0, 0, 0, 10));
+  const b = pointsToGrid(line(0, 0, 0, 10));
+  const c = pointsToGrid(line(0, 0, 10, 0)); // horizontal — mostly disjoint from vertical
+  assert.equal(diceScore(a, b), 1);
+  assert.ok(diceScore(a, c) < 0.5);
+  assert.equal(diceScore(new Uint8Array(4), new Uint8Array(4)), 0);
+});
+
+// glyph templates built through the SAME pointsToGrid (mirrors the browser's font rasterisation)
+const GRID_TEMPLATES = [
+  { letter: 'l', grid: pointsToGrid(line(5, 0, 5, 10)) },
+  { letter: 'o', grid: pointsToGrid(circle(5, 5, 5)) },
+  { letter: 'v', grid: pointsToGrid(vee()) },
+];
+
+test('recognizeGrid: a vertical stroke → "l"; a circle → "o"; a vee → "v"', () => {
+  assert.equal(recognizeGrid([line(5.2, 0, 4.8, 10)], GRID_TEMPLATES)[0].letter, 'l');
+  assert.equal(recognizeGrid([circle(5, 5, 5, 40)], GRID_TEMPLATES)[0].letter, 'o');
+  assert.equal(recognizeGrid([vee(20)], GRID_TEMPLATES)[0].letter, 'v');
+});
+
+test('recognizeGrid: candidates are sorted, capped, case-insensitively merged', () => {
+  const t = [
+    { letter: 'O', grid: pointsToGrid(circle(5, 5, 5)) },
+    { letter: 'o', grid: pointsToGrid(circle(5, 5, 5, 30)) },
+    { letter: 'l', grid: pointsToGrid(line(5, 0, 5, 10)) },
+  ];
+  const cands = recognizeGrid([circle(5, 5, 5, 36)], t, { minConfidence: 0 });
+  assert.equal(cands[0].letter, 'o'); // lowercased
+  const letters = cands.map((c) => c.letter);
+  assert.equal(new Set(letters).size, letters.length); // 'O' and 'o' merged
+  for (let i = 1; i < cands.length; i++) assert.ok(cands[i - 1].confidence >= cands[i].confidence);
+  assert.ok(recognizeGrid([line(5, 0, 5, 10)], t, { maxCandidates: 1, minConfidence: 0 }).length <= 1);
+});
+
+test('recognizeGrid: an unrecognisable scribble clears nothing high-confidence (force redraw)', () => {
+  const scribble = [[{ x: 0, y: 0 }, { x: 9, y: 1 }, { x: 1, y: 8 }, { x: 8, y: 9 }]];
+  assert.equal(recognizeGrid(scribble, GRID_TEMPLATES, { minConfidence: 0.95 }).length, 0);
+});
+
+test('strokesToGrid produces a populated grid for a real stroke', () => {
+  const g = strokesToGrid([line(0, 0, 10, 10)]);
+  assert.ok(g.reduce((a, b) => a + b, 0) > 0);
 });

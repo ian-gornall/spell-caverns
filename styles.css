@@ -569,6 +569,11 @@ button.quest {
   background: linear-gradient(150deg, #6a3ca855, #20285a);
   border-color: #9d8df166;
 }
+/* §30 Mastery (draw) — the headline test; a warm gold accent to read as an achievement. */
+.menu-card.mastery {
+  background: linear-gradient(150deg, #8a6a1f55, #2a2350);
+  border-color: #ffd23f66;
+}
 /* Repair is a full-width amber call-to-action banner when there are cracked words
    (keeps the home grid balanced + gives "fix your misses" real prominence). */
 .menu-card.repair {
@@ -980,6 +985,76 @@ button.quest {
   50% {
     box-shadow: 0 0 0 2px var(--gold, #ffd23f) inset, 0 0 26px rgba(255, 210, 63, 0.85);
   }
+}
+
+/* ------- §30 mastery (draw the letters) ------- */
+.mastery .draw-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.draw-canvas {
+  width: min(100%, 360px);
+  /* height tracks the viewport but is capped both ways: generous on iPad, yet short enough
+     on a small phone that "Read my letter" stays above the fold (no scroll to submit). */
+  height: clamp(150px, 24vh, 230px);
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 35%, rgba(54, 241, 205, 0.08), rgba(0, 0, 0, 0.34) 72%);
+  border: 2px dashed rgba(124, 196, 255, 0.45);
+  box-shadow: inset 0 3px 14px rgba(0, 0, 0, 0.5), inset 0 0 18px rgba(54, 241, 205, 0.08);
+  touch-action: none; /* drawing must not pan/scroll the page */
+  cursor: crosshair;
+}
+.draw-slots .slot.current {
+  border-color: var(--gold, #ffd23f);
+  border-style: solid;
+  box-shadow: inset 0 3px 12px rgba(0, 0, 0, 0.5), 0 0 14px rgba(255, 210, 63, 0.45);
+  animation: none;
+}
+.draw-candidates {
+  min-height: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.cand-label {
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+}
+.cand-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+.cand-letter {
+  width: clamp(52px, 14vw, 72px);
+  height: clamp(52px, 14vw, 72px);
+  border-radius: 14px;
+  font-size: clamp(1.7rem, 7vw, 2.4rem);
+  font-weight: 800;
+  text-transform: lowercase;
+  color: var(--ink);
+  background: linear-gradient(160deg, #2a3a78, #1b2350);
+  border: 2px solid var(--accent, #7cc4ff);
+  box-shadow: 0 6px 18px -8px var(--accent, #7cc4ff);
+}
+.cand-letter:active {
+  transform: scale(0.94);
+}
+.draw-hint {
+  color: var(--ink-dim);
+  font-size: 0.92rem;
+  text-align: center;
+}
+.draw-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 /* ------- crystal lab ------- */

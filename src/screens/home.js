@@ -5,6 +5,7 @@
 // screen comes later in the build order). Progress + Settings are wired.
 import { el, header, toast, createIdleGuard, pulse } from '../ui.js';
 import { lapsedWords } from '../engine/progress.js';
+import { unlocks } from '../engine/categories.js';
 import { streakIsLive, daysSinceLastPlayed } from '../engine/streak.js';
 import { dailyQuests, questProgress } from '../engine/quests.js';
 import { catalogSummary, affordableLocked } from '../engine/catalog.js';
@@ -15,6 +16,8 @@ export function homeScreen(ctx) {
   const owned = ctx.store.ownedCrystals();
   const cat = catalogSummary(owned);
   const canUnlock = affordableLocked(owned, ctx.state.gems || 0).length;
+  // §30 unlock chain: Craft (always) → Mastery (after [set size] known) → Mining (gated).
+  const gates = unlocks(ctx.state.categories);
 
   // Daily streak ("glowing vein") + a tiny daily gem goal — guilt-free momentum.
   const streak = ctx.state.streak || {};
@@ -96,6 +99,17 @@ export function homeScreen(ctx) {
         el('span', { class: 'ic' }, '🔧'),
         el('span', { class: 'lbl' }, `Repair${cracked >= 1 ? ` (${cracked})` : ''}`),
         el('span', { class: 'desc' }, 'Re-spell the crystals you cracked'),
+      ),
+    // §30 MASTERY (draw): the headline test — spell a word by DRAWING each letter from memory.
+    // Unlocks once enough words are KNOWN from crafting (the unlock chain's middle rung).
+    gates.mastery &&
+      el(
+        'button',
+        { class: 'menu-card mastery', onClick: () => ctx.nav('mastery') },
+        el('span', { class: 'badge' }, '⭐ Master it'),
+        el('span', { class: 'ic' }, '✍️'),
+        el('span', { class: 'lbl' }, 'Mastery'),
+        el('span', { class: 'desc' }, 'Draw the letters from memory — no tiles!'),
       ),
     // Mining is RECOGNITION practice — fast, fun, low-stakes warm-up. Kept engaging but
     // clearly secondary to crafting (§B): the calmer, shorter "practice" banner.

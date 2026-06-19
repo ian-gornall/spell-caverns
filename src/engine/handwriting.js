@@ -130,3 +130,95 @@ export function recognize(strokes, templates, opts = {}) {
     .sort((a, b) => b.confidence - a.confidence || (a.letter < b.letter ? -1 : 1))
     .slice(0, maxCandidates);
 }
+
+// ---------------------------------------------------------------------------
+// GRID recognizer — the one the draw-mode UI actually uses. Unlike the ordered-path
+// matcher above, it compares occupancy GRIDS, so it is INDIFFERENT to stroke order and
+// stroke count (kids draw 't', 'k', 'x', 'i' in any order / number of strokes). Templates
+// are generated once in the browser by rasterising each font glyph's inked pixels through
+// the SAME `pointsToGrid`, so a drawn letter and its glyph land in aligned grids. Still no
+// rotation/reflection invariance (b≠d≠p≠q). Pure + testable.
+export const GRID_N = 24; // grid resolution
+// Dice "high-confidence" bar. Tuned in visual QA: low enough that a clearly-drawn letter
+// reliably surfaces among the (≤4-capped) candidates the kid taps, high enough to reject a
+// scribble. Hand-drawn strokes vs rendered glyphs never hit ~1, so this sits well below it.
+export const GRID_MIN_CONFIDENCE = 0.4;
+
+// Rasterise points into an N×N occupancy grid (row-major Uint8Array): uniform-scaled to the
+// points' bounding box, centred, each hit cell dilated by `dilate` so thin input gains width
+// comparable to a rendered glyph stroke. Shared by the drawing AND the glyph templates.
+export function pointsToGrid(points, n = GRID_N, dilate = 1) {
+  const grid = new Uint8Array(n * n);
+  const pts = (points || []).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y));
+  if (!pts.length) return grid;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of pts) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  const w = maxX - minX;
+  const h = maxY - minY;
+  const size = Math.max(w, h) || 1;
+  const scale = (n - 1) / size;
+  const offX = (n - 1 - w * scale) / 2;
+  const offY = (n - 1 - h * scale) / 2;
+  for (const p of pts) {
+    const cx = Math.round((p.x - minX) * scale + offX);
+    const cy = Math.round((p.y - minY) * scale + offY);
+    for (let dy = -dilate; dy <= dilate; dy++) {
+      for (let dx = -dilate; dx <= dilate; dx++) {
+        const gx = cx + dx;
+        const gy = cy + dy;
+        if (gx >= 0 && gx < n && gy >= 0 && gy < n) grid[gy * n + gx] = 1;
+      }
+    }
+  }
+  return grid;
+}
+
+// Sørensen–Dice overlap of two occupancy grids → [0,1] (1 = identical, 0 = disjoint).
+export function diceScore(a, b) {
+  const n = Math.min(a.length, b.length);
+  let inter = 0;
+  let sa = 0;
+  let sb = 0;
+  for (let i = 0; i < n; i++) {
+    const x = a[i] ? 1 : 0;
+    const y = b[i] ? 1 : 0;
+    if (x && y) inter += 1;
+    sa += x;
+    sb += y;
+  }
+  return sa + sb === 0 ? 0 : (2 * inter) / (sa + sb);
+}
+
+// Drawn strokes → a dense resampled path → occupancy grid.
+export function strokesToGrid(strokes, n = GRID_N, dilate = 1) {
+  return pointsToGrid(resample(combineStrokes(strokes), Math.max(n * 4, 96)), n, dilate);
+}
+
+// recognizeGrid(strokes, templates, opts) → ranked high-confidence candidate letters.
+//   templates: [{ letter, grid }] (grid from pointsToGrid of the glyph's inked pixels).
+// Case-insensitive (lowercased + merged); [] when nothing clears `minConfidence` (force redraw).
+export function recognizeGrid(strokes, templates, opts = {}) {
+  const { n = GRID_N, dilate = 1, maxCandidates = 4, minConfidence = GRID_MIN_CONFIDENCE } = opts;
+  if (combineStrokes(strokes).length < 2) return [];
+  const drawn = strokesToGrid(strokes, n, dilate);
+  const best = new Map();
+  for (const t of templates || []) {
+    if (!t || typeof t.letter !== 'string' || !t.grid) continue;
+    const letter = t.letter.toLowerCase();
+    const s = diceScore(drawn, t.grid);
+    if (!best.has(letter) || s > best.get(letter)) best.set(letter, s);
+  }
+  return [...best.entries()]
+    .map(([letter, confidence]) => ({ letter, confidence }))
+    .filter((c) => c.confidence >= minConfidence)
+    .sort((a, b) => b.confidence - a.confidence || (a.letter < b.letter ? -1 : 1))
+    .slice(0, maxCandidates);
+}

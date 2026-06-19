@@ -20,6 +20,7 @@ import { printablesScreen } from './screens/printables.js';
 import { adminFeedbackScreen } from './screens/admin_feedback.js';
 import { startRhythm } from './modes/rhythm.js';
 import { startPuzzle } from './modes/puzzle.js';
+import { startMastery } from './modes/mastery.js';
 import { startLab } from './modes/lab.js';
 import { summary } from './engine/progress.js';
 import { registerServiceWorker } from './pwa.js';
@@ -30,6 +31,7 @@ const routes = {
   progress: progressScreen,
   rhythm: startRhythm,
   puzzle: startPuzzle,
+  mastery: startMastery,
   lab: startLab,
   feedback: feedbackScreen,
   catalog: catalogScreen,
