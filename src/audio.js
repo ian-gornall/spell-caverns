@@ -31,23 +31,30 @@ function slug(s) {
     .replace(/^_+|_+$/g, '');
 }
 
-// Load audio/manifest.json once. Absent manifest => Web Speech only (no error).
+// Load audio/manifest.json. Absent manifest => Web Speech only (no error). CRUCIALLY this
+// RETRIES on failure: a single transient miss (offline blip, or a load that happened before
+// the clips finished deploying) must NOT permanently strand a long-lived (installed-PWA)
+// session on the robotic device voice. On any non-OK/throw we clear manifestPromise so the
+// next say()/speakPraise()/prime() re-attempts; once loaded we short-circuit forever.
 function ensureManifest() {
-  if (manifestPromise) return manifestPromise;
+  if (manifest) return Promise.resolve(); // already loaded — done
+  if (manifestPromise) return manifestPromise; // a load is already in flight
   manifestPromise = (async () => {
     try {
       const res = await fetch('/audio/manifest.json', { cache: 'no-cache' });
       if (res.ok) {
         const m = await res.json();
         manifest = { words: new Set(m.words || []), phrases: new Set(m.phrases || []) };
+      } else {
+        manifestPromise = null; // non-OK (e.g. a stale 404) — allow a retry next call
       }
     } catch {
-      /* no manifest — fall back to Web Speech */
+      manifestPromise = null; // transient/offline failure — allow a retry next call
     }
   })();
   return manifestPromise;
 }
-ensureManifest(); // kick off early (harmless if it 404s)
+ensureManifest(); // kick off early (harmless if it 404s — it'll retry on the first dictation)
 
 export function configure(s) {
   settings = { ...settings, ...s };
@@ -251,6 +258,7 @@ export function say(word, { onDone } = {}) {
       onFail: () => speakTTS(text, { rate, pitch: 1.02, onDone: done }),
     });
   } else {
+    if (!manifest) ensureManifest(); // self-heal: (re)load the manifest so later words use clips
     speakTTS(text, { rate, pitch: 1.02, onDone: done });
   }
 }
@@ -305,6 +313,7 @@ export function speakPraise(phrase, { onDone } = {}) {
       onFail: () => speakTTS(phrase, { rate: 1.0, pitch: 1.1, onDone: done }),
     });
   } else {
+    if (!manifest) ensureManifest(); // self-heal: (re)load the manifest so later praise uses clips
     speakTTS(phrase, { rate: 1.0, pitch: 1.1, onDone: done });
   }
 }

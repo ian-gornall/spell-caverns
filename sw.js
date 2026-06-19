@@ -51,7 +51,9 @@
 // v23 (DESIGN_ANALYSIS §26-A free-polish pass): landscape/short-phone hero collapse + pinned
 //      reward/boss/geode CTA (no primary action below the fold); two below-AA contrast spots
 //      lifted (Craft-hero gradient + wrong-verdict slate); self-hosted Atkinson Hyperlegible
-//      (letter-distinct spelling font) + fuller dyslexia "Easy-read" mode.
+//      (letter-distinct spelling font) + fuller dyslexia "Easy-read" mode. ALSO: audio
+//      manifest load now RETRIES on failure (was once-and-never-retry) so a long-lived
+//      installed-PWA session can't get permanently stuck on the robotic device voice.
 const VERSION = 'csc-v23';
 
 const CORE = [
