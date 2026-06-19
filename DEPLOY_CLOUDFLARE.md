@@ -25,18 +25,17 @@ so Cloudflare's `npm ci` installs nothing and can't drift. (Local-only tools ins
 touching the repo: `npm i --no-save playwright` for smoke/QA, `npm i --no-save @breezystack/lamejs`
 for audio gen.)
 
-## 2. Turn on family sync (KV) — optional, only if you use cross-device sync
+## 2. Family sync (KV) — ✅ ALREADY SET UP
 
-The site works without this; `/api/sync` returns 503 and the app runs on-device (sync is
-best-effort). To enable it:
+Done 2026-06-18: a KV namespace `FAMILY_SYNC` (id `8646bafb7f3c43a28808b93b8007ce4d`) is
+created and bound in `wrangler.toml`, so `/api/sync` is live (verified end-to-end on prod). No
+action needed.
 
-1. Create a KV namespace: `npx wrangler kv namespace create FAMILY_SYNC` (prints an `id`), or
-   dashboard → Storage & Databases → **KV → Create**.
-2. In `wrangler.toml`, uncomment the `[[kv_namespaces]]` block and paste the `id`; commit.
-   (For Git-deployed Workers, bindings come from `wrangler.toml` — not the dashboard.)
-3. Push → the next deploy has KV bound.
+To manage it from the CLI you must `wrangler login` first (it's account-gated). To recreate from
+scratch: `npx wrangler kv namespace create FAMILY_SYNC` → paste the new `id` into `wrangler.toml`
+→ push (Git-deployed Workers read bindings from `wrangler.toml`, not the dashboard).
 
-Verify: `curl https://<your-worker>.workers.dev/api/sync?code=TEST1234` → `null` (not 503).
+Verify: `curl https://spell.pryzmio.com/api/sync?code=TEST1234` → `null` (not 503).
 
 ## 3. Verifying a deploy
 

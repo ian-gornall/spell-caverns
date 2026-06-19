@@ -25,21 +25,21 @@
 **The app is feature-complete, deployed, and multi-user. Everything below is committed; tree clean.**
 
 **Live + deploy**
-- ⚠️ **HOSTING MOVED Netlify → Cloudflare** (Netlify free-tier BUILD CREDITS ran out — "es-999
-  has run out of credits" — so v18 never published there). Set up as a **Worker + Static Assets**
-  (Cloudflare's "Connect to Git" now provisions a Worker + runs `wrangler deploy`, NOT Pages):
-  `worker.js` serves the static PWA (`deploy/` via the ASSETS binding) AND the `/api/sync` route
-  (family-sync backend on **KV**, same `engine/cloudsync.reconcile` merge). Config = `wrangler.toml`
-  (`main=worker.js`, `[assets] directory="./deploy"`, KV binding commented until created).
-  `package.json` is **dependency-free** (so `npm ci` can't drift — the earlier build failure).
-  **One-time connect + KV bind is the user's to do — steps in `DEPLOY_CLOUDFLARE.md`.** New URL
-  will be `*.workers.dev`.
-- Build (Cloudflare Worker, Git-connected to **github.com/ian-gornall/spell-caverns** `main`):
-  build command `node scripts/build_deploy.mjs` → `deploy/`; deploy command `npx wrangler deploy`.
-  Old Netlify config (`netlify.toml`, `netlify/functions/`) kept as a dead fallback. The Worker
-  (static serving + `/api/sync` GET/PUT/DELETE + never-lose-progress merge + `_headers` no-cache)
-  was VERIFIED locally via `wrangler dev` — all pass. NOTE: the old Pages-style `functions/` dir
-  was REMOVED (Workers model uses `worker.js`).
+- **LIVE at https://spell.pryzmio.com** (custom domain) — Cloudflare **Worker + Static Assets**,
+  Git-CD from **github.com/ian-gornall/spell-caverns** `main`. (Moved off Netlify — free-tier
+  build credits ran out. Cloudflare "Connect to Git" provisions a Worker + runs `wrangler deploy`,
+  NOT Pages.) `worker.js` serves the static PWA (`deploy/` via the ASSETS binding) AND `/api/sync`
+  (family-sync on **KV**, same `engine/cloudsync.reconcile` merge). Config = `wrangler.toml`
+  (`main=worker.js`, `[assets] directory="./deploy"`). `package.json` is **dependency-free** so
+  `npm ci` can't drift. Build cmd `node scripts/build_deploy.mjs` → `deploy/`; deploy cmd
+  `npx wrangler deploy`. Old `netlify.toml`/`netlify/functions/` kept as a dead fallback.
+- ✅ **Family sync is LIVE**: KV namespace `FAMILY_SYNC` (id `8646bafb7f3c43a28808b93b8007ce4d`)
+  created + bound in `wrangler.toml`. VERIFIED end-to-end on prod (GET/PUT/DELETE +
+  never-lose-progress merge all pass; `_headers` no-cache confirmed). To manage KV the dev needs
+  `wrangler login` first (account-gated). NOTE: the old Pages-style `functions/` dir was REMOVED.
+- ⚠️ **Per-origin data**: spell.pryzmio.com is a NEW origin vs the old netlify URL — localStorage
+  doesn't carry over. To move a kid's progress: Settings → Back up (old) → Restore (new), or use
+  family sync. (Tell the user; the old Netlify site should be deleted.)
 - `npm test` = **180 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
   `node scripts/qa.mjs` = 0 console/JS errors; `node scripts/qa_responsive.mjs` = 0 horizontal
   overflow at 7 viewports (360–820px). sw VERSION **csc-v18** (bump on any precached change —
