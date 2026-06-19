@@ -24,7 +24,7 @@ export function homeScreen(ctx) {
 
   // In-app re-engagement (§17.A MVP — no backend / push): a warm, contextual welcome
   // line that recognises a returning learner. Streak-aware and never guilt-trippy.
-  let greeting = `Welcome back, ${name}! Ready to mine some gems?`;
+  let greeting = `Welcome back, ${name}! Ready to spell some sparkly words?`;
   if (awayDays >= 1 && awayDays !== Infinity) {
     if (awayDays === 1) {
       greeting = `Welcome back, ${name}! A new day of digging awaits. 💎`;
@@ -73,12 +73,16 @@ export function homeScreen(ctx) {
   );
 
   const cards = [
+    // CRAFT is the headline act (§B): spelling a word from scratch is the assessment —
+    // the thing we most want kids to do and prove — so it's the full-width hero AND the
+    // best-paying path (gems carry the craft bonus). Mining is reframed as practice.
     el(
       'button',
-      { class: 'menu-card play', onClick: () => ctx.nav('rhythm') },
-      el('span', { class: 'ic' }, '⛏️'),
-      el('span', { class: 'lbl' }, 'Play'),
-      el('span', { class: 'desc' }, 'Mine gems by spelling the words you hear'),
+      { class: 'menu-card craft hero', onClick: () => ctx.nav('puzzle') },
+      el('span', { class: 'badge' }, '✨ Best gems'),
+      el('span', { class: 'ic' }, '🔨'),
+      el('span', { class: 'lbl' }, 'Craft'),
+      el('span', { class: 'desc' }, 'Spell the words yourself and prove you know them'),
     ),
     // Cracked crystals = words the learner missed. Surface a repair path (production
     // practice of exactly those words) only when there are some to fix.
@@ -90,12 +94,14 @@ export function homeScreen(ctx) {
         el('span', { class: 'lbl' }, `Repair${cracked >= 1 ? ` (${cracked})` : ''}`),
         el('span', { class: 'desc' }, 'Re-spell the crystals you cracked'),
       ),
+    // Mining is RECOGNITION practice — fast, fun, low-stakes warm-up. Kept engaging but
+    // clearly secondary to crafting (§B): the calmer, shorter "practice" banner.
     el(
       'button',
-      { class: 'menu-card craft', onClick: () => ctx.nav('puzzle') },
-      el('span', { class: 'ic' }, '🔨'),
-      el('span', { class: 'lbl' }, 'Craft'),
-      el('span', { class: 'desc' }, 'Build words from letter tiles'),
+      { class: 'menu-card play practice', onClick: () => ctx.nav('rhythm') },
+      el('span', { class: 'ic' }, '⛏️'),
+      el('span', { class: 'lbl' }, 'Practice'),
+      el('span', { class: 'desc' }, 'Warm up — spell the words you hear'),
     ),
     el(
       'button',
@@ -148,24 +154,24 @@ export function homeScreen(ctx) {
     el('div', { class: 'home-grid' }, ...cards),
   );
 
-  // Don't let them stare at the menu: highlight Play, then auto-start mining ("let's
-  // go!"). iOS unlocks audio only on a tap, so BEFORE the first tap we can't start the
-  // dictated game — we just keep highlighting Play until they tap once; after that, an
-  // idle menu auto-drops them straight into a wave.
+  // Don't let them stare at the menu: highlight CRAFT (the headline act, §B), then
+  // auto-start a crafting round. iOS unlocks audio only on a tap, so BEFORE the first
+  // tap we can't start the dictated game — we just keep highlighting Craft until they
+  // tap once; after that, an idle menu auto-drops them straight into crafting.
   const guard = createIdleGuard({
     nudgeMs: 13000,
     pauseMs: 32000,
     onNudge: () => {
-      pulse(node.querySelector('.menu-card.play'));
-      toast('💎 Ready to mine some gems? Tap Play!');
+      pulse(node.querySelector('.menu-card.craft'));
+      toast('✨ Ready to craft some words? Tap Craft!');
     },
     onTimeout: () => {
       if (ctx.audio.isPrimed && ctx.audio.isPrimed()) {
-        toast('⛏️ Let’s go mining!');
-        ctx.nav('rhythm');
+        toast('🔨 Let’s craft some words!');
+        ctx.nav('puzzle');
       } else {
-        pulse(node.querySelector('.menu-card.play'));
-        toast('👆 Tap Play to hear your first word!');
+        pulse(node.querySelector('.menu-card.craft'));
+        toast('👆 Tap Craft to hear your first word!');
         guard.poke(); // keep gently highlighting until they tap (audio needs a gesture)
       }
     },

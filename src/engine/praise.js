@@ -19,6 +19,13 @@
 // slower-earned. See catalog.js RARITIES + state.js dailyGoalGems.
 export const BASE_POINTS = 6;
 
+// CRAFTING (spelling a word from scratch) is the ASSESSMENT — the thing we most want
+// kids to do and prove (§B pedagogy rebalance). So a crafted word pays MORE gems than
+// the same word merely recognised while mining: a flat reward multiplier applied on
+// top of the speed/combo scoring. Mining stays fun and fast; crafting is the headline
+// pay-off, which steers the loop toward production without ever punishing practice.
+export const CRAFT_MULT = 1.5;
+
 // How a streak boosts points: each consecutive correct adds COMBO_STEP to the
 // multiplier, capped at COMBO_CAP so a long run can't run away with the score.
 const COMBO_STEP = 0.1;
@@ -112,16 +119,17 @@ function tierForTime(ms) {
 // every animation frame to show a live "gems you'd earn if you answer now" meter
 // that visibly decays as the clock runs — the DDR pressure to be fast. It is the
 // exact scoring gradeAnswer uses, so the live meter and the real award agree.
-export function projectedScore({ responseMs, combo = 0 } = {}) {
+export function projectedScore({ responseMs, combo = 0, craft = false } = {}) {
   const tier = tierForTime(responseMs);
   const streak = Math.max(0, combo);
   const comboFactor = 1 + Math.min(streak, COMBO_CAP) * COMBO_STEP;
+  const craftFactor = craft ? CRAFT_MULT : 1;
   return {
     tier: tier.key,
     label: tier.label,
     color: tier.color,
     mult: tier.mult,
-    points: Math.round(BASE_POINTS * tier.mult * comboFactor),
+    points: Math.round(BASE_POINTS * tier.mult * comboFactor * craftFactor),
   };
 }
 
@@ -129,7 +137,7 @@ export function projectedScore({ responseMs, combo = 0 } = {}) {
 //   { tier, label, phrase, points, mult, color, combo, isCombo }
 // `combo` is the streak length INCLUDING this answer (so 5,10,15... are milestones).
 // Wrong answers return a gentle verdict worth 0 points with the streak reset to 0.
-export function gradeAnswer({ correct, responseMs, combo = 0, rng } = {}) {
+export function gradeAnswer({ correct, responseMs, combo = 0, craft = false, rng } = {}) {
   if (!correct) {
     return {
       tier: MISS_TIER.key,
@@ -144,7 +152,7 @@ export function gradeAnswer({ correct, responseMs, combo = 0, rng } = {}) {
   }
 
   const streak = Math.max(0, combo);
-  const proj = projectedScore({ responseMs, combo: streak });
+  const proj = projectedScore({ responseMs, combo: streak, craft });
   const tier = SPEED_TIERS.find((t) => t.key === proj.tier) || SPEED_TIERS[SPEED_TIERS.length - 1];
   const isCombo = streak > 0 && streak % COMBO_MILESTONE === 0;
   const phrase = isCombo

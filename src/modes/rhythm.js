@@ -407,21 +407,23 @@ export function startRhythm(ctx, params = {}) {
       ctx.nav('rhythm');
     };
 
-    const buttons = [];
+    // Mining is PRACTICE; crafting is the ASSESSMENT (§B). So the headline CTA after a
+    // practice wave STEERS to Craft — "you just warmed up on these words, now prove them"
+    // — and keeps the best-gems framing. Keep-mining / go-deeper stay as easy options.
+    const buttons = [
+      el('button', { class: 'btn primary', onClick: () => ctx.nav('puzzle') }, '🔨 Craft these words — prove it! ✨'),
+    ];
     if (nextHarder) {
       buttons.push(
-        el('button', { class: 'btn primary', onClick: goHarder }, `⏫ Go deeper: ${cap(nextHarder)}`),
+        el('button', { class: 'btn', onClick: goHarder }, `⏫ Go deeper: ${cap(nextHarder)}`),
         el('button', { class: 'btn', onClick: () => ctx.nav('rhythm') }, '⛏️ Same depth'),
       );
     } else {
       buttons.push(
-        el('button', { class: 'btn primary', onClick: () => ctx.nav('rhythm') }, '⛏️ Keep mining'),
+        el('button', { class: 'btn', onClick: () => ctx.nav('rhythm') }, '⛏️ Keep practising'),
       );
     }
     buttons.push(
-      // Cross-link to Craft so the two modes ALTERNATE easily (requirement #9: fast
-      // choices broken up by slower build puzzles). Puzzle already links back to Mine.
-      el('button', { class: 'btn', onClick: () => ctx.nav('puzzle') }, '🔨 Craft (build)'),
       el('button', { class: 'btn', onClick: () => ctx.nav('progress') }, '🗺️ Progress'),
       el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
     );
@@ -456,15 +458,14 @@ export function startRhythm(ctx, params = {}) {
     else if (earned > 0) audio.sfx('great');
 
     // Don't let them stall on the reward: highlight the primary action, then
-    // auto-continue into another wave ("let's go" — keep them mining).
-    const primaryAction = nextHarder ? goHarder : () => ctx.nav('rhythm');
+    // auto-continue into CRAFTING (the nudged-toward assessment, §B).
     const rewardGuard = createIdleGuard({
       nudgeMs: 13000,
       pauseMs: 30000,
       onNudge: () => pulse(reward.querySelector('.btn.primary')),
       onTimeout: () => {
-        toast('⛏️ Back to mining!');
-        primaryAction();
+        toast('🔨 Let’s craft those words!');
+        ctx.nav('puzzle');
       },
     });
     ctx.onLeave(() => rewardGuard.stop());

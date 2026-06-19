@@ -25,6 +25,7 @@ import {
   serveOverdue,
   targetWords,
   TARGET_CAP,
+  needsCraftConfirmation,
 } from './progress.js';
 
 const MAX_PATTERNS = 5; // patternSpread 1.0 mixes up to this many families
@@ -265,16 +266,35 @@ export function buildSession(tracker, opts = {}) {
   const newAtLevel = hunting
     ? orderNewByAnchor(words.filter((w) => chosen.has(w.pattern) && !rec(w)), anchor)
     : [];
+
+  // Words that need craft CONFIRMATION: answered correctly by craft at least once, but
+  // fewer than MIN_CRAFT_PROOF times (so they have a short cooldown). These sit ABOVE
+  // brand-new words in priority because the learner has already produced the word, but
+  // BELOW repair targets (missed-craft words). Only pull eligible ones (past their short
+  // cooldown — typically just a few ticks).
+  const confirmWords = words.filter((w) => needsCraftConfirmation(tracker, w.word) && isEligible(tracker, w.word));
+
   // Reserve up to half the session (capped by how many targets exist) for repair, so the
   // chosen-level lead never crowds the craft-missed words out.
   const reserve = Math.min(targets.length, Math.ceil(length / 2));
+  // Also reserve slots for confirmation words (they need a follow-up proof — can't let
+  // new material crowd them out). Keep this smaller than the repair reserve since
+  // confirmation words are less urgent than repair targets.
+  const confirmReserve = Math.min(confirmWords.length, Math.ceil(length / 4));
 
-  // (a) chosen-level NEW material LEADS, up to the non-reserved slots.
-  newAtLevel.slice(0, Math.max(0, length - reserve)).forEach(add);
-  // (b) craft-missed TARGETS next — those in the chosen patterns first, then any other.
+  // (a) chosen-level NEW material fills up to the non-reserved slots (new material leads
+  //     for the chosen-level experience, but must leave room for repair + confirmation).
+  newAtLevel.slice(0, Math.max(0, length - reserve - confirmReserve)).forEach(add);
+  // (b) craft-missed TARGETS — those in the chosen patterns first, then any other.
   targets.filter((t) => chosen.has(t.pattern)).forEach(add);
   targets.forEach(add);
-  // (c) more chosen-level new material to top up the session.
+  // (b2) craft CONFIRMATION words: already produced once but not yet proven enough times.
+  //     Confirmation sits ABOVE new material because the learner has already seen the word
+  //     (it's not cold-start), so a follow-up proof is more valuable than another new word.
+  //     In the chosen patterns first (matches session focus), then any pattern.
+  confirmWords.filter((w) => chosen.has(w.pattern)).forEach(add);
+  confirmWords.forEach(add);
+  // (c) more chosen-level new material to top up any remaining slots.
   newAtLevel.forEach(add);
 
   // (d) parked/known words come back only AFTER level + targets: DUE (rested past cooldown)

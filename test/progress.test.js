@@ -31,6 +31,9 @@ import {
   serveOverdue,
   isTarget,
   targetWords,
+  MIN_CRAFT_PROOF,
+  needsCraftConfirmation,
+  isCraftConfirmed,
 } from '../src/engine/progress.js';
 
 // ---------------------------------------------------------------- answerScore
@@ -304,24 +307,33 @@ test('serveCooldown: unseen and shaky words rest barely at all (frequent recurre
 });
 
 test('serveCooldown grows with mastery and with confirmations', () => {
-  // freshly mastered (one perfect answer): a real rest, but the shortest of the known set
+  // Under-confirmed (1 craft-correct, attempts < MIN_CRAFT_PROOF): short rest so the
+  // follow-up confirmation comes back quickly.
   const t1 = createTracker();
   recordAnswer(t1, 'w', true, { responseMs: 400 }); // perfect -> mastery ~1.0, attempts 1
   const once = serveCooldown(getRecord(t1, 'w'));
-  assert.ok(once >= 20, `a mastered word should rest several sessions, got ${once}`);
+  assert.ok(once > 0, `an under-confirmed word still rests briefly (not 0), got ${once}`);
+  assert.ok(once <= 12, `single-correct word rests briefly for a quick follow-up, got ${once}`);
+
+  // Craft-confirmed (MIN_CRAFT_PROOF correct answers): a longer rest spanning several sessions.
+  const tConfirmed = createTracker();
+  for (let i = 0; i < MIN_CRAFT_PROOF; i++) recordAnswer(tConfirmed, 'w', true, { responseMs: 400 });
+  const confirmed = serveCooldown(getRecord(tConfirmed, 'w'));
+  assert.ok(confirmed >= 20, `a craft-confirmed word should rest several sessions, got ${confirmed}`);
+  assert.ok(confirmed > once, `craft-confirmed rests longer than under-confirmed (${confirmed} vs ${once})`);
 
   // the SAME word confirmed many more times rests MUCH longer (revisit over a long horizon)
   const t2 = createTracker();
   for (let i = 0; i < 8; i++) recordAnswer(t2, 'w', true, { responseMs: 400 });
   const many = serveCooldown(getRecord(t2, 'w'));
-  assert.ok(many > once * 1.5, `well-confirmed word should rest far longer (${many} vs ${once})`);
+  assert.ok(many > confirmed * 1.5, `well-confirmed word should rest far longer (${many} vs ${confirmed})`);
 
   // a shaky word (recently MISSED -> low mastery) rests far less than a mastered one, so
   // it comes straight back (accuracy drives this now, not speed)
   const t3 = createTracker();
   recordAnswer(t3, 'w', false, { responseMs: 500 }); // missed -> low mastery
   const learning = serveCooldown(getRecord(t3, 'w'));
-  assert.ok(learning < once, `a shaky/missed word should rest less than a mastered one (${learning} vs ${once})`);
+  assert.ok(learning < once, `a shaky/missed word should rest less than an under-confirmed one (${learning} vs ${once})`);
 });
 
 test('isEligible: a just-mastered word is NOT eligible immediately, but is after it rests', () => {
@@ -382,4 +394,75 @@ test('serveOverdue is negative while resting and rises as the word waits', () =>
   for (let i = 0; i < cd + 3; i++) recordAnswer(t, `o_${i}`, true, { responseMs: 1500 });
   assert.ok(serveOverdue(t, 'w') >= 0, 'past its cooldown it is overdue (due for a confirming revisit)');
   assert.equal(serveOverdue(t, 'unseen'), Infinity, 'an unseen word is maximally "due"');
+});
+
+// -------------------------------------------------------- craft-proof tracking
+// A word answered correctly once by crafting is NOT yet "craft-confirmed" — it could
+// be luck. MIN_CRAFT_PROOF attempts are required before a word is truly proven by
+// production. Until then it "needs craft confirmation" and should resurface sooner
+// for a follow-up proof attempt (higher priority than brand-new words, lower than
+// repair targets — the kid has seen it, so it's not cold-start material).
+
+test('MIN_CRAFT_PROOF is exported and is a positive integer >= 2', () => {
+  assert.ok(Number.isInteger(MIN_CRAFT_PROOF) && MIN_CRAFT_PROOF >= 2, `MIN_CRAFT_PROOF=${MIN_CRAFT_PROOF}`);
+});
+
+test('needsCraftConfirmation: true when word has craft attempts but fewer than MIN_CRAFT_PROOF all-correct', () => {
+  const t = createTracker();
+  // never seen: not needing confirmation (it's new material)
+  assert.equal(needsCraftConfirmation(t, 'unseen'), false, 'never-seen word does not need confirmation');
+
+  // one correct craft answer: needs confirmation (not yet proven, no miss)
+  recordAnswer(t, 'oneshot', true, { responseMs: 500 });
+  assert.equal(needsCraftConfirmation(t, 'oneshot'), true, 'one correct craft attempt → needs confirmation');
+
+  // one MISSED craft answer: it's a TARGET, not confirmation-needing (different bucket)
+  recordAnswer(t, 'missed', false, { responseMs: 5000 });
+  assert.equal(needsCraftConfirmation(t, 'missed'), false, 'a target (has miss) is NOT in needs-confirmation');
+
+  // MIN_CRAFT_PROOF correct answers: now fully confirmed
+  for (let i = 0; i < MIN_CRAFT_PROOF; i++) recordAnswer(t, 'proven', true, { responseMs: 500 });
+  assert.equal(needsCraftConfirmation(t, 'proven'), false, 'fully craft-confirmed word does not need confirmation');
+});
+
+test('isCraftConfirmed: true only after MIN_CRAFT_PROOF craft attempts, all recent clean', () => {
+  const t = createTracker();
+  assert.equal(isCraftConfirmed(t, 'unseen'), false, 'never-seen is not confirmed');
+
+  recordAnswer(t, 'partial', true, { responseMs: 500 }); // only 1 craft attempt
+  assert.equal(isCraftConfirmed(t, 'partial'), false, 'one craft attempt is not yet confirmed');
+
+  for (let i = 0; i < MIN_CRAFT_PROOF; i++) recordAnswer(t, 'multishot', true, { responseMs: 500 });
+  assert.equal(isCraftConfirmed(t, 'multishot'), true, `${MIN_CRAFT_PROOF} correct craft attempts → confirmed`);
+
+  // a missed word is NOT confirmed even with many prior corrects
+  recordAnswer(t, 'mixed', true, { responseMs: 500 });
+  recordAnswer(t, 'mixed', true, { responseMs: 500 });
+  recordAnswer(t, 'mixed', false, { responseMs: 5000 }); // recent miss
+  assert.equal(isCraftConfirmed(t, 'mixed'), false, 'a word with a recent miss is not craft-confirmed');
+});
+
+test('needsCraftConfirmation clears once MIN_CRAFT_PROOF correct attempts are reached', () => {
+  const t = createTracker();
+  recordAnswer(t, 'climbing', true, { responseMs: 500 });
+  assert.equal(needsCraftConfirmation(t, 'climbing'), true, 'needs confirmation at attempt 1');
+  for (let i = 1; i < MIN_CRAFT_PROOF; i++) {
+    recordAnswer(t, 'climbing', true, { responseMs: 500 });
+  }
+  assert.equal(needsCraftConfirmation(t, 'climbing'), false, `clears at ${MIN_CRAFT_PROOF} correct attempts`);
+  assert.equal(isCraftConfirmed(t, 'climbing'), true, 'and is now craft-confirmed');
+});
+
+test('serveCooldown: single-craft-correct word rests shorter than a multi-confirmed word', () => {
+  const t1 = createTracker();
+  recordAnswer(t1, 'once', true, { responseMs: 400 }); // 1 craft-correct
+  const cdOnce = serveCooldown(getRecord(t1, 'once'));
+
+  const t2 = createTracker();
+  for (let i = 0; i < 4; i++) recordAnswer(t2, 'many', true, { responseMs: 400 }); // 4 craft-correct
+  const cdMany = serveCooldown(getRecord(t2, 'many'));
+
+  assert.ok(cdOnce < cdMany, `single-correct (${cdOnce}) should rest less than multi-confirmed (${cdMany})`);
+  // single-correct should rest no more than 1 session-worth (~12 ticks) so it gets a quick follow-up
+  assert.ok(cdOnce <= 12, `single-correct cooldown too long: ${cdOnce} (should be ≤12 for quick confirmation)`);
 });

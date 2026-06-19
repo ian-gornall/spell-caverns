@@ -31,6 +31,15 @@ const TARGET_WINDOW = 3;
 const RECENT_MAX = 6;
 export const TARGET_CAP = 10;
 
+// Minimum craft attempts before a word is considered "craft-confirmed" (production
+// mastery proven — not just luck from a single correct answer). Until a word reaches
+// this threshold it is NOT parked under a long cooldown; instead it resurfaces quickly
+// for a follow-up proof attempt. This sits between the "repair target" priority (words
+// with recent misses) and "new material" priority (never-seen words): the learner has
+// already produced the word once, so it's not cold-start, but it needs another rep to
+// confirm the production was reliable and not lucky (recognition ≠ production).
+export const MIN_CRAFT_PROOF = 2;
+
 // Per-answer score for MASTERY. Mastery is about ACCURACY, not speed (user 2026-06-18:
 // "if a child is accurate, the speed really shouldn't matter") — so any correct answer is
 // full credit (1) regardless of how fast it was, and a wrong answer is 0. Speed still
@@ -154,6 +163,34 @@ export function targetWords(tracker, { window = TARGET_WINDOW, max = 100 } = {})
     .map((r) => r.word);
 }
 
+// --- craft-confirmation helpers ------------------------------------------------
+// These distinguish three tiers of craft knowledge:
+//   1. repair TARGET  — has a recent miss in craft history (highest priority)
+//   2. needs CONFIRMATION — has craft record (attempts > 0), no recent miss, but
+//      fewer than MIN_CRAFT_PROOF craft attempts (needs a follow-up proof; sits above
+//      brand-new words in session priority because the learner has already seen it)
+//   3. craft CONFIRMED — MIN_CRAFT_PROOF+ craft attempts, all recent correct
+//      (parked for spaced confirmation under the normal cooldown)
+
+// Is `word` in the "needs craft confirmation" state? It has been attempted via craft at
+// least once (so it's not new material), has no recent miss (so it's not a repair target),
+// but has fewer than MIN_CRAFT_PROOF attempts (one correct is not sufficient proof).
+export function needsCraftConfirmation(tracker, word) {
+  const rec = tracker.records.get(word);
+  if (!rec || !rec.attempts) return false; // never seen by craft → new material, not this bucket
+  if (isTarget(tracker, word)) return false; // has a recent miss → target bucket (higher priority)
+  return rec.attempts < MIN_CRAFT_PROOF;
+}
+
+// Is `word` craft-confirmed? It has MIN_CRAFT_PROOF+ craft attempts, no recent miss,
+// and is therefore trusted as production-known (subject to normal spaced cooldown).
+export function isCraftConfirmed(tracker, word) {
+  const rec = tracker.records.get(word);
+  if (!rec || !rec.attempts) return false;
+  if (isTarget(tracker, word)) return false; // recent miss → not yet confirmed
+  return rec.attempts >= MIN_CRAFT_PROOF;
+}
+
 // --- serve spacing -------------------------------------------------------------
 // How long a word should "rest" (in TICKS ≈ answers — one session is ~10) before it
 // is eligible to be served again. The user's requirement: once a word is essentially
@@ -172,9 +209,14 @@ export function targetWords(tracker, { window = TARGET_WINDOW, max = 100 } = {})
 //                                    words rest for sessions.
 //   - more confirmations (attempts) → a multiplicative STRETCH so a word confirmed
 //                                    many times rests far longer than one seen once.
+//   - under-confirmed (attempts < MIN_CRAFT_PROOF) → the span is capped LOW so a
+//     single-correct word rests only briefly and resurfaces quickly for a follow-up
+//     proof attempt (one correct craft answer is not sufficient production proof — it
+//     should come back within the same or next session, not after 3-4 sessions).
 const REST_BAND_LO = 0.6; // below this a word is still being learned → no real rest
 const REST_FLOOR = 2; // ticks at the bottom of the band (borderline word)
 const REST_SPAN = 30; // extra ticks at full mastery (before the confirm stretch)
+const REST_SPAN_UNCONFIRMED = 8; // cap for under-confirmed words (< MIN_CRAFT_PROOF attempts)
 const REST_CONFIRM_STEP = 0.5; // each prior sighting stretches the rest by this much…
 const REST_CONFIRM_CAP = 8; // …up to this many sightings
 
@@ -183,7 +225,10 @@ export function serveCooldown(rec) {
   const m = rec.mastery;
   if (m < REST_BAND_LO) return 0;
   const band = Math.min(1, (m - REST_BAND_LO) / (1 - REST_BAND_LO));
-  const base = REST_FLOOR + band * band * REST_SPAN; // quadratic: stays small until high mastery
+  // Under-confirmed words (fewer than MIN_CRAFT_PROOF attempts, no miss) rest briefly
+  // so they get a follow-up proof attempt within the same or next session.
+  const span = rec.attempts < MIN_CRAFT_PROOF ? REST_SPAN_UNCONFIRMED : REST_SPAN;
+  const base = REST_FLOOR + band * band * span; // quadratic: stays small until high mastery
   const stretch = 1 + Math.min(rec.attempts - 1, REST_CONFIRM_CAP) * REST_CONFIRM_STEP;
   return Math.round(base * stretch);
 }

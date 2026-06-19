@@ -34,6 +34,11 @@ import {
   buildReviewSession,
   buildFirstWave,
 } from '../src/engine/session.js';
+import {
+  MIN_CRAFT_PROOF,
+  needsCraftConfirmation,
+  isCraftConfirmed,
+} from '../src/engine/progress.js';
 
 // --- synthetic word pools (only word/rank/tier/pattern matter to the builder) ---
 function pool(spec) {
@@ -356,4 +361,86 @@ test('works on the real dataset: presets differ in spread and difficulty', () =>
   }
   assert.ok(distinctPatterns(hard) > distinctPatterns(easy), 'hard mixes more patterns than easy');
   assert.ok(avgPs(t, easy) > avgPs(t, hard), 'easy words are easier than hard words');
+});
+
+// -------------------------------------------------------- craft-proof surfacing
+// Words answered correctly by crafting once but fewer than MIN_CRAFT_PROOF times are
+// NOT yet "craft-proven". They should be surfaced BEFORE brand-new words so the learner
+// gets a quick follow-up proof attempt (the key pedagogy: recognition ≠ production —
+// one correct doesn't prove spelling mastery). They should come AFTER repair targets
+// (words with recent misses) since repair is the highest priority.
+
+test('a once-correct crafted word (needs confirmation) is included despite plenty of new words', () => {
+  // pool: 30 never-seen words + 1 word with exactly 1 craft-correct (needs confirmation)
+  // The confirmation word must be reserved a slot even though new material could fill all 10.
+  const words = pool([{ pattern: 'short-a', tier: 3, count: 31 }]);
+  const t = createTracker();
+  const confirmMe = words[0].word;
+  recordAnswer(t, confirmMe, true, { responseMs: 500, source: 'craft' }); // 1 correct, needs proof
+  assert.equal(needsCraftConfirmation(t, confirmMe), true, 'precondition: word needs confirmation');
+
+  // give it a moment to rest past its short cooldown
+  for (let i = 0; i < 15; i++) recordAnswer(t, `filler_${i}`, true, { responseMs: 500 });
+
+  const s = buildSession(t, { difficulty: 'easy', length: 10, rng: mulberry32(50), words });
+  const idx = s.findIndex((w) => w.word === confirmMe);
+  // Must appear — confirmation words are reserved a slot, not crowded out by new material
+  assert.ok(idx >= 0, 'the needs-confirmation word appears in the session even with 30 new words available');
+
+  // The session should still have mostly fresh material (confirmation takes only 1-2 slots)
+  const freshCount = s.filter((w) => !getRecord(t, w.word)).length;
+  assert.ok(freshCount >= 6, `most of the session should be fresh material, got ${freshCount}/10`);
+});
+
+test('needs-confirmation words appear in the session even when there are plenty of new words', () => {
+  // 50 never-seen words of various tiers; 3 words each with exactly 1 craft-correct
+  const words = pool([{ pattern: 'short-a', tier: 2, count: 53 }]);
+  const t = createTracker();
+  const toConfirm = [words[0].word, words[1].word, words[2].word];
+  for (const w of toConfirm) recordAnswer(t, w, true, { responseMs: 500, source: 'craft' });
+  // rest them past cooldown
+  for (let i = 0; i < 15; i++) recordAnswer(t, `filler_${i}`, true, { responseMs: 500 });
+
+  const s = buildSession(t, { difficulty: 'easy', length: 12, rng: mulberry32(51), words });
+  const included = toConfirm.filter((w) => s.some((sw) => sw.word === w));
+  assert.ok(included.length >= 2, `at least 2 of 3 needs-confirmation words should appear, got ${included.length}`);
+});
+
+test('craft-confirmed words (isCraftConfirmed) are NOT pulled early — they follow the normal cooldown', () => {
+  // A word with MIN_CRAFT_PROOF correct answers is craft-confirmed and should not be
+  // special-cased by the confirmation bucket — it should rest normally.
+  const words = pool([{ pattern: 'short-a', tier: 2, count: 30 }]);
+  const t = createTracker();
+  const confirmed = words[0].word;
+  for (let i = 0; i < MIN_CRAFT_PROOF; i++) recordAnswer(t, confirmed, true, { responseMs: 500 });
+  assert.equal(isCraftConfirmed(t, confirmed), true, 'precondition: word is craft-confirmed');
+
+  // check it is NOT in the needs-confirmation bucket (the cooldown should govern it)
+  assert.equal(needsCraftConfirmation(t, confirmed), false, 'craft-confirmed word is NOT in needs-confirmation');
+
+  // right after confirmation, it should be resting (cooldown active)
+  const s = buildSession(t, { difficulty: 'easy', length: 10, rng: mulberry32(52), words });
+  assert.ok(!s.some((w) => w.word === confirmed), 'just-confirmed word should be resting, not in the very next session');
+});
+
+test('repair targets (craft misses) take priority over needs-confirmation words', () => {
+  // target = missed craft word; toConfirm = single-correct craft word; new = never seen
+  // Order must be: target first, then toConfirm, then new
+  const words = pool([{ pattern: 'short-a', tier: 2, count: 30 }]);
+  const t = createTracker();
+  const target = words[0].word;
+  const toConfirm = words[1].word;
+  recordAnswer(t, target, false, { responseMs: 5000, source: 'craft' }); // target (missed)
+  recordAnswer(t, toConfirm, true, { responseMs: 500, source: 'craft' }); // needs confirmation
+  // rest toConfirm past its short cooldown
+  for (let i = 0; i < 15; i++) recordAnswer(t, `filler_${i}`, true, { responseMs: 500 });
+
+  const s = buildSession(t, { difficulty: 'easy', length: 10, rng: mulberry32(53), words });
+  const idxTarget = s.findIndex((w) => w.word === target);
+  const idxConfirm = s.findIndex((w) => w.word === toConfirm);
+  assert.ok(idxTarget >= 0, 'repair target is in the session');
+  assert.ok(idxConfirm >= 0, 'needs-confirmation word is in the session');
+  // Both present; the ordering bucket matters: target should have been added earlier
+  // (targets are added at step b, confirmation at step b2, before new material at step c)
+  assert.ok(idxTarget <= idxConfirm, `target (idx ${idxTarget}) should be ahead of confirmation (idx ${idxConfirm})`);
 });

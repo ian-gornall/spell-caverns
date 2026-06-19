@@ -12,6 +12,7 @@ import {
   SPEED_TIERS,
   MISS_TIER,
   BASE_POINTS,
+  CRAFT_MULT,
   COMBO_PHRASES,
   GENTLE_PHRASES,
   gradeAnswer,
@@ -85,6 +86,38 @@ test('base scoring at combo 0 is BASE_POINTS * tier.mult', () => {
   const fastest = SPEED_TIERS[0];
   const res = gradeAnswer({ correct: true, responseMs: 0, combo: 0, rng: mulberry32(1) });
   assert.equal(res.points, Math.round(BASE_POINTS * fastest.mult));
+});
+
+// ----------------------------------------------------- craft bonus (the assessment)
+// CRAFTING (production from scratch) is the assessment and the most-rewarded path:
+// for the SAME speed/combo it pays more gems than MINING (recognition). The bonus is
+// a flat CRAFT_MULT applied on top of the speed/combo scoring (§B pedagogy rebalance).
+test('CRAFT_MULT is a real reward multiplier greater than 1', () => {
+  assert.equal(typeof CRAFT_MULT, 'number');
+  assert.ok(CRAFT_MULT > 1, `CRAFT_MULT(${CRAFT_MULT}) should reward crafting more than mining`);
+});
+
+test('crafting earns more gems than mining for the same answer', () => {
+  const args = { correct: true, responseMs: 800, combo: 3, rng: mulberry32(1) };
+  const mine = gradeAnswer({ ...args }).points;
+  const craft = gradeAnswer({ ...args, craft: true }).points;
+  assert.ok(craft > mine, `craft(${craft}) should beat mine(${mine})`);
+  assert.equal(craft, Math.round(mine * CRAFT_MULT));
+});
+
+test('the craft bonus flows through projectedScore too (live meter agrees)', () => {
+  for (const ms of [0, 800, 9000, undefined]) {
+    for (const combo of [0, 4, 50]) {
+      const g = gradeAnswer({ correct: true, responseMs: ms, combo, craft: true, rng: mulberry32(1) });
+      const p = projectedScore({ responseMs: ms, combo, craft: true });
+      assert.equal(p.points, g.points, `craft points mismatch at ms=${ms} combo=${combo}`);
+    }
+  }
+});
+
+test('a wrong craft answer is still worth nothing (bonus never rescues a miss)', () => {
+  const res = gradeAnswer({ correct: false, responseMs: 800, combo: 4, craft: true, rng: mulberry32(1) });
+  assert.equal(res.points, 0);
 });
 
 // --------------------------------------------------------------------- combos
