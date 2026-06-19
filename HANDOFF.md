@@ -6,9 +6,10 @@
 > **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
-> `npm test` green (**220 tests**); `npm run smoke` green; `node scripts/qa.mjs` = 0
-> console errors; `node scripts/qa_responsive.mjs` = 0 overflow; **`node scripts/qa_fold.mjs`
-> = above-the-fold PASS**; sw **csc-v26** (LIVE + verified on prod).
+> `npm test` green (**220 tests**); `npm run smoke` green (repaired §29); `node scripts/qa.mjs` = 0
+> console errors; `node scripts/qa_responsive.mjs` = 0 overflow; **`node scripts/qa_overflow.mjs` =
+> 0 inner-scroll/bleed at 8 Galaxy sizes × 2 text scales** (the §29 deep guard); `node
+> scripts/qa_fold.mjs` = above-the-fold PASS; sw **csc-v29** (pushed; see §29).
 > **➡️ START AT §0 (current state) → §28 (the user backlog — now SHIPPED + LIVE: feedback-to-Ian,
 > pricier crystals, offline printables, always-ask "Who's playing?"+add-player) → §27 (the
 > §26-A design brief + the audio-manifest stuck-on-TTS fix).**
@@ -112,22 +113,49 @@
 - **Privacy/COPPA:** on-device by default; opt-in family sync stores only pseudonymous data behind
   a parental-consent gate; deletable. (PRIVACY.md, §18b)
 
+**§29 — 2026-06-19c (csc-v27→v29 — DONE, QA'd, on prod): phone overflow + slim Settings + audit.**
+Built from the user's report "things still cut off on the right / I can scroll a bit, oversize —
+Samsung Galaxy." Root cause analysis: pure-width Chromium emulation at 8 Galaxy viewports × 2 text
+scales shows ZERO overflow, so the real-device pan is **layout-viewport-level** (a transient fixed
+overlay / sub-pixel %·vw round / the browser nudging the layout viewport past the visual one).
+- ✅ **Overflow killed at the root (csc-v27):** `overflow-x: clip` guard on `html, body, #app` —
+  nothing in this app should ever paint outside the viewport horizontally. Tamed the onboarding
+  `-50vw` full-bleed → fixed insets. **csc-v29:** clipped `.onboard-body` x (its 9 level cards'
+  shadows caused a ~3px phantom inner pan that the root clip can't stop — inner scrollers own their
+  axis). New `scripts/qa_overflow.mjs` is a DEEP regression guard that catches **inner-scroller**
+  overflow (`scrollWidth>clientWidth`) the document-level `qa_responsive.mjs` can't see, + a 1.3×
+  text-scale pass + the onboarding path. `scripts/qa_shots.mjs` = Galaxy-width eyeball shots.
+  ⚠️ **Real-device confirmation is Ian's to make** on the actual Galaxy (emulation can't reproduce
+  Samsung Internet / split-screen / safe-area exactly; the root clip is the correct catch-all).
+- ✅ **Stale smoke REPAIRED:** the HANDOFF claimed `npm run smoke` green, but §28's always-ask
+  "Who's playing?" picker + §27's youngest-tier option clamp had silently broken it (it failed at
+  the first post-onboarding home hop). Added `dismissPicker()` through every boot, relaxed the tile
+  assertion to ≥2 (the tier-1-2 anti-imprinting clamp), and made it tolerate audio-tail clip 404s
+  (TTS fallback) + Worker-only `/api/*` 404s (absent on the static dev server). **Smoke green again.**
+- ✅ **§26-A #8 — child Settings SLIMMED (csc-v28):** advanced levers (answer-count, device voice
+  picker), Players admin, Practice sheets, and the whole Parents & privacy block now live in a
+  collapsed native `<details>` **"Grown-up settings"** disclosure. Default view = just the simple kid
+  controls (level, difficulty, length, voice on/off + speed + volume, name, colour, easy-read,
+  kid-lock). Destructive items keep their parent-password gate. Verified collapse/expand, 0 errors.
+- ✅ **Free-first SERVICES AUDIT → `SERVICES_AUDIT.md`** (OPEN BACKLOG #1, [[prefer-free-services]]):
+  every runtime dep **>95% free-tier headroom, fail-closed**. Eyes only on KV writes (if scaled
+  ~20×), dormant Resend 100/day (if enabled), + a non-cost Gemini-TTS commercial-licensing check.
+
 **→ OPEN BACKLOG (what's actually left — everything else is DONE + LIVE):**
 
-1. **Free-first SERVICES AUDIT** (user-requested 2026-06-19, [[prefer-free-services]]) — do a pass
-   over every third-party/service dependency and confirm each is free at this scale / has no
-   surprise cliff, or flag + replace: Cloudflare Workers + Static Assets (hosting/CD), Cloudflare
-   **KV** `FAMILY_SYNC` (family sync + push subs + feedback), **web push / VAPID**, **Gemini** TTS
-   (audio generation only, build-time), and the **dormant Resend** email hook (wired but OFF). Output
-   a short table: dep → what it's used for → free-tier limits → headroom → action. Agent-doable.
-2. **AUDIO TAIL** — finish the remaining ~1241 TTS clips on the FREE multi-day path (resume log +
-   exact steps in §25; was due 2026-06-20, now available). Re-run `npm run gen:audio`, commit the new
-   `audio/` clips, bump `sw.js`/`version.js`, push. ⚠️ reinstall `@breezystack/lamejs` first.
-3. **§26-B — professional ASSETS** (the still-open half of the §25 research; §26-A design polish
-   already SHIPPED in §27). Drop pro art/animation/audio into the existing vanilla surfaces WITHOUT
-   touching `src/engine/**`. ⚠️ paid packs/commissions → [[approval-before-consuming-limits]] (get
-   per-purchase OK; prefer CC0/Kenney first). Detail in "NEXT STEPS (§26)" below.
-4. **Deferred polish:** §26-A item #8 (slim the child-facing Settings, ★★) — small, not started.
+1. ✅ **Free-first SERVICES AUDIT — DONE (§29)** → `SERVICES_AUDIT.md`. (Owed follow-up still: confirm
+   Gemini free-tier TTS *commercial-use licensing* — a legal, not cost, check.)
+2. **AUDIO TAIL** — ~1241 TTS clips remain (1678 word + 32 phrase clips ship; manifest matches).
+   FREE multi-day path. **Time-gated:** 2026-06-19's free quota was already spent, so the next run is
+   **due 2026-06-20+**. Then: `npm i --no-save @breezystack/lamejs` → `npm run gen:audio` → commit new
+   `audio/` clips → bump `sw.js`/`version.js` → push. (Pre-approved free path; no re-asking needed.)
+3. **§26-B — professional ASSETS** (still open; §26-A design polish SHIPPED §27). Drop pro art/
+   animation/audio into the existing vanilla surfaces WITHOUT touching `src/engine/**`. ⚠️ **Genuinely
+   user-gated:** paid packs/commissions need per-purchase OK ([[approval-before-consuming-limits]]),
+   and adding CDN/vendored libs (GSAP/tsParticles/Spine) or large CC0 packs trades against the
+   dependency-free + lean-precache ethos ([[prefer-free-services]]) — so this wants Ian's direction
+   before an agent bolts assets on. Prefer CC0/Kenney first. Detail in "NEXT STEPS (§26)" below.
+4. ✅ **§26-A #8 (slim child Settings) — DONE (§29, csc-v28).**
 
 History (all ✅ DONE, deployed, QA'd): **§28** user backlog (this section — pricier crystals,
 always-ask who's-playing, offline printables, feedback-to-Ian + in-app archive); **§27** §26-A
