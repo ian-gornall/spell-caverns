@@ -190,10 +190,18 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 > on phones** (the §29 `qa_overflow.mjs` / `qa_galaxy.mjs` guards must stay green). iPad is still
 > the primary viewport.
 
+**SET SIZE = the existing "Words per dig" setting (CLARIFIED 2026-06-19d).** One lever (current
+options 6/10/15/20, default **10**) now drives ALL of: the **learning-set size**, the **mastery
+unlock threshold** (that many KNOWN), and the **mining unlock threshold** (that many MASTERED). One
+"dig" = one pass over the learning set. Keeps Settings slim (no new lever) — but **update its help
+text** so it reads as "how many words are in progress at once / to clear before the next mode
+unlocks," not just session length. So everywhere below, **[set size] = the Words-per-dig value**
+(default 10; lower = smaller working set + faster unlocks for younger kids, higher = longer climb).
+
 **A. Word categories + the state machine (CLARIFIED 2026-06-19d).**
 Categories: **new/unseen → learning → known → mastered**, plus **tricky** (a demotion/overflow bucket).
-- **Learning = a fixed working set of exactly 10** words the student does NOT yet know. Always
-  kept at 10: when a word leaves learning (→known), another word takes its slot.
+- **Learning = a fixed working set of exactly [set size]** (default 10) words the student does NOT
+  yet know. Always kept full: when a word leaves learning (→known), another word takes its slot.
 - **Known** = a word crafted correctly **twice in a row** in CRAFT. (A miss sends it back to learning.)
   Known words are eligible for MINING (once mining is unlocked).
 - **Mastered** = a known word with **one success in the new MASTERY (draw) mode**. (A miss sends it
@@ -287,8 +295,10 @@ letter placed (timers reset on each correct letter); auto-fire costs the same.
 the letter); no high-confidence → force redraw; spelling builds one letter at a time, tap a placed
 letter to redo; case-insensitive (expect lowercase, accept uppercase).
 
+**MORE ANSWERED (2026-06-19d):** ✅ set size = the existing "Words per dig" setting (default 10),
+driving learning-set size + both unlock thresholds; update its help text.
+
 **STILL OPEN (asking one at a time, NO answer choices per Ian):**
-- Default **set size** (10?) and whether it's a grown-up-configurable setting.
 - **Mining timer** exact numbers (drain start + ~5s window) and whether it's per-difficulty.
 - **Settings/category display** layout for a grown-up.
 > (Answers folded in as they arrive, then built test-first.)
