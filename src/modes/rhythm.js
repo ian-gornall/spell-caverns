@@ -19,7 +19,7 @@
 // with Playwright, not node.
 import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
 import { buildSession, buildFirstWave, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
-import { buildOptions, mulberry32 } from '../engine/distractors.js';
+import { buildOptions, mulberry32, recognitionOptionCount } from '../engine/distractors.js';
 import { byRank } from '../engine/lexicon.js';
 import { gradeAnswer, projectedScore } from '../engine/praise.js';
 import { recordAnswer, predictedSuccess, tierToPrior, summary } from '../engine/progress.js';
@@ -254,7 +254,8 @@ export function startRhythm(ctx, params = {}) {
     sentenceEl.replaceChildren(...blankedSentence(entry));
 
     const opts = buildOptions(entry.word, {
-      count: settings.optionCount || 3,
+      // youngest tiers see fewer plausible misspellings on screen (anti-imprinting, §26-A #9)
+      count: recognitionOptionCount(entry.tier, settings.optionCount),
       difficulty: distractorDifficulty(entry),
       curated: entry.misspellings,
       realWords: REAL_WORDS,

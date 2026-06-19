@@ -15,6 +15,7 @@ import {
   levenshtein,
   generateMisspellings,
   buildOptions,
+  recognitionOptionCount,
 } from '../src/engine/distractors.js';
 
 // ------------------------------------------------------------------- mulberry32
@@ -193,4 +194,30 @@ test('buildOptions guarantees enough options even for very short words', () => {
     assert.equal(opts.length, 3, `"${word}" produced ${opts.length} options`);
     assert.equal(opts.filter((o) => o.correct).length, 1);
   }
+});
+
+// ------------------------------------------------------------- recognitionOptionCount
+// DESIGN_ANALYSIS rec #9: in RECOGNITION (the multiple-choice "Practice" mode) the youngest
+// tiers should see FEWER plausible misspellings on screen at once, to limit imprinting
+// exposure for the most at-risk readers. Production (CRAFT) is unaffected — this only shapes
+// how many tappable options the recognition mode shows.
+test('recognitionOptionCount clamps the youngest tiers to 2 options', () => {
+  // tiers 1-2 (the earliest frequency bands): at most 2 options regardless of the setting
+  for (const setting of [2, 3, 4]) {
+    assert.equal(recognitionOptionCount(1, setting), 2, `tier 1 @setting ${setting}`);
+    assert.equal(recognitionOptionCount(2, setting), 2, `tier 2 @setting ${setting}`);
+  }
+});
+
+test('recognitionOptionCount honours the grown-up setting for older tiers', () => {
+  assert.equal(recognitionOptionCount(3, 4), 4);
+  assert.equal(recognitionOptionCount(5, 3), 3);
+  assert.equal(recognitionOptionCount(9, 2), 2);
+});
+
+test('recognitionOptionCount stays within the supported 2..4 range and defaults sanely', () => {
+  assert.equal(recognitionOptionCount(8, 99), 4); // clamp high
+  assert.equal(recognitionOptionCount(8, 0), 3); // 0/undefined -> default 3
+  assert.equal(recognitionOptionCount(8, undefined), 3);
+  assert.equal(recognitionOptionCount(1, undefined), 2); // youngest still clamps to 2
 });

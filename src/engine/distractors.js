@@ -203,6 +203,18 @@ function padDistractors(word, pool, need, realWords) {
   return out;
 }
 
+// recognitionOptionCount(tier, setting) -> how many multiple-choice options the
+// RECOGNITION ("Practice") mode should show for a word of this difficulty tier.
+// The youngest tiers (1-2 — the earliest frequency bands, our most at-risk readers)
+// are clamped to 2 so fewer plausible misspellings sit on screen at once, limiting
+// imprinting exposure (DESIGN_ANALYSIS rec #9; the spelling literature is firm that
+// merely SEEING plausible misspellings can imprint them). Older tiers use the grown-up
+// setting. Production (CRAFT) is unaffected — there are no options to choose there.
+export function recognitionOptionCount(tier, setting) {
+  const s = Math.max(2, Math.min(4, Math.round(setting) || 3));
+  return tier <= 2 ? Math.min(s, 2) : s;
+}
+
 // buildOptions(word, opts) -> shuffled [{text, correct}] with exactly `count`
 // items, exactly one of which is the correct spelling. The distractor pool is
 // ordered most-confusable -> least; `difficulty` (0..1) slides a window over it:
