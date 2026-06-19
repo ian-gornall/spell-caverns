@@ -305,6 +305,18 @@ export function demoteLevel(state, pool) {
   return state;
 }
 
+// Manually re-aim the working set at a NEW level (a grown-up picks a Starting Level in
+// Settings). The current learning words are set aside as TRICKY (they can resurface later) and
+// the set is refilled with fresh words at the new level — so changing the level IMMEDIATELY
+// changes the words served (bug fix 2026-06-19f: the old picker left the learning set stale).
+export function setLevelAndRefill(state, level, pool) {
+  state.level = clampLevel(level, pool ? maxTier(pool) : 9);
+  for (const r of state.words.values()) if (r.category === CATEGORIES.LEARNING) r.category = CATEGORIES.TRICKY;
+  state.recent = [];
+  if (pool) fillLearning(state, pool);
+  return state;
+}
+
 // Push UP a level: newly-freed slots will draw from the higher tier (existing words stay).
 export function promoteLevel(state, pool) {
   const top = pool ? maxTier(pool) : 9;

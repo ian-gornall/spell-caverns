@@ -32,6 +32,7 @@ import {
   fillLearning,
   demoteLevel,
   promoteLevel,
+  setLevelAndRefill,
   unlocks,
   learningProgress,
   categorySummary,
@@ -232,6 +233,18 @@ test('promoteLevel raises the level so newly-freed slots draw from a higher tier
   const st = fresh(); // level 1
   promoteLevel(st, POOL);
   assert.equal(st.level, 2);
+});
+
+test('setLevelAndRefill re-aims the set: old learning words → tricky, refilled from the new level', () => {
+  const st = createCategoryState({ setSize: 3, level: 1 });
+  fillLearning(st, POOL); // tier-1 learning words
+  const oldLearning = learningWords(st);
+  assert.ok(oldLearning.length === 3);
+  setLevelAndRefill(st, 2, POOL);
+  assert.equal(st.level, 2);
+  oldLearning.forEach((w) => assert.equal(getCat(st, w), CATEGORIES.TRICKY)); // set aside
+  assert.equal(learningWords(st).length, 3); // refilled
+  assert.ok(learningWords(st).every((w) => POOL.find((p) => p.word === w).tier === 2)); // from the new level
 });
 
 test('learningProgress reports a 2-step progress toward known for each learning word', () => {

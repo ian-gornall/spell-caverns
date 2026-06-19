@@ -11,6 +11,8 @@ import * as sync from '../cloud_sync_backend.js';
 import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
 import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
+import { setLevelAndRefill } from '../engine/categories.js';
+import { byRank } from '../engine/lexicon.js';
 import { COLOURS, levelGrid, LEVELS } from './onboarding.js';
 import { APP_VERSION } from '../version.js';
 import { swCacheVersion } from '../pwa.js';
@@ -235,6 +237,9 @@ export function settingsScreen(ctx) {
   const curLevelLabel = (LEVELS.find((l) => l.tier === curLevel) || {}).label || `Tier ${curLevel}`;
   const levelGridEl = levelGrid(curLevel, (tier) => {
     ctx.state.startLevel = tier;
+    // §30: re-aim the working set NOW — old learning words are set aside and the set refills
+    // with fresh words at the new level (otherwise the picker left craft serving the old words).
+    setLevelAndRefill(ctx.state.categories, tier, byRank().filter((w) => w.word.length >= 3));
     ctx.save();
     const lbl = (LEVELS.find((l) => l.tier === tier) || {}).label || `Tier ${tier}`;
     toast(`New words now start around “${lbl}”. ⛏️`);

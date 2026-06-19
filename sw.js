@@ -86,7 +86,14 @@
 //      onboarding/"Who's playing?" glow (.onboarding inset:-10% ::before) and level cards were
 //      pannable ~33-39px every launch -> overflow:clip; grids -> minmax(0,1fr) so long labels
 //      clip not expand; .onboard-body -> touch-action:pan-y. 0 pan on every Galaxy × screen.
-const VERSION = 'csc-v34';
+// v34 (§30 LEARNING-MODEL REDESIGN): discrete word categories (engine/categories.js) +
+//      category-driven selection/adaptive level (selection.js) + the free/offline draw-mode
+//      recognizer (handwriting.js) + the new MASTERY draw mode (modes/mastery.js); craft
+//      gem-cost hints, ~5s mining timer, Craft→Mastery→Mining unlock chain, Progress category view.
+// v35 (§30 fixes, user 2026-06-19f): Settings level change now re-aims the learning set
+//      (categories.setLevelAndRefill); craft gems trimmed (CRAFT_MULT 1.5→1.2); draw mode
+//      AUTO-recognises after the pen lifts (no "Read" button). (Recognizer accuracy still WIP.)
+const VERSION = 'csc-v35';
 
 const CORE = [
   '/',

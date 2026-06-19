@@ -24,7 +24,9 @@ export const BASE_POINTS = 6;
 // the same word merely recognised while mining: a flat reward multiplier applied on
 // top of the speed/combo scoring. Mining stays fun and fast; crafting is the headline
 // pay-off, which steers the loop toward production without ever punishing practice.
-export const CRAFT_MULT = 1.5;
+// Trimmed 1.5→1.2 (user 2026-06-19f: craft was paying too many gems) — still the best-paid
+// path, just less inflated, especially once a long clean combo stacks on top. Tunable.
+export const CRAFT_MULT = 1.2;
 
 // How a streak boosts points: each consecutive correct adds COMBO_STEP to the
 // multiplier, capped at COMBO_CAP so a long run can't run away with the score.

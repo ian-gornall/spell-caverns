@@ -38,8 +38,7 @@ try {
   await page.mouse.move(pts[0][0], pts[0][1]); await page.mouse.down();
   for (const [x, y] of pts.slice(1)) await page.mouse.move(x, y, { steps: 2 });
   await page.mouse.up();
-  await page.locator('.draw-read').click();
-  await page.waitForTimeout(250);
+  await page.waitForTimeout(1100); // auto-recognise after the pen lifts (no button)
   const cands = await page.locator('.cand-letter').allTextContents();
   console.log('drew a vertical stroke → candidates:', cands.length ? `[${cands.join(', ')}] ✓` : 'NONE ✗');
   console.log('\nISSUES:', issues.length ? issues : 'none');

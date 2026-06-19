@@ -112,10 +112,9 @@ export function startMastery(ctx, params = {}) {
     el('span', { class: 'spk' }, '🔊'),
     'Hear it again',
   );
-  const readBtn = el('button', { class: 'btn primary draw-read', onClick: readLetter }, '✓ Read my letter');
   const clearBtn = el('button', { class: 'btn ghost', onClick: clearCanvas }, '↺ Clear');
-  const controlsEl = el('div', { class: 'draw-controls' }, clearBtn, readBtn);
-  const hintEl = el('div', { class: 'draw-hint' }, 'Draw the next letter, then tap “Read my letter”.');
+  const controlsEl = el('div', { class: 'draw-controls' }, clearBtn);
+  const hintEl = el('div', { class: 'draw-hint' }, 'Draw a letter — I’ll guess it, then tap the one you meant.');
 
   const hdr = header(ctx, { title: 'Mastery — draw it', onBack: () => ctx.nav('home') });
   const gemCountEl = hdr.querySelector('.gem-count');
@@ -142,7 +141,11 @@ export function startMastery(ctx, params = {}) {
   let locked = false; // true during the success/advance animation
   let strokes = []; // [[{x,y}...] ...] the current letter's pen strokes
   let drawing = false;
+  let recognizeTimer = 0; // debounce: auto-recognise shortly after the pen lifts (no button)
   const ctx2d = canvas.getContext('2d');
+  // Wait this long after the LAST pen-up before guessing, so a multi-stroke letter (t, i, x, k)
+  // isn't recognised after only its first stroke. A new stroke cancels + reschedules.
+  const RECOGNIZE_DEBOUNCE_MS = 850;
 
   const guard = createIdleGuard({
     onNudge: () => {
@@ -153,7 +156,10 @@ export function startMastery(ctx, params = {}) {
     },
     onResume: () => !locked && audio.say(target),
   });
-  ctx.onLeave(() => guard.stop());
+  ctx.onLeave(() => {
+    guard.stop();
+    clearTimeout(recognizeTimer);
+  });
 
   // --- canvas drawing ------------------------------------------------------
   function paintStyle() {
@@ -167,12 +173,15 @@ export function startMastery(ctx, params = {}) {
     return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) };
   }
   function clearCanvas() {
+    clearTimeout(recognizeTimer);
     strokes = [];
     ctx2d.clearRect(0, 0, canvas.width, canvas.height);
     candidatesEl.replaceChildren();
   }
   canvas.addEventListener('pointerdown', (e) => {
     if (locked) return;
+    clearTimeout(recognizeTimer); // a new stroke: cancel any pending guess + drop stale candidates
+    candidatesEl.replaceChildren();
     drawing = true;
     canvas.setPointerCapture?.(e.pointerId);
     const p = canvasXY(e);
@@ -191,7 +200,11 @@ export function startMastery(ctx, params = {}) {
     e.preventDefault();
   });
   const endStroke = () => {
+    if (!drawing) return;
     drawing = false;
+    // auto-recognise after a short pause (so multi-stroke letters finish first) — no button
+    clearTimeout(recognizeTimer);
+    recognizeTimer = setTimeout(readLetter, RECOGNIZE_DEBOUNCE_MS);
   };
   canvas.addEventListener('pointerup', endStroke);
   canvas.addEventListener('pointercancel', endStroke);
@@ -201,10 +214,7 @@ export function startMastery(ctx, params = {}) {
   async function readLetter() {
     if (locked) return;
     const flat = strokes.reduce((n, s) => n + s.length, 0);
-    if (flat < 2) {
-      toast('✍️ Draw a letter first!');
-      return;
-    }
+    if (flat < 2) return; // nothing meaningful drawn (auto-triggered — stay quiet)
     const templates = await ensureTemplates();
     const cands = recognizeGrid(strokes, templates, { maxCandidates: 4 });
     if (!cands.length) {

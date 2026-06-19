@@ -85,8 +85,7 @@ try {
   // recognition smoke: draw o / l / c in isolation and report candidates
   const tryShape = async (label, strokes) => {
     await drawLetter(box, strokes);
-    await page.locator('.draw-read').click();
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(1100); // auto-recognise after the pen lifts (no button)
     const cs = await candLetters();
     console.log(`  ✎ drew ${label} → candidates: [${cs.join(', ')}]  ${cs.includes(label) ? '✓ correct offered' : '✗'}`);
     return cs;
@@ -96,8 +95,7 @@ try {
   const plan = [['l', [fracPath('l')]], ['o', [fracPath('o')]], ['t', tStrokes()]];
   for (const [letter, strokes] of plan) {
     await drawLetter(box, strokes);
-    await page.locator('.draw-read').click();
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(1100); // auto-recognise after the pen lifts (no button)
     const cs = await candLetters();
     console.log(`  ✎ ${letter} → [${cs.join(', ')}] ${cs.includes(letter) ? '✓' : '✗ (tapping first to continue)'}`);
     await shot(`m04-cand-${letter}`);
