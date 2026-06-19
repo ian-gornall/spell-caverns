@@ -211,8 +211,11 @@ Categories: **new/unseen → learning → known → mastered**, plus **tricky** 
   the **hardest / lowest-accuracy** words, evicted when the student is **demoted a level** OR when
   there are already >10 in learning. (So tricky is the demotion/overflow pool, NOT a proactive target.
   The "10 known / 10 learning / 10 tricky" balance emerges from play, it isn't forced.)
-- **Settings display:** show **at most 10 "learning in progress"**; the rest are mastered / known /
-  tricky. (Exact panel layout still to confirm.)
+- **Category display (CLARIFIED 2026-06-19d):** on the **Progress screen, kid-visible** — a "Words
+  I'm learning" panel listing the current learning set (up to [set size], each with a 2-step
+  progress toward known) + a tally of **known / mastered** and how many **new** words remain.
+  **"Tricky" is GROWN-UP-ONLY** (behind the Settings "Grown-up settings" gate) — a child never sees
+  a "hard/tricky" label on their words. Kid + grown-up otherwise share the same data (§4).
 - **Learning-slot refill + tricky reintroduction (CLARIFIED 2026-06-19d).** When a slot frees up
   (a word → known), fill it in this priority order:
   1. A **new unseen word from the CURRENT level** (the normal discovery path).
@@ -304,10 +307,26 @@ driving learning-set size + both unlock thresholds; update its help text.
 
 **MORE ANSWERED (2026-06-19d):** ✅ mining timer ~5s to bottom, SAME for every difficulty; keep the
 speed-tier bonus stretched across the ~5s (≈2s still a strong tier; last ~1-2s → minimum).
+✅ category display = Progress screen, kid-visible (learning list + known/mastered/new tally);
+**tricky is grown-up-only** (no "hard" label shown to the child).
 
-**STILL OPEN (asking one at a time, NO answer choices per Ian):**
-- **Settings/category display** layout for a grown-up (last one — will propose a concrete layout).
-> (Answers folded in as they arrive, then built test-first.)
+**✅ ALL OPEN QUESTIONS RESOLVED (2026-06-19d). Spec is build-ready.**
+
+**PROPOSED TEST-FIRST BUILD ORDER (each a milestone; keep `npm test` green, follow `QA.md`, keep
+the §29 phone no-horizontal-scroll guards green):**
+1. **Engine: word-category state machine** (pure, test-first) — extend `progress.js` (or a new
+   `categories.js`): states new/learning/known/mastered/tricky; transitions (2-in-a-row craft →
+   known; 1 draw success → mastered; miss demotes; learning kept at [set size]); the refill priority
+   + pattern-mastery reintroduction; serialization. THE backbone — do first.
+2. **Engine: session/selection** rewrite to serve craft (focus the learning set, balanced) + the
+   adaptive level (medium up/down) + mining (known-only) + mastery (known-only) pools.
+3. **Craft mode UI**: gem-cost hints (2×pts/len, half→0, never negative), highlight @4s, auto-fire @8s.
+4. **Mining mode**: known-gated unlock (after [set size] mastered) + ~5s stretched timer.
+5. **🆕 Mastery (draw) mode**: free/offline handwriting recognition, up-to-4 candidate letterforms,
+   force-redraw on low confidence, build-one-letter-at-a-time, tap-to-redo, case-insensitive.
+6. **Unlock chain + gating UI** (Craft→Mastery→Mining), **Progress category display** (tricky
+   grown-up-only), **Words-per-dig help-text** update.
+7. **§26-B assets research** (free/low-cost) can run in parallel (independent).
 
 ---
 
