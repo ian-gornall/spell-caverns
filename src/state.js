@@ -10,6 +10,7 @@
 //
 // UI module (touches localStorage) — never imported by `node --test`.
 import { createTracker, serializeTracker, deserializeTracker } from './engine/progress.js';
+import { createCategoryState, serializeCategoryState, deserializeCategoryState } from './engine/categories.js';
 import { defaultStreak, updateStreak } from './engine/streak.js';
 import { purchaseResult, nextFreeCrystal } from './engine/catalog.js';
 import { wrapBackup, readBackup } from './engine/backup.js';
@@ -61,6 +62,9 @@ function defaultProfile(id, over = {}) {
     catalog: { owned: [], milestoneDepth: 1 },
     lastBackupAt: 0,
     tracker: createTracker(),
+    // §30 word-category state machine (working set / known / mastered / tricky). setSize =
+    // the "Words per dig" setting; level seeds from the chosen start level then adapts.
+    categories: createCategoryState({ setSize: defaultSettings().length, level: over.startLevel || 1 }),
   };
 }
 
@@ -83,12 +87,15 @@ function storedToState(p) {
     catalog: { ...base.catalog, ...(p.catalog || {}) },
     snapshots: Array.isArray(p.snapshots) ? p.snapshots : [],
     tracker: deserializeTracker(p.tracker),
+    // revive the §30 category machine (absent on pre-§30 saves → a fresh one; words
+    // re-categorise through play, while the continuous tracker keeps its history).
+    categories: deserializeCategoryState(p.categories),
   };
 }
 
-// The JSON-safe form of a working profile blob (serialize the live tracker).
+// The JSON-safe form of a working profile blob (serialize the live tracker + category machine).
 function stateToStored(s) {
-  return { ...s, tracker: serializeTracker(s.tracker) };
+  return { ...s, tracker: serializeTracker(s.tracker), categories: serializeCategoryState(s.categories) };
 }
 
 function loadContainer() {

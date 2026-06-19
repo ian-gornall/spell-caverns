@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { mulberry32 } from '../src/engine/distractors.js';
 import {
   SPEED_TIERS,
+  MINING_SPEED_TIERS,
   MISS_TIER,
   BASE_POINTS,
   CRAFT_MULT,
@@ -20,6 +21,40 @@ import {
 } from '../src/engine/praise.js';
 
 const SPEC_FIELDS = ['tier', 'label', 'phrase', 'points', 'mult', 'color'];
+
+// --------------------------------------------------- MINING_SPEED_TIERS (§30.C)
+test('MINING_SPEED_TIERS stretches the schedule to ~5s, same mults/keys as SPEED_TIERS', () => {
+  assert.equal(MINING_SPEED_TIERS.length, SPEED_TIERS.length);
+  // same keys + mults (only the time bounds move)
+  for (let i = 0; i < SPEED_TIERS.length; i++) {
+    assert.equal(MINING_SPEED_TIERS[i].key, SPEED_TIERS[i].key);
+    assert.equal(MINING_SPEED_TIERS[i].mult, SPEED_TIERS[i].mult);
+  }
+  // strictly later bounds than the default (stretched), ascending, last is the Infinity floor
+  let prev = -Infinity;
+  for (let i = 0; i < MINING_SPEED_TIERS.length; i++) {
+    assert.ok(MINING_SPEED_TIERS[i].maxMs > prev);
+    prev = MINING_SPEED_TIERS[i].maxMs;
+    if (Number.isFinite(SPEED_TIERS[i].maxMs)) assert.ok(MINING_SPEED_TIERS[i].maxMs > SPEED_TIERS[i].maxMs);
+  }
+  assert.equal(MINING_SPEED_TIERS[MINING_SPEED_TIERS.length - 1].maxMs, Infinity);
+});
+
+test('a ~2s mining answer still earns a STRONG tier (perfect), where default tiers would not', () => {
+  const def = projectedScore({ responseMs: 2000, combo: 0 });
+  const mine = projectedScore({ responseMs: 2000, combo: 0, tiers: MINING_SPEED_TIERS });
+  assert.equal(mine.tier, 'perfect'); // ≤2000ms still top tier under the stretched schedule
+  assert.notEqual(def.tier, 'perfect'); // default schedule has already dropped a tier by 2s
+  // gradeAnswer honours the same tiers
+  const g = gradeAnswer({ correct: true, responseMs: 2000, combo: 1, tiers: MINING_SPEED_TIERS });
+  assert.equal(g.tier, 'perfect');
+});
+
+test('a late (~4.6s) mining answer falls to the minimum "good" tier near the bottom of the bar', () => {
+  const mine = projectedScore({ responseMs: 4600, combo: 0, tiers: MINING_SPEED_TIERS });
+  assert.equal(mine.tier, 'good');
+  assert.equal(mine.mult, 1);
+});
 
 // ----------------------------------------------------------------- SPEED_TIERS
 test('SPEED_TIERS is an ordered, well-formed tier table', () => {

@@ -89,13 +89,9 @@ try {
   const fwDots = await page.locator('.rhythm .dots .dot').count();
   if (fwDots === 5) ok('onboarding launched a short guaranteed-win first wave (5 words)');
   else fail(`first wave expected 5 words, got ${fwDots}`);
-  // back to a normal home for the main flow (onboarded now persisted; picker -> home)
-  await gotoHome();
-  ok('"Who\'s playing?" picker -> home screen rendered (Play card present)');
-
-  // --- start a wave ---
-  await page.click('.menu-card.play');
-  await page.waitForSelector('.rhythm .tile', { timeout: 5000 });
+  // §30: mining/rhythm is otherwise GATED until words are KNOWN (asserted later), so we
+  // exercise the rhythm LOOP here on the guaranteed-win first-run wave already on screen
+  // (it's reached via buildFirstWave, which is not subject to the known-words gate).
   const tileCount = await page.locator('.rhythm .tile').count();
   // §27 youngest-tier anti-imprinting clamp (recognitionOptionCount): tier 1-2 words show
   // only 2 options on purpose, so the cold-start first round can legitimately render 2 tiles.
@@ -209,6 +205,17 @@ try {
   });
   if (/^ok:/.test(clipOk)) ok(`generated TTS clip loads + decodes in-browser (${clipOk})`);
   else fail(`TTS clip did not load: ${clipOk}`);
+
+  // --- §30 mining GATE: a fresh profile has no KNOWN words yet, so the Practice (mining)
+  //     card steers to Craft (the always-open assessment) instead of an empty mine. ---
+  await gotoHome();
+  await page.click('.menu-card.play');
+  await page.waitForSelector('.rhythm', { timeout: 5000 });
+  await page.waitForTimeout(300);
+  const gateCta = await page.locator('.rhythm .btn.primary').count();
+  const minableTiles = await page.locator('.rhythm .tile').count();
+  if (gateCta >= 1 && minableTiles === 0) ok('mining gated until words are known — steers to Craft (§30)');
+  else fail(`mining gate missing: craft-cta=${gateCta}, tiles=${minableTiles}`);
 
   // --- puzzle (build-the-word) mode: hear -> build from tiles -> gems + advance ---
   await gotoHome();
@@ -338,7 +345,20 @@ try {
     window.__idleTest = 0.03; // 15s nudge -> ~450ms, 45s pause -> ~1350ms
     try {
       const KEY = 'crystal-spell-caverns:v1';
-      if (!localStorage.getItem(KEY)) localStorage.setItem(KEY, JSON.stringify({ profile: { name: 'Explorer', onboarded: true } }));
+      // §30: mining is gated until words are KNOWN, so seed a profile with a few known words
+      // (real dataset words) so the Practice wave is playable and the pause-overlay fires.
+      const known = (w, i) => ({ word: w, tier: 1, pattern: 'short-a', rank: 50 + i, category: 'known', craftStreak: 2, craftAttempts: 2, craftCorrect: 2, order: i + 1 });
+      if (!localStorage.getItem(KEY))
+        localStorage.setItem(
+          KEY,
+          JSON.stringify({
+            schema: 2, syncCode: null, syncConsent: false, parentPassword: null, activeId: 'idle1',
+            profiles: [{
+              id: 'idle1', version: 1, profile: { name: 'Explorer', onboarded: true },
+              categories: { setSize: 10, level: 1, recent: [], order: 3, peakKnownish: 3, peakMastered: 0, words: ['cat', 'dog', 'sun'].map(known) },
+            }],
+          }),
+        );
     } catch {}
   });
   await idlePage.goto(URL, { waitUntil: 'networkidle' });

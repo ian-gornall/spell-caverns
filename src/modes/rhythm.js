@@ -18,19 +18,23 @@
 // Distractor similarity adapts per word from predicted success. UI module — verified
 // with Playwright, not node.
 import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
-import { buildSession, buildFirstWave, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
+import { buildFirstWave, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
+import { buildMiningPool } from '../engine/selection.js';
 import { buildOptions, mulberry32, recognitionOptionCount } from '../engine/distractors.js';
 import { byRank } from '../engine/lexicon.js';
-import { gradeAnswer, projectedScore } from '../engine/praise.js';
+import { gradeAnswer, projectedScore, MINING_SPEED_TIERS } from '../engine/praise.js';
 import { recordAnswer, predictedSuccess, tierToPrior, summary } from '../engine/progress.js';
 import { REAL_WORDS } from '../engine/lexicon.js';
 
 // Per-preset baseline for how similar the distractors are (0 obvious -> 1 minimal
 // difference). Adapted per word by the learner's predicted success below.
 const DIST_BASE = { easy: 0.3, medium: 0.55, hard: 0.8 };
-// The live meter spans roughly the speed tiers (perfect 1.2s .. great 3.5s); after
-// this it sits at the floor ("Good", still full credit, just no speed bonus).
-const METER_MS = 3500;
+// §30.C: the live meter now drains to the bottom in ~5s, the SAME for every difficulty,
+// with the speed-tier bonus STRETCHED across it (MINING_SPEED_TIERS — perfect ~2.0s ..
+// great ~4.3s). So a thoughtful ~2s answer still scores a strong tier; only the last ~1s
+// drops toward the floor ("Good", still full credit, no speed bonus). Goal: consider the
+// options before tapping, without losing the DDR reward feel.
+const METER_MS = 5000;
 // After the word finishes being spoken, hold the meter FULL for this long so the
 // learner can comprehend the word and read the choices before the clock starts
 // (play-test feedback 2026-06-17: don't start the timer until the word is spoken).
@@ -60,9 +64,14 @@ export function startRhythm(ctx, params = {}) {
   // level the grown-up just picked (buildFirstWave honours startLevel; §21-C fix — the old
   // hard-coded tier ≤2 made a high level look ignored until a data reset). Distractors are
   // forced obvious below, so it stays a sure win at any level.
+  // §30: MINING is recognition PRACTICE on words you can already produce — it serves only
+  // KNOWN-or-better words (known ∪ mastered). The first-run welcome wave is the exception:
+  // a guaranteed-win taste of easy words before anything is known yet. (Interim gate: once
+  // the draw mode ships, mining tightens to "after [set size] MASTERED" per §30.C; until
+  // then it's available as soon as there are known words to mine.)
   const session = firstRun
     ? buildFirstWave(byRank(), { startTier: state.startLevel || 1, length, rng })
-    : buildSession(state.tracker, { difficulty, length, rng, startTier: state.startLevel || 1 });
+    : buildMiningPool(state.categories, byRank().filter((w) => w.word.length >= 3), { length, rng });
 
   // --- static structure -----------------------------------------------------
   const dots = el('div', { class: 'dots' });
@@ -131,8 +140,14 @@ export function startRhythm(ctx, params = {}) {
   };
 
   if (!session.length) {
-    sentenceEl.textContent = 'No words to dig right now — try a different difficulty in Settings.';
+    // §30 interim gate: nothing known yet → the mine is empty. Steer to CRAFT (the always-open
+    // assessment) to fill it, rather than a dead end.
     speedMeter.style.display = 'none';
+    tilesEl.replaceChildren(
+      el('button', { class: 'btn primary', onClick: () => ctx.nav('puzzle') }, '🔨 Craft some words first ✨'),
+      el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
+    );
+    sentenceEl.textContent = 'Craft a few words to fill your mine — then come dig them for gems!';
     return screen;
   }
 
@@ -192,7 +207,7 @@ export function startRhythm(ctx, params = {}) {
   function armMeter() {
     speedMeter.style.visibility = 'visible';
     speedMeter.classList.add('armed');
-    const proj = projectedScore({ responseMs: 0, combo: combo + 1 });
+    const proj = projectedScore({ responseMs: 0, combo: combo + 1, tiers: MINING_SPEED_TIERS });
     potentialEl.textContent = `💎 +${proj.points}`;
     potentialEl.style.color = proj.color;
     speedFill.style.width = '100%';
@@ -205,7 +220,7 @@ export function startRhythm(ctx, params = {}) {
   function meterLoop() {
     if (locked || paused || !startTime) return;
     const elapsed = performance.now() - startTime;
-    const proj = projectedScore({ responseMs: elapsed, combo: combo + 1 });
+    const proj = projectedScore({ responseMs: elapsed, combo: combo + 1, tiers: MINING_SPEED_TIERS });
     potentialEl.textContent = `💎 +${proj.points}`;
     potentialEl.style.color = proj.color;
     const frac = Math.max(0.04, 1 - elapsed / METER_MS);
@@ -318,7 +333,7 @@ export function startRhythm(ctx, params = {}) {
     const responseMs = startTime ? performance.now() - startTime : 0;
     const correct = !!o.correct;
     const streak = correct ? combo + 1 : 0;
-    const verdict = gradeAnswer({ correct, responseMs, combo: streak, rng });
+    const verdict = gradeAnswer({ correct, responseMs, combo: streak, rng, tiers: MINING_SPEED_TIERS });
 
     // MINING is RECOGNITION, not production — it drives gems/praise/engagement + the speed
     // reading, but it must NOT establish mastery or create targets (§21-A: only crafting

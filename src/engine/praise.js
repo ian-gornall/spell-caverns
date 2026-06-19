@@ -74,6 +74,18 @@ export const SPEED_TIERS = [
   },
 ];
 
+// MINING speed tiers (§30.C): the recognition timer now drains to the bottom in ~5s, the
+// SAME for every difficulty, and the speed-tier bonus is STRETCHED across that window so a
+// THOUGHTFUL answer at ~2s still earns a strong tier and only the last ~1s drops toward the
+// minimum (Ian's goal: actually consider all the options before tapping, without losing the
+// DDR reward feel). Same shape/mults/phrases as SPEED_TIERS — only the `maxMs` bounds move
+// (perfect ~2.0s, amazing ~3.2s, great ~4.3s, good = the floor reached as the bar bottoms ~5s).
+// CRAFT keeps the tighter default SPEED_TIERS; mining passes these in explicitly.
+export const MINING_SPEED_TIERS = SPEED_TIERS.map((t, i) => ({
+  ...t,
+  maxMs: [2000, 3200, 4300, Infinity][i],
+}));
+
 // The wrong-answer "tier": gentle, soft-colored, worth nothing — never punitive.
 export const MISS_TIER = {
   key: 'tryagain',
@@ -109,10 +121,11 @@ function pick(arr, rng) {
 }
 
 // First tier whose inclusive `maxMs` covers `ms`. A missing/invalid time falls
-// back to the slowest tier (the learner gets credit, just no speed bonus).
-function tierForTime(ms) {
+// back to the slowest tier (the learner gets credit, just no speed bonus). `tiers`
+// lets a mode pass its own schedule (mining uses the stretched MINING_SPEED_TIERS).
+function tierForTime(ms, tiers = SPEED_TIERS) {
   const t = Number.isFinite(ms) ? ms : Infinity;
-  return SPEED_TIERS.find((tier) => t <= tier.maxMs) || SPEED_TIERS[SPEED_TIERS.length - 1];
+  return tiers.find((tier) => t <= tier.maxMs) || tiers[tiers.length - 1];
 }
 
 // projectedScore({responseMs, combo}) -> { tier, label, color, mult, points } for
@@ -120,8 +133,8 @@ function tierForTime(ms) {
 // every animation frame to show a live "gems you'd earn if you answer now" meter
 // that visibly decays as the clock runs — the DDR pressure to be fast. It is the
 // exact scoring gradeAnswer uses, so the live meter and the real award agree.
-export function projectedScore({ responseMs, combo = 0, craft = false } = {}) {
-  const tier = tierForTime(responseMs);
+export function projectedScore({ responseMs, combo = 0, craft = false, tiers = SPEED_TIERS } = {}) {
+  const tier = tierForTime(responseMs, tiers);
   const streak = Math.max(0, combo);
   const comboFactor = 1 + Math.min(streak, COMBO_CAP) * COMBO_STEP;
   const craftFactor = craft ? CRAFT_MULT : 1;
@@ -138,7 +151,7 @@ export function projectedScore({ responseMs, combo = 0, craft = false } = {}) {
 //   { tier, label, phrase, points, mult, color, combo, isCombo }
 // `combo` is the streak length INCLUDING this answer (so 5,10,15... are milestones).
 // Wrong answers return a gentle verdict worth 0 points with the streak reset to 0.
-export function gradeAnswer({ correct, responseMs, combo = 0, craft = false, rng } = {}) {
+export function gradeAnswer({ correct, responseMs, combo = 0, craft = false, rng, tiers = SPEED_TIERS } = {}) {
   if (!correct) {
     return {
       tier: MISS_TIER.key,
@@ -153,8 +166,8 @@ export function gradeAnswer({ correct, responseMs, combo = 0, craft = false, rng
   }
 
   const streak = Math.max(0, combo);
-  const proj = projectedScore({ responseMs, combo: streak, craft });
-  const tier = SPEED_TIERS.find((t) => t.key === proj.tier) || SPEED_TIERS[SPEED_TIERS.length - 1];
+  const proj = projectedScore({ responseMs, combo: streak, craft, tiers });
+  const tier = tiers.find((t) => t.key === proj.tier) || tiers[tiers.length - 1];
   const isCombo = streak > 0 && streak % COMBO_MILESTONE === 0;
   const phrase = isCombo
     ? pick(COMBO_PHRASES, rng).replace('{combo}', String(streak))

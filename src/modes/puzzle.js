@@ -10,11 +10,20 @@
 // speed/combo gems; a build that needed help still earns a small "you crafted it"
 // reward (positive reinforcement, never shaming). UI module — verified with Playwright.
 import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
-import { buildSession, buildReviewSession } from '../engine/session.js';
+import { buildReviewSession } from '../engine/session.js';
+import { buildCraftPool, applyAdaptiveLevel } from '../engine/selection.js';
+import { fillLearning, recordCraft } from '../engine/categories.js';
+import { byRank } from '../engine/lexicon.js';
 import { mulberry32 } from '../engine/distractors.js';
-import { gradeAnswer, GENTLE_PHRASES } from '../engine/praise.js';
+import { gradeAnswer, projectedScore, GENTLE_PHRASES } from '../engine/praise.js';
 import { recordAnswer, lapsedWords } from '../engine/progress.js';
 import { scrambleTray, gradeBuild } from '../engine/puzzle.js';
+
+// §30 hint timing: with no CORRECT letter placed, highlight the hint button at 4s and
+// auto-fire a hint at 8s (the timer resets on every correct letter). Auto-fired hints
+// cost the same as tapped ones — the gem cost is a % of the word given away (see solve()).
+const HINT_HIGHLIGHT_MS = 4000;
+const HINT_AUTOFIRE_MS = 8000;
 
 // Extra red-herring tray letters per difficulty preset (raises the recall load).
 const EXTRA_BY_DIFF = { easy: 0, medium: 1, hard: 2 };
@@ -40,9 +49,19 @@ export function startPuzzle(ctx, params = {}) {
 
   // Puzzle is deliberate/slower than rhythm — keep waves short so it never drags.
   const length = Math.min(settings.length || 10, 6);
+  // §30: CRAFT is the productive-struggle hub. The learning set (size = the "Words per dig"
+  // setting) is kept full, and the session FOCUSES it (balanced with a little known/tricky).
+  // The legacy continuous tracker still rides along for repair + distractor difficulty.
+  // Exclude 1-2 letter words: you can't meaningfully BUILD "a"/"of" from tiles (and they'd
+  // otherwise lead the set, being the most frequent). This filtered pool is the word source.
+  const pool = byRank().filter((w) => w.word.length >= 3);
+  if (!review) {
+    state.categories.setSize = settings.length || state.categories.setSize || 10;
+    fillLearning(state.categories, pool);
+  }
   const session = review
     ? buildReviewSession(state.tracker, { length, rng })
-    : buildSession(state.tracker, { difficulty: settings.difficulty, length, rng, startTier: state.startLevel || 1 });
+    : buildCraftPool(state.categories, pool, { length, rng });
   const extra =
     typeof settings.difficulty === 'string' ? EXTRA_BY_DIFF[settings.difficulty] ?? 1 : 1;
 
@@ -67,7 +86,7 @@ export function startPuzzle(ctx, params = {}) {
   // blending them (user feedback 2026-06-18). Helper kept for a future revisit with
   // real phoneme audio. Prompt shows only "Hear it again" meanwhile.
   const hearRow = el('div', { class: 'hear-row' }, hearBtn);
-  const hintBtn = el('button', { class: 'btn ghost', onClick: hint }, '💡 Hint');
+  const hintBtn = el('button', { class: 'btn ghost', onClick: () => hint(false) }, '💡 Hint');
   const clearBtn = el('button', { class: 'btn ghost', onClick: clearAll }, '↺ Clear');
   const controlsEl = el('div', { class: 'puzzle-controls' }, hintBtn, clearBtn);
 
@@ -99,10 +118,35 @@ export function startPuzzle(ctx, params = {}) {
   let trayTiles = []; // [{ id, letter, used }]
   let slots = []; // [{ tileId, letter, locked } | null]
   let firstTry = true; // false after any wrong submit or hint (no clean-recall credit)
+  let hintsUsed = 0; // §30: each hint reveals a letter and costs a % of the word's gems
   let locked = false; // true once solved, while the verdict shows
   let startTime = 0; // 0 until the read window passes
   let graceTimer = 0;
+  let hintHiTimer = 0; // → highlight the hint button after HINT_HIGHLIGHT_MS with no correct letter
+  let hintFireTimer = 0; // → auto-fire a hint after HINT_AUTOFIRE_MS with no correct letter
   let suppressClick = false; // set right after a drag so the trailing click is ignored
+
+  // (Re)start the no-correct-letter hint clock. Called when the word goes live and reset on
+  // every correct letter placed; cleared once the word is solved or we leave the word.
+  function armHintTimers() {
+    clearHintTimers();
+    if (locked) return;
+    hintHiTimer = setTimeout(() => {
+      if (!locked) {
+        hintBtn.classList.add('hint-ready');
+        pulse(hintBtn);
+      }
+    }, HINT_HIGHLIGHT_MS);
+    hintFireTimer = setTimeout(() => {
+      if (!locked) hint(true); // auto-fire (same gem cost as a tapped hint)
+    }, HINT_AUTOFIRE_MS);
+  }
+  function clearHintTimers() {
+    clearTimeout(hintHiTimer);
+    clearTimeout(hintFireTimer);
+    hintBtn.classList.remove('hint-ready');
+  }
+  ctx.onLeave(clearHintTimers);
 
   if (!session.length) {
     sentenceEl.textContent = review
@@ -234,6 +278,8 @@ export function startPuzzle(ctx, params = {}) {
     tile.used = true;
     slots[i] = { tileId: tile.id, letter: tile.letter, locked: false };
     audio.sfx('tap');
+    // §30: a CORRECT letter in its slot resets the hint clock (the kid is making progress).
+    if (tile.letter === target[i] && startTime) armHintTimers();
     render();
     checkComplete();
   }
@@ -259,12 +305,15 @@ export function startPuzzle(ctx, params = {}) {
     render();
   }
 
-  function hint() {
+  // Reveal the first not-yet-correct letter. `auto` marks an 8s auto-fired hint (same cost).
+  // Each hint reveals one letter and costs gems = a % of the word given away (applied in solve).
+  function hint(auto = false) {
     if (locked) return;
     const g = gradeBuild(target, slots.map((s) => (s ? s.letter : null)));
     const i = g.perPosition.findIndex((p) => p !== true);
     if (i < 0) return;
     firstTry = false;
+    hintsUsed += 1;
     if (slots[i] && !slots[i].locked) returnSlot(i);
     const need = target[i];
     const tile = trayTiles.find((x) => !x.used && x.letter === need);
@@ -273,6 +322,8 @@ export function startPuzzle(ctx, params = {}) {
       slots[i] = { tileId: tile.id, letter: need, locked: true };
     }
     audio.sfx('gem');
+    if (auto) toast('💡 Here’s a letter to help!');
+    armHintTimers(); // a revealed letter is progress → restart the no-correct-letter clock
     render();
     checkComplete();
   }
@@ -355,12 +406,18 @@ export function startPuzzle(ctx, params = {}) {
 
   function solve() {
     locked = true;
+    clearHintTimers();
     controlsEl.style.display = 'none'; // Hint/Clear are meaningless once solved (QA I8)
     const responseMs = startTime ? performance.now() - startTime : 0;
     // CRAFTING is the SOURCE OF TRUTH for mastery (§21-A): a clean first-try build = known,
     // a missed/assisted build = a target. (Recognition/mining never sets this — only craft.)
     recordAnswer(state.tracker, target, firstTry, { responseMs, source: 'craft' });
     ctx.store.recordAnswerStat(firstTry, 'craft'); // clean builds feed the "craft N words" quest
+    // §30 state machine: a clean build advances the word toward KNOWN (2 in a row); an assisted
+    // one resets that streak. Then the adaptive level may nudge up/down (normal play only — a
+    // repair drill of known-hard words shouldn't drag the level down).
+    recordCraft(state.categories, target, firstTry, { pool });
+    if (!review) applyAdaptiveLevel(state.categories, pool);
 
     if (firstTry) {
       combo += 1;
@@ -376,12 +433,20 @@ export function startPuzzle(ctx, params = {}) {
       updateCombo(verdict);
     } else {
       combo = 0;
-      earned += CONSOLATION_GEMS;
-      ctx.store.addGems(CONSOLATION_GEMS);
+      // §30 gem-cost hints: each hinted letter gives away 2×value/length of the word, so
+      // revealing HALF the letters → 0 points (still completes — eases frustration; never
+      // negative). A build that was only wrong-submitted (no hint) keeps the gentle consolation.
+      let pts = CONSOLATION_GEMS;
+      if (hintsUsed > 0) {
+        const value = projectedScore({ responseMs, combo: 0, craft: true }).points;
+        pts = Math.max(0, Math.round(value * (1 - (2 * hintsUsed) / target.length)));
+      }
+      earned += pts;
+      ctx.store.addGems(pts);
       audio.sfx('great');
       const phrase = 'You crafted it!';
       audio.speakPraise(phrase);
-      flashVerdict(phrase, `+${CONSOLATION_GEMS} 💎 · Crafted`, '#9D8DF1');
+      flashVerdict(phrase, `+${pts} 💎 · Crafted`, '#9D8DF1');
       updateCombo(null);
     }
 
@@ -406,9 +471,11 @@ export function startPuzzle(ctx, params = {}) {
     if (index >= session.length) return finish();
     locked = false;
     firstTry = true;
+    hintsUsed = 0;
     startTime = 0;
     controlsEl.style.display = ''; // restore Hint/Clear for the new word (QA I8)
     clearTimeout(graceTimer);
+    clearHintTimers();
     const entry = session[index];
     target = entry.word.toLowerCase();
 
@@ -430,6 +497,9 @@ export function startPuzzle(ctx, params = {}) {
       /* ignore */
     }
 
+    // §30 hint clock: 4s/8s measured from when the word appears (independent of the audio
+    // chain), reset on each correct letter. (The gem speed clock still starts post-dictation.)
+    armHintTimers();
     audio.say(target, {
       onDone: () => {
         if (locked) return;

@@ -966,6 +966,21 @@ button.quest {
   font-size: 1.05rem;
   opacity: 0.92;
 }
+/* §30: the hint button glows once the learner has been stuck a few seconds with no
+   correct letter (highlight @4s; auto-fires @8s). Cleared the moment a correct letter
+   lands. A steady, calm glow — not an alarm. */
+.btn.ghost.hint-ready {
+  opacity: 1;
+  color: var(--gold, #ffd23f);
+  border-color: var(--gold, #ffd23f);
+  box-shadow: 0 0 0 2px var(--gold, #ffd23f) inset, 0 0 16px rgba(255, 210, 63, 0.55);
+  animation: hint-glow 1.4s ease-in-out infinite;
+}
+@keyframes hint-glow {
+  50% {
+    box-shadow: 0 0 0 2px var(--gold, #ffd23f) inset, 0 0 26px rgba(255, 210, 63, 0.85);
+  }
+}
 
 /* ------- crystal lab ------- */
 .lab-body {
