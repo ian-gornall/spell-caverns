@@ -9,8 +9,9 @@
 > `npm test` green (**212 tests**); `npm run smoke` green; `node scripts/qa.mjs` = 0
 > console errors; `node scripts/qa_responsive.mjs` = 0 overflow; **`node scripts/qa_fold.mjs`
 > = above-the-fold PASS**; sw **csc-v23** (LIVE + verified on prod).
-> **➡️ START AT §0 (current state) then §27 (latest session — §26-A design brief SHIPPED +
-> the audio-manifest stuck-on-TTS fix).**
+> **➡️ START AT §0 (current state) → §28 (the NEW user backlog to BUILD NEXT: feedback-to-Ian,
+> pricier crystals, offline printables, always-ask "Who's playing?"+add-player) → §27 (what
+> last session shipped — §26-A design brief + the audio-manifest stuck-on-TTS fix).**
 > **§27 (2026-06-19, csc-v23 — LIVE+verified):** shipped the whole §26-A design brief —
 > landscape/short-phone fold collapse + pinned reward CTA (no action below the fold), two
 > below-AA contrast lifts, **self-hosted Atkinson Hyperlegible** (letter-distinct spelling
@@ -84,9 +85,12 @@
 - **Privacy/COPPA:** on-device by default; opt-in family sync stores only pseudonymous data behind
   a parental-consent gate; deletable. (PRIVACY.md, §18b)
 
-**→ NEXT ACTION — nothing is outstanding that an agent can build.** The §23 App-Store-quality
-backlog (A/B/C/D) and the long-deferred multi-user UI are **all DONE, deployed (csc-v21), and
-QA'd** (see §24). What's done this session:
+**→ NEXT ACTION — build the §28 user backlog** (feedback-to-Ian, pricier crystals, offline
+printables, always-ask "Who's playing?"+add-player). See **§28** for per-item current-state +
+recommended approach; a few items need Ian's input first (feedback delivery channel, new price
+numbers, which printables). Everything below is the prior history. The §23 App-Store-quality
+backlog (A/B/C/D) and the long-deferred multi-user UI are **all DONE, deployed, and QA'd**
+(see §24). What an earlier session did:
 1. ✅ **§23-A App-Store polish** — sustained phone iteration loops: CRAFT crystal sockets (was a
    web form), level-select depth-ladder, home utility-card depth, the play-body top-clip bug fix,
    treasure-tile Progress haul, colour-swatch glow. 0 console errors, 0 overflow at all viewports.
@@ -134,6 +138,81 @@ QA'd** (see §24). What's done this session:
 - 📄 **Design + engine-migration research** delivered: `DESIGN_ANALYSIS.md` (pro UX critique vs
   best-in-class, cited) and `ENGINE_MIGRATION.md` (verdict: **stay vanilla**, upgrade assets/feel;
   PixiJS v8 / Phaser 4 only if a renderer is ever justified). Both built from live exploratory QA.
+
+---
+
+## §28 — NEXT-SESSION BACKLOG (user 2026-06-19, NOT started) — DO THIS NEXT
+
+Four items Ian asked for after the §27 ship. Each below has the ask, the CURRENT state I
+verified read-only, and a recommended approach + the files to touch. Build test-first where
+it's pure engine; follow `QA.md` (interactive view-as-you-go) + `node --check` + Playwright-load
+for any screen/CSS change; bump `sw.js` + `src/version.js` (keep equal) on any precached change;
+commit per milestone; `git push` to deploy (Cloudflare CD, ~30s; confirm with Ian before pushing).
+
+### A. Feedback must actually reach Ian (currently it doesn't)
+- **Ask:** "Feedback needs to come to me." The in-app feedback should be DELIVERED to Ian, not
+  just left on the device.
+- **Current state:** `src/screens/feedback.js` `send()` only calls `ctx.store.addFeedback(...)`
+  (`src/state.js:341` — pushes `{ts, rating, difficulty, note}` into local `state.feedback[]`).
+  The ONLY way it leaves the iPad today is the grown-up **"Export my data"** button (downloads a
+  JSON file). So Ian never sees feedback unless he manually exports on the child's device. This
+  is the gap.
+- **Recommended approach:** add a backend endpoint and POST feedback to it (the infra already
+  exists — `worker.js` Cloudflare Worker + `FAMILY_SYNC` KV + the same pattern as `/api/push`).
+  - Add `worker.js` route `POST /api/feedback` → store under a `feedback:<ts>` KV prefix (and/or
+    email Ian). Keep it pseudonymous (nickname only — COPPA, see `PRIVACY.md`).
+  - In `feedback.js send()`, `fetch('/api/feedback', {POST, body})` best-effort; on failure keep
+    the local copy + a "will send when online" note (don't block the kid / don't lose data).
+  - **Delivery to Ian:** simplest = KV he can read via `wrangler kv` or a tiny gated admin view;
+    "email me" needs an email service (e.g. MailChannels/Resend from the Worker) — surface the
+    choice to Ian. Web Push to Ian's own device is another option (push infra already built).
+  - ⚠️ Sending feedback off-device is a privacy posture change — keep it minimal/pseudonymous and
+    note it in `PRIVACY.md`. Confirm the delivery channel with Ian before building.
+
+### B. Make crystals more expensive
+- **Ask:** lengthen the collection grind — crystals cost more gems.
+- **Current state:** `src/engine/catalog.js` `RARITIES` costs = **common 160 / rare 480 / epic
+  1200 / legendary 2600** (`cost(species)` reads these). Economy context: `praise.BASE_POINTS`,
+  `CRAFT_MULT`, `dailyGoalGems` 250 (see §17/§22). `test/catalog.test.js` exists — check for a
+  cost guardrail/assertion and update it.
+- **Recommended approach:** pick new (higher) costs with Ian — e.g. raise each tier ~1.5–2×
+  (rough: 250 / 800 / 2000 / 4500) so the 24-mineral set is a multi-week goal at the current
+  earn rate. Pure constant change + update any test that pins the numbers. Sanity-check the
+  affordable-glow/"can afford" logic still reads well in the catalog at the new prices.
+
+### C. Offline-mode printables
+- **Ask:** printable practice materials for offline use.
+- **Current state:** nothing exists. The app is an offline PWA; there is no print path.
+- **Recommended approach (stay no-build, offline):** a "Printables" entry (Settings or a new home
+  card) that opens a print-friendly view and calls `window.print()` (browser → PDF/printer). No
+  PDF lib. Decide WHAT to print with Ian — strong candidates that reuse existing engine data:
+  - this learner's **current target words** (the ~10 it's working on — `session`/`progress`),
+  - a **pattern-family word list** (`data/patterns.js` / `lexicon.wordsByPattern`),
+  - a blank **look-cover-write-check** practice grid for a chosen word set,
+  - a tier word list (`lexicon.wordsByTier`).
+  Render a clean `@media print` stylesheet (hide chrome, black-on-white, big type). Keep it
+  child-safe + grown-up-initiated. Pure where possible (the word-set selection is engine logic →
+  testable); the print view itself is a screen (Playwright-load it).
+
+### D. Always ask "Who's playing?" on open + expose Add-player
+- **Ask:** "Ask who is playing on each opening and add player option."
+- **Current state (important):** the picker + add-player ALREADY EXIST, but routing hides them
+  for a single-profile family. `src/app.js` boot (~line 110): `count===0`→onboarding;
+  **`count===1`→straight to home (NO picker)**; `count>=2`→`profiles` ("Who's playing?") every
+  launch. `src/screens/profiles.js` already renders a **"Add explorer"** card
+  (`profile-card add` → `nav('onboarding')`). So a one-child family NEVER sees the picker OR the
+  add-player button — which is exactly what Ian is hitting.
+- **Recommended approach:** change the boot routing so the `profiles` "Who's playing?" screen
+  shows whenever `count>=1` (not just `>=2`) — that single change satisfies BOTH halves of the
+  ask (it always asks who's playing AND always surfaces the existing "Add explorer" option).
+  Touch only the `count===1` branch in `src/app.js`. ⚠️ UX tradeoff: a solo kid now taps once
+  more each open — consider whether that's always-on (Ian seems to want it) or a Settings toggle;
+  default to always-on per the ask, and keep `refreshActive()`/`maybeBootSync()` wired. Verify
+  the add-player flow returns to the right place and per-profile progress still loads.
+
+> All four are agent-doable. A/B/D are small; C is a new (small) surface. The only things needing
+> Ian's input first: the feedback DELIVERY channel (KV vs email vs push) + privacy note (A), the
+> new price numbers (B), and which printables to include (C).
 
 ---
 
