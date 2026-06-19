@@ -1062,6 +1062,31 @@ button.quest {
   justify-content: center;
   flex-wrap: wrap;
 }
+/* §30 keyboard fallback: type the word instead of drawing it (on-screen / physical keyboard). */
+.draw-type-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.draw-type-input {
+  width: min(100%, 360px);
+  height: 64px;
+  border-radius: 16px;
+  text-align: center;
+  font-size: clamp(1.6rem, 6vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: lowercase;
+  color: var(--ink);
+  background: radial-gradient(circle at 50% 35%, rgba(54, 241, 205, 0.08), rgba(0, 0, 0, 0.34) 72%);
+  border: 2px solid var(--accent, #7cc4ff);
+  box-shadow: inset 0 3px 12px rgba(0, 0, 0, 0.45);
+  outline: none;
+}
+.draw-type-input:focus {
+  border-color: var(--gold, #ffd23f);
+  box-shadow: inset 0 3px 12px rgba(0, 0, 0, 0.45), 0 0 14px rgba(255, 210, 63, 0.4);
+}
 
 /* §30 Progress: the kid-visible "Words I'm learning" set (2-step pips toward known). */
 .learn-grid {

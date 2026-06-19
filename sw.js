@@ -93,7 +93,12 @@
 // v35 (§30 fixes, user 2026-06-19f): Settings level change now re-aims the learning set
 //      (categories.setLevelAndRefill); craft gems trimmed (CRAFT_MULT 1.5→1.2); draw mode
 //      AUTO-recognises after the pen lifts (no "Read" button). (Recognizer accuracy still WIP.)
-const VERSION = 'csc-v35';
+// v36 (§30 recognizer, user 2026-06-19f): the draw-mode letter recogniser is now a real
+//      on-device EMNIST-letters CNN (src/cnn_recognizer.js + vendored TF.js + a 0.4MB model
+//      trained by scripts/train_recognizer.mjs, ~94% top-1) — fixes the a/q/c/s confusion the
+//      old grid/Dice matcher had; fully offline + private (no strokes leave the device).
+//      PLUS a KEYBOARD fallback in Mastery (toggle draw ↔ type with the on-screen/physical kbd).
+const VERSION = 'csc-v36';
 
 const CORE = [
   '/',
@@ -114,6 +119,10 @@ const CORE = [
   '/src/admin.js',
   '/src/pwa.js',
   '/src/version.js',
+  '/src/cnn_recognizer.js',
+  '/src/vendor/tf.min.js',
+  '/src/models/letters/model.json',
+  '/src/models/letters/weights.bin',
   '/src/engine/pushconfig.js',
   '/src/engine/lexicon.js',
   '/src/engine/distractors.js',

@@ -12,6 +12,7 @@ import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
 import { buildMasteryPool } from '../engine/selection.js';
 import { recordDraw, unlocks } from '../engine/categories.js';
 import { recognizeGrid, pointsToGrid, GRID_N } from '../engine/handwriting.js';
+import { ensureRecognizer, recognizeDrawing } from '../cnn_recognizer.js';
 import { byRank } from '../engine/lexicon.js';
 import { mulberry32 } from '../engine/distractors.js';
 
@@ -96,7 +97,8 @@ export function startMastery(ctx, params = {}) {
   if (!session.length) {
     return lockedScreen(ctx, 'You’ve mastered all your learned words — go craft some new ones! ✨');
   }
-  ensureTemplates(); // warm the recognizer
+  ensureRecognizer().catch(() => {}); // lazy-load the CNN + model (cached); grid is the fallback
+  ensureTemplates(); // warm the grid fallback recognizer
 
   // --- structure -----------------------------------------------------------
   const dots = el('div', { class: 'dots' });
@@ -106,6 +108,23 @@ export function startMastery(ctx, params = {}) {
   const slotsEl = el('div', { class: 'slots draw-slots' });
   const canvas = el('canvas', { class: 'draw-canvas', width: 320, height: 200 });
   const candidatesEl = el('div', { class: 'draw-candidates' });
+  const drawStageEl = el('div', { class: 'draw-stage' }, canvas, candidatesEl);
+  // keyboard fallback (user request): type the word with the on-screen / physical keyboard.
+  const typeInput = el('input', {
+    class: 'draw-type-input',
+    type: 'text',
+    inputmode: 'text',
+    autocapitalize: 'off',
+    autocomplete: 'off',
+    autocorrect: 'off',
+    spellcheck: 'false',
+    'aria-label': 'Type the word',
+    onInput: onTypeInput,
+    onKeydown: (e) => {
+      if (e.key === 'Enter') checkWord();
+    },
+  });
+  const typeWrapEl = el('div', { class: 'draw-type-wrap', style: { display: 'none' } }, typeInput);
   const hearBtn = el(
     'button',
     { class: 'hear-again', onClick: () => audio.say(session[index]?.word) },
@@ -113,10 +132,11 @@ export function startMastery(ctx, params = {}) {
     'Hear it again',
   );
   const clearBtn = el('button', { class: 'btn ghost', onClick: clearCanvas }, '↺ Clear');
-  const controlsEl = el('div', { class: 'draw-controls' }, clearBtn);
+  const toggleBtn = el('button', { class: 'btn ghost', onClick: () => setMode(inputMode === 'draw' ? 'type' : 'draw') }, '⌨️ Type it');
+  const controlsEl = el('div', { class: 'draw-controls' }, clearBtn, toggleBtn);
   const hintEl = el('div', { class: 'draw-hint' }, 'Draw a letter — I’ll guess it, then tap the one you meant.');
 
-  const hdr = header(ctx, { title: 'Mastery — draw it', onBack: () => ctx.nav('home') });
+  const hdr = header(ctx, { title: 'Mastery', onBack: () => ctx.nav('home') });
   const gemCountEl = hdr.querySelector('.gem-count');
 
   const screen = el(
@@ -128,7 +148,7 @@ export function startMastery(ctx, params = {}) {
       'div',
       { class: 'play-body' },
       el('div', { class: 'prompt' }, el('div', { class: 'hear-row' }, hearBtn), sentenceEl, verdictEl, verdictChip),
-      el('div', { class: 'answer-zone' }, slotsEl, el('div', { class: 'draw-stage' }, canvas, candidatesEl), hintEl, controlsEl),
+      el('div', { class: 'answer-zone' }, slotsEl, drawStageEl, typeWrapEl, hintEl, controlsEl),
     ),
   );
 
@@ -141,6 +161,7 @@ export function startMastery(ctx, params = {}) {
   let locked = false; // true during the success/advance animation
   let strokes = []; // [[{x,y}...] ...] the current letter's pen strokes
   let drawing = false;
+  let inputMode = 'draw'; // 'draw' (handwriting) | 'type' (keyboard fallback)
   let recognizeTimer = 0; // debounce: auto-recognise shortly after the pen lifts (no button)
   const ctx2d = canvas.getContext('2d');
   // Wait this long after the LAST pen-up before guessing, so a multi-stroke letter (t, i, x, k)
@@ -212,11 +233,20 @@ export function startMastery(ctx, params = {}) {
 
   // --- recognition ---------------------------------------------------------
   async function readLetter() {
-    if (locked) return;
+    if (locked || inputMode !== 'draw') return;
     const flat = strokes.reduce((n, s) => n + s.length, 0);
     if (flat < 2) return; // nothing meaningful drawn (auto-triggered — stay quiet)
-    const templates = await ensureTemplates();
-    const cands = recognizeGrid(strokes, templates, { maxCandidates: 4 });
+    let cands = [];
+    try {
+      cands = await recognizeDrawing(strokes, { maxCandidates: 4 }); // the on-device CNN
+    } catch {
+      // TF.js/model couldn't load on this device → fall back to the grid template matcher
+      try {
+        cands = recognizeGrid(strokes, await ensureTemplates(), { maxCandidates: 4 });
+      } catch {
+        /* ignore */
+      }
+    }
     if (!cands.length) {
       toast('🤔 Hmm, try drawing that letter again');
       clearCanvas();
@@ -239,6 +269,35 @@ export function startMastery(ctx, params = {}) {
     );
   }
 
+  // --- keyboard fallback ---------------------------------------------------
+  // Toggle between handwriting (draw) and typing (on-screen / physical keyboard). Switching
+  // resets the current word's letters so there's no draw↔type alignment confusion.
+  function setMode(m) {
+    inputMode = m;
+    drawStageEl.style.display = m === 'draw' ? '' : 'none';
+    typeWrapEl.style.display = m === 'type' ? '' : 'none';
+    toggleBtn.textContent = m === 'draw' ? '⌨️ Type it' : '✍️ Draw it';
+    clearBtn.style.display = m === 'draw' ? '' : 'none';
+    hintEl.textContent = m === 'draw' ? 'Draw a letter — I’ll guess it, then tap the one you meant.' : 'Type the word you hear.';
+    slots = slots.map(() => null);
+    cur = 0;
+    typeInput.value = '';
+    clearCanvas();
+    renderSlots();
+    if (m === 'type') setTimeout(() => typeInput.focus(), 30); // raise the on-screen keyboard
+  }
+
+  // Sync the slots from the typed text; auto-check once the whole word is typed.
+  function onTypeInput() {
+    if (locked) return;
+    const v = (typeInput.value || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, target.length);
+    typeInput.value = v;
+    for (let i = 0; i < slots.length; i++) slots[i] = v[i] || null;
+    cur = Math.min(v.length, slots.length - 1);
+    renderSlots();
+    if (v.length === target.length) checkWord();
+  }
+
   // --- placing / redoing ---------------------------------------------------
   function placeLetter(letter) {
     if (locked || cur < 0 || cur >= slots.length) return;
@@ -251,7 +310,9 @@ export function startMastery(ctx, params = {}) {
   }
 
   function redoSlot(i) {
-    if (locked || !slots[i]) return;
+    if (locked) return;
+    if (inputMode === 'type') return typeInput.focus(); // the input is the editor in type mode
+    if (!slots[i]) return;
     slots[i] = null;
     cur = i;
     clearCanvas();
@@ -285,7 +346,7 @@ export function startMastery(ctx, params = {}) {
       ctx.store.recordAnswerStat(true, 'mastery');
       audio.sfx('combo');
       audio.speakPraise('Mastered!');
-      flashVerdict('⭐ Mastered!', `+${MASTERY_GEMS} 💎 · Drawn from memory`, '#FFD23F');
+      flashVerdict('⭐ Mastered!', `+${MASTERY_GEMS} 💎 · ${inputMode === 'draw' ? 'Drawn from memory' : 'Spelled it!'}`, '#FFD23F');
       const r = slotsEl.getBoundingClientRect();
       burst(r.left + r.width / 2, r.top + r.height / 2, '#FFD23F', 22);
       bumpGems();
@@ -300,14 +361,21 @@ export function startMastery(ctx, params = {}) {
       // a merely-known word stays known). Keep the correct letters, clear the wrong ones to redo.
       recordDraw(state.categories, target, false);
       audio.sfx('miss');
-      audio.speakPraise('Almost — try those letters again!');
-      flashVerdict('Almost!', 'Fix the glowing letters', '#8593A3');
-      for (let i = 0; i < slots.length; i++) if (slots[i] !== target[i]) slots[i] = null;
-      cur = slots.findIndex((s) => s == null);
+      audio.speakPraise(inputMode === 'draw' ? 'Almost — try those letters again!' : 'Almost — try typing it again!');
+      flashVerdict('Almost!', inputMode === 'draw' ? 'Fix the glowing letters' : 'Try again', '#8593A3');
+      if (inputMode === 'type') {
+        slots = slots.map(() => null); // a linear input can't show gaps — clear + retype
+        typeInput.value = '';
+        cur = 0;
+      } else {
+        for (let i = 0; i < slots.length; i++) if (slots[i] !== target[i]) slots[i] = null; // keep correct
+        cur = slots.findIndex((s) => s == null);
+      }
       slotsEl.classList.remove('shake');
       void slotsEl.offsetWidth;
       slotsEl.classList.add('shake');
       renderSlots();
+      if (inputMode === 'type') setTimeout(() => typeInput.focus(), 30);
       ctx.save();
     }
   }
@@ -349,6 +417,9 @@ export function startMastery(ctx, params = {}) {
     target = entry.word.toLowerCase();
     slots = Array.from({ length: target.length }, () => null);
     cur = 0;
+    typeInput.maxLength = target.length;
+    typeInput.value = '';
+    if (inputMode === 'type') setTimeout(() => typeInput.focus(), 30); // keep the keyboard up word-to-word
     clearCanvas();
     verdictEl.textContent = '';
     verdictChip.textContent = '';
