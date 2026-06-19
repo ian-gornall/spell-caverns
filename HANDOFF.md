@@ -6,9 +6,22 @@
 > **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
-> `npm test` green (**205 tests**); `npm run smoke` green; `node scripts/qa.mjs` = 0
-> console errors; `node scripts/qa_responsive.mjs` = 0 overflow; sw **csc-v21**.
-> **➡️ START AT §0 (current state) then §24 (latest session — the §23 backlog SHIPPED).**
+> `npm test` green (**212 tests**); `npm run smoke` green; `node scripts/qa.mjs` = 0
+> console errors; `node scripts/qa_responsive.mjs` = 0 overflow; **`node scripts/qa_fold.mjs`
+> = above-the-fold PASS**; sw **csc-v23** (LIVE + verified on prod).
+> **➡️ START AT §0 (current state) then §27 (latest session — §26-A design brief SHIPPED +
+> the audio-manifest stuck-on-TTS fix).**
+> **§27 (2026-06-19, csc-v23 — LIVE+verified):** shipped the whole §26-A design brief —
+> landscape/short-phone fold collapse + pinned reward CTA (no action below the fold), two
+> below-AA contrast lifts, **self-hosted Atkinson Hyperlegible** (letter-distinct spelling
+> font) + fuller dyslexia "Easy-read" mode, **distinct tinted locked-catalog silhouettes**
+> (was 24 grey clones), youngest-tier recognition clamp (anti-imprinting, test-first),
+> reactive Geo (wink/cheer), onboarding ambient. An independent design agent verified all 8
+> fixes PASS, 0 regressions. ALSO root-caused + fixed a "prod plays robotic voice not the
+> clips" report: the clip **manifest load was once-and-never-retry**, so any early/transient
+> miss stranded a long-lived installed-PWA session on TTS forever — now self-heals (retry on
+> failure + re-check each dictation). §26-B (acquire pro assets, stay vanilla) NOT started;
+> §26-A item #8 (slim child-Settings, ★★) deferred. Audio-tail next free batch due 2026-06-20.
 > §24 shipped the whole §23 App-Store-quality backlog (CRAFT is the hero + best-paid +
 > nudged path; the daily GEODE tap-to-open with ratcheting harder goals; a sustained
 > phone-polish pass) AND the long-deferred multi-user UI (kid-lock picture password,
@@ -40,9 +53,10 @@
 - ⚠️ **Per-origin data**: spell.pryzmio.com is a NEW origin vs the old netlify URL — localStorage
   doesn't carry over. To move a kid's progress: Settings → Back up (old) → Restore (new), or use
   family sync. (Tell the user; the old Netlify site should be deleted.)
-- `npm test` = **205 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
+- `npm test` = **212 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
   `node scripts/qa.mjs` = 0 console/JS errors; `node scripts/qa_responsive.mjs` = 0 horizontal
-  overflow at 7 viewports (360–820px). sw VERSION **csc-v21** (bump on any precached change —
+  overflow at 7 viewports (360–820px); **`node scripts/qa_fold.mjs` = all primary actions above the
+  fold** (the VERTICAL-fold regression guard added in §27). sw VERSION **csc-v23** (bump on any precached change —
   AND bump `src/version.js` `APP_VERSION` to match; Settings shows both). **Before major UI
   changes, follow `QA.md`** (interactive view-as-you-go QA + the phone device matrix).
 - ✅ §24 (the §23 backlog + multi-user UI) is all **pushed and LIVE** (csc-v21, verified on prod).
