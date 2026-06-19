@@ -205,6 +205,19 @@ Categories: **new/unseen → learning → known → mastered**, plus **tricky** 
   The "10 known / 10 learning / 10 tricky" balance emerges from play, it isn't forced.)
 - **Settings display:** show **at most 10 "learning in progress"**; the rest are mastered / known /
   tricky. (Exact panel layout still to confirm.)
+- **Learning-slot refill + tricky reintroduction (CLARIFIED 2026-06-19d).** When a slot frees up
+  (a word → known), fill it in this priority order:
+  1. A **new unseen word from the CURRENT level** (the normal discovery path).
+  2. If current-level new words are **exhausted**, pull in a **TRICKY word that is same-level-or-
+     lower** (tricky words are the LAST on-level source — only surfaced when deliberately introduced).
+  3. If the only words left are **above level**, **move UP a level** and start with that level's new
+     words (do NOT reach for above-level tricky words).
+  - **Secondary reintroduction trigger (Ian's idea, adopted):** when the student has **mastered the
+    spelling PATTERN** via other on-level words, reintroduce a same-pattern tricky word then (the
+    pattern skill that made it hard is now in place — well-timed productive struggle, and it fits
+    the existing pattern-family design in §4).
+  - Net: tricky words never auto-resurface on their own; they return ONLY via (2) on-level
+    exhaustion or the pattern-mastery trigger.
 
 **B. CRAFT mode = the productive-struggle hub (fix it).** Today craft only serves words the student
 does NOT know. Change it to balance **known / learning / tricky** in the productive-struggle zone,
@@ -248,10 +261,12 @@ mastered = 1 draw success (miss → known). ✅ unlock chain Craft→Mastery(aft
 Mining(after set-size mastered). ✅ mastery recognition = free + offline (on-device stroke/template
 match). ✅ adaptive cadence = medium.
 
+**MORE ANSWERED (2026-06-19d):** ✅ learning-slot refill priority = new-on-level → on-level-or-lower
+tricky (when exhausted) → else level-up; tricky only via deliberate reintroduction or the
+pattern-mastery trigger (adopted).
+
 **STILL OPEN (asking one at a time, NO answer choices per Ian):**
 - Default **set size** (10?) and whether it's a grown-up-configurable setting.
-- When a learning slot frees up (a word → known), what fills it — a NEW unseen word, a previously-
-  demoted TRICKY word, or a mix — and do tricky words ever cycle back into learning?
 - **Hint economy**: gem cost per hint + the auto-fire delay (and whether cost scales).
 - **Mining timer** exact numbers (drain start + ~5s window) and whether it's per-difficulty.
 - **Mastery draw UX**: how many candidate letters to offer; behaviour on low-confidence / redraw.
