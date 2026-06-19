@@ -30,8 +30,10 @@
   `node scripts/build_deploy.mjs` → publishes `deploy/`; functions in `netlify/functions`).
 - `npm test` = **180 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
   `node scripts/qa.mjs` = 0 console/JS errors; `node scripts/qa_responsive.mjs` = 0 horizontal
-  overflow at 7 viewports (360–820px). sw VERSION **csc-v16** (bump on any precached change).
-- ✅ §22 (learning-model rework) + the phone/PWA responsive fix are **pushed and LIVE** (csc-v16).
+  overflow at 7 viewports (360–820px). sw VERSION **csc-v17** (bump on any precached change —
+  AND bump `src/version.js` `APP_VERSION` to match; Settings shows both).
+- ✅ §22 (learning-model rework) + the phone/PWA responsive fix + the PWA update-flow/version
+  fix are all **pushed and LIVE** (csc-v17).
 
 **What exists**
 - **Data:** `data/words.js` = 2,919 frequency-ordered words (ages 5–13), 63 pattern families;
@@ -1313,6 +1315,18 @@ iPad (design target) unchanged. 0 overflow at every tested size. (Caveat: headle
 reproduce iOS safe-area insets — `#app` already pads with `env(safe-area-inset-*)` + viewport-fit
 cover, so the notch is handled; if the kid still sees a notch issue on the real device, that's the
 next thing to check on-device.)
+
+### PWA update flow + visible version (after the responsive fix, deployed csc-v17)
+User: on Android the installed PWA "isn't updating" + no visible version. In standalone mode
+there's no reload button, so a new (network-first, skipWaiting) SW would activate but the open
+page never reloaded. Fix: `src/pwa.js` (new) registers with `updateViaCache:'none'`, calls
+`registration.update()` on launch + every foreground, and reloads ONCE on `controllerchange`
+(guarded so a first uncontrolled load doesn't self-reload). `sw.js` gained a `GET_VERSION`
+message handler; `src/version.js` (new) holds `APP_VERSION`; Settings → Parents & privacy shows
+"Version csc-vNN · up to date ✓" (turns amber "cached <old> — reopen to finish updating" on a
+mismatch). Netlify already serves `sw.js`/`index.html` `no-cache` and modules `must-revalidate`.
+**KEEP `src/version.js` APP_VERSION == `sw.js` VERSION on every deploy.** A device stuck on a
+pre-fix SW may need ONE extra full close+reopen to cross over to the auto-updating build.
 
 ### Still DEFERRED (unchanged from §20 — the next job)
 Kid-lock setter UI, parent-password zone, snapshot-rollback UI (all have data + tested helpers;
