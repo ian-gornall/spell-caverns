@@ -4,7 +4,7 @@
 // learner name, and data export/import/reset. Harder difficulties show LOCKED
 // until mastery unlocks them (HANDOFF §4: unlock, never force) — tapping a locked
 // one explains how to unlock it rather than doing nothing.
-import { el, header, toast, applyTheme, applyReadable } from '../ui.js';
+import { el, header, toast, applyTheme, applyReadable, picturePad } from '../ui.js';
 import * as audio from '../audio.js';
 import * as sync from '../cloud_sync_backend.js';
 import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
@@ -15,6 +15,179 @@ import { APP_VERSION } from '../version.js';
 import { swCacheVersion } from '../pwa.js';
 
 const LENGTHS = [6, 10, 15, 20];
+
+// Module-level flag: parent password unlocked for this visit (survives ctx.nav re-render).
+let parentUnlocked = false;
+
+// Build the kid-lock section for the "You" panel.
+// States: no lock set → offer "Set a lock"; lock set → offer "Change lock" + "Remove lock".
+function kidLockSection(ctx) {
+  const activeProfileId = ctx.state.id;
+  const currentLock = ctx.store.getKidLock(activeProfileId);
+  const wrapper = el('div', { class: 'field' });
+
+  const render = (content) => { wrapper.replaceChildren(content); };
+
+  if (!currentLock) {
+    // No lock: offer to set one.
+    let step = 'idle'; // idle | first | confirm
+    let firstCode = '';
+    const hint = el('p', { class: 'field-hint' }, 'Tap 3 pictures to make a secret lock for your game.');
+    const padWrap = el('div');
+
+    const showPad = (onDone, label) => {
+      padWrap.replaceChildren(
+        el('label', {}, label),
+        picturePad({ onComplete: onDone }),
+      );
+    };
+
+    const startSet = () => {
+      step = 'first';
+      showPad((code) => {
+        firstCode = code;
+        step = 'confirm';
+        showPad((code2) => {
+          if (code2 === firstCode) {
+            ctx.store.setKidLock(firstCode);
+            ctx.save();
+            toast('Game locked! 🔒');
+            ctx.nav('settings');
+          } else {
+            toast('Those didn\'t match — try again');
+            step = 'idle';
+            padWrap.replaceChildren();
+            hint.textContent = 'Hmm, those didn\'t match. Try again!';
+          }
+        }, 'Tap the same 3 pictures to confirm');
+      }, 'Choose your 3 pictures');
+    };
+
+    const setBtn = el(
+      'button',
+      { class: 'btn', onClick: startSet },
+      '🔒 Lock my game',
+    );
+
+    render(el(
+      'div',
+      {},
+      el('label', {}, 'Kid lock'),
+      hint,
+      setBtn,
+      padWrap,
+    ));
+  } else {
+    // Lock is set: offer change + remove.
+    const padWrap = el('div');
+    let mode = null; // null | 'change-verify' | 'change-new' | 'change-confirm' | 'remove-verify'
+    let newFirst = '';
+
+    const startChange = () => {
+      mode = 'change-verify';
+      padWrap.replaceChildren(
+        el('label', {}, 'Enter your current lock first'),
+        picturePad({
+          onComplete: (code) => {
+            if (code !== currentLock) {
+              toast('Oops, that\'s not the right lock. Try again.');
+              startChange();
+              return;
+            }
+            mode = 'change-new';
+            padWrap.replaceChildren(
+              el('label', {}, 'Choose your new 3 pictures'),
+              picturePad({
+                onComplete: (c1) => {
+                  newFirst = c1;
+                  mode = 'change-confirm';
+                  padWrap.replaceChildren(
+                    el('label', {}, 'Tap the same 3 pictures again to confirm'),
+                    picturePad({
+                      onComplete: (c2) => {
+                        if (c2 !== newFirst) {
+                          toast('Those didn\'t match — try again');
+                          startChange();
+                          return;
+                        }
+                        ctx.store.setKidLock(newFirst);
+                        ctx.save();
+                        toast('Lock changed! 🔒');
+                        ctx.nav('settings');
+                      },
+                    }),
+                  );
+                },
+              }),
+            );
+          },
+        }),
+      );
+    };
+
+    const startRemove = () => {
+      mode = 'remove-verify';
+      padWrap.replaceChildren(
+        el('label', {}, 'Enter your lock to remove it'),
+        picturePad({
+          onComplete: (code) => {
+            if (code !== currentLock) {
+              toast('Oops, that\'s not the right lock. Try again.');
+              startRemove();
+              return;
+            }
+            ctx.store.setKidLock(null);
+            ctx.save();
+            toast('Lock removed.');
+            ctx.nav('settings');
+          },
+        }),
+      );
+    };
+
+    render(el(
+      'div',
+      {},
+      el('label', {}, 'Kid lock'),
+      el('p', { class: 'field-hint' }, 'Your game is locked with a picture password. 🔒'),
+      el(
+        'div',
+        { class: 'data-actions' },
+        el('button', { class: 'btn', onClick: startChange }, '🔑 Change lock'),
+        el('button', { class: 'btn ghost', onClick: startRemove }, '🔓 Remove lock'),
+      ),
+      padWrap,
+    ));
+  }
+
+  return wrapper;
+}
+
+// Relative-date formatter for snapshot timestamps (ms epoch).
+function relativeDate(ms) {
+  const now = Date.now();
+  const diff = now - ms;
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 2) return 'just now';
+  if (mins < 60) return `${mins} minutes ago`;
+  if (hours < 24) {
+    const d = new Date(ms);
+    const hh = d.getHours();
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hh < 12 ? 'am' : 'pm';
+    return `today ${hh % 12 || 12}:${mm}${ampm}`;
+  }
+  if (days === 1) {
+    const d = new Date(ms);
+    const hh = d.getHours();
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hh < 12 ? 'am' : 'pm';
+    return `yesterday ${hh % 12 || 12}:${mm}${ampm}`;
+  }
+  return `${days} days ago`;
+}
 
 export function settingsScreen(ctx) {
   const s = ctx.state.settings;
@@ -503,22 +676,193 @@ export function settingsScreen(ctx) {
     }
   });
 
+  // --- Snapshot rollback (“Time machine”) -----------------------------------
+  const snapshotList = (() => {
+    const snaps = (ctx.store.listSnapshots ? ctx.store.listSnapshots() : []).slice().reverse();
+    if (!snaps.length) {
+      return el('p', { class: 'field-hint' }, 'Daily auto-saves will appear here so you can rewind if needed.');
+    }
+    return el(
+      'div',
+      { class: 'data-actions' },
+      ...snaps.map((snap) => {
+        const labelText = snap.label === 'auto' || snap.label === ''
+          ? (snap.label === 'auto' ? 'daily auto-save' : 'save point')
+          : snap.label;
+        const when = relativeDate(snap.at);
+        return el(
+          'div',
+          { class: 'snapshot-row' },
+          el('div', { class: 'snapshot-info' },
+            el('span', { class: 'snapshot-when' }, when),
+            el('span', { class: 'snapshot-label' }, ' — ' + labelText),
+          ),
+          el(
+            'button',
+            {
+              class: 'btn ghost',
+              style: { minHeight: '44px', padding: '8px 18px', fontSize: '0.95rem' },
+              onClick: () => {
+                if (!confirm('Restore this explorer to this point? Progress since then will be replaced.')) return;
+                const ok = ctx.store.rollback(snap.index);
+                if (ok) {
+                  if (ctx.refreshActive) ctx.refreshActive();
+                  applyTheme(ctx.state.settings.themeColor);
+                  applyReadable(ctx.state.settings.readableText);
+                  toast('Rolled back! ⏳');
+                  ctx.nav('settings');
+                } else {
+                  toast('Could not restore that save point. 😕');
+                }
+              },
+            },
+            'Restore',
+          ),
+        );
+      }),
+    );
+  })();
+
+  // --- Build the sensitive (gated) block -----------------------------------
+  // Restore, Delete, Family sync, Time machine. Gated by parent password if set.
+  const pw = ctx.store.parentPassword ? ctx.store.parentPassword() : null;
+
+  const sensitiveBlock = el('div', { class: 'sensitive-block' });
+
+  const renderSensitive = () => {
+    if (pw && !parentUnlocked) {
+      // Show the lock gate.
+      const pwInput = el('input', {
+        type: 'password',
+        placeholder: 'Grown-up password',
+        style: { display: 'none' },
+      });
+      const unlockBtn = el(
+        'button',
+        {
+          class: 'btn primary',
+          onClick: () => {
+            // Toggle input visibility or attempt unlock.
+            if (pwInput.style.display === 'none') {
+              pwInput.style.display = '';
+              pwInput.focus();
+            } else {
+              if (pwInput.value === pw) {
+                parentUnlocked = true;
+                renderSensitive();
+              } else {
+                toast('That\'s not the grown-up password.');
+                pwInput.value = '';
+              }
+            }
+          },
+        },
+        '🔒 Grown-ups only — tap to unlock',
+      );
+      pwInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          if (pwInput.value === pw) {
+            parentUnlocked = true;
+            renderSensitive();
+          } else {
+            toast('That\'s not the grown-up password.');
+            pwInput.value = '';
+          }
+        }
+      });
+      sensitiveBlock.replaceChildren(unlockBtn, pwInput);
+    } else {
+      // Unlocked (or no password set): show full controls.
+      const changeRemovePw = pw
+        ? el(
+            'div',
+            { class: 'field' },
+            el('label', {}, 'Grown-up password'),
+            el('p', { class: 'field-hint' }, 'A password is set. Change or remove it below.'),
+            (() => {
+              const inp = el('input', { type: 'password', placeholder: 'New password (4+ chars), blank to remove' });
+              const saveBtn = el(
+                'button',
+                {
+                  class: 'btn',
+                  onClick: () => {
+                    const v = inp.value.trim();
+                    if (v && v.length < 4) { toast('Use at least 4 characters.'); return; }
+                    if (ctx.store.setParentPassword) ctx.store.setParentPassword(v || null);
+                    parentUnlocked = false;
+                    toast(v ? 'Password updated.' : 'Password removed.');
+                    ctx.nav('settings');
+                  },
+                },
+                'Save',
+              );
+              return el('div', { class: 'sync-setup' }, inp, saveBtn);
+            })(),
+          )
+        : null;
+
+      const timeMachine = el(
+        'div',
+        { class: 'cloud-sync' },
+        el('h4', { class: 'cloud-title' }, '⏳ Time machine'),
+        el('p', { class: 'field-hint' }, 'Restore your explorer\'s progress to an earlier save point.'),
+        snapshotList,
+      );
+
+      sensitiveBlock.replaceChildren(
+        restoreBtn,
+        deleteBtn,
+        el(
+          'p',
+          { class: 'privacy-note' },
+          'Everything stays on this device — nothing is sent to us or anyone else. ' +
+            'The “explorer name” is just a nickname (no real names needed). ' +
+            'Back up to keep a copy in your own iCloud/Drive or move progress to another iPad; ' +
+            'delete any time. See PRIVACY.md for details.',
+        ),
+        cloudSyncBlock,
+        changeRemovePw || el('span', {}),
+        timeMachine,
+      );
+    }
+  };
+  renderSensitive();
+
+  // --- Set grown-up password (shown only when none is set) -----------------
+  const setPwBlock = !pw
+    ? (() => {
+        const inp = el('input', { type: 'password', placeholder: 'Choose a password (4+ chars)' });
+        const saveBtn = el(
+          'button',
+          {
+            class: 'btn',
+            onClick: () => {
+              const v = inp.value.trim();
+              if (!v || v.length < 4) { toast('Use at least 4 characters.'); return; }
+              if (ctx.store.setParentPassword) ctx.store.setParentPassword(v);
+              toast('Grown-up password set! 🔒');
+              ctx.nav('settings');
+            },
+          },
+          'Save',
+        );
+        return el(
+          'div',
+          { class: 'cloud-sync' },
+          el('h4', { class: 'cloud-title' }, '🔒 Set a grown-up password (optional)'),
+          el('p', { class: 'field-hint' }, 'Stops a child from changing settings or deleting data. Totally optional — a soft guard, not real security.'),
+          el('div', { class: 'sync-setup' }, inp, saveBtn),
+        );
+      })()
+    : null;
+
   const dataPanel = el(
     'div',
     { class: 'data-actions' },
     el('p', { class: 'backup-status' + (backupDue ? ' due' : '') }, backupStatusText),
     backupBtn,
-    restoreBtn,
-    deleteBtn,
-    el(
-      'p',
-      { class: 'privacy-note' },
-      'Everything stays on this device — nothing is sent to us or anyone else. ' +
-        'The “explorer name” is just a nickname (no real names needed). ' +
-        'Back up to keep a copy in your own iCloud/Drive or move progress to another iPad; ' +
-        'delete any time. See PRIVACY.md for details.',
-    ),
-    cloudSyncBlock,
+    sensitiveBlock,
+    setPwBlock || el('span', {}),
     versionLine,
   );
 
@@ -589,6 +933,7 @@ export function settingsScreen(ctx) {
         ),
         el('div', { class: 'field' }, el('label', {}, 'Crystal colour'), colourRow),
         el('div', { class: 'field' }, el('label', {}, 'Easy-read text'), readableSeg),
+        kidLockSection(ctx),
       ),
       playersPanel,
       el(

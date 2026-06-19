@@ -249,6 +249,72 @@ export function createIdleGuard({ nudgeMs = 15000, pauseMs = 45000, onNudge, onP
   };
 }
 
+// picturePad — a kid-friendly "picture password" entry pad.
+//
+// Shows a grid of `icons` (default 6 distinct emoji). The child taps a sequence of
+// `length` icons; each tap fills a progress dot. When `length` taps are entered,
+// onComplete(codeString) is called where codeString is the tapped icons joined
+// (e.g. "🌟💎⛏️"). A reset button lets them start over. Returns a DOM node.
+const PAD_ICONS = ['🌟', '⛏️', '💎', '🔮', '🐢', '🔥'];
+
+export function picturePad({ onComplete, length = 3, icons = PAD_ICONS } = {}) {
+  let chosen = [];
+
+  const dotsRow = el('div', { class: 'pic-chosen' });
+  const renderDots = () => {
+    dotsRow.replaceChildren(
+      ...Array.from({ length }, (_, i) =>
+        el('div', { class: 'pic-slot' + (i < chosen.length ? ' filled' : '') },
+          chosen[i] || ''),
+      ),
+    );
+  };
+  renderDots();
+
+  const resetBtn = el(
+    'button',
+    {
+      class: 'btn ghost',
+      style: { fontSize: '0.95rem', minHeight: '44px', padding: '8px 18px' },
+      onClick: () => { chosen = []; renderDots(); },
+    },
+    '↺ Clear',
+  );
+
+  const grid = el(
+    'div',
+    { class: 'pic-grid' },
+    ...icons.map((ic) =>
+      el(
+        'button',
+        {
+          class: 'pic-btn',
+          onClick: () => {
+            if (chosen.length >= length) return;
+            chosen.push(ic);
+            renderDots();
+            if (chosen.length === length) {
+              const code = chosen.join('');
+              chosen = [];
+              renderDots();
+              onComplete(code);
+            }
+          },
+        },
+        ic,
+      ),
+    ),
+  );
+
+  return el(
+    'div',
+    { class: 'pic-pad' },
+    dotsRow,
+    grid,
+    el('div', { style: { textAlign: 'center', marginTop: '10px' } }, resetBtn),
+  );
+}
+
 // A little particle burst at (x,y) — used when a gem is mined.
 export function burst(x, y, color = '#36F1CD', n = 14) {
   for (let i = 0; i < n; i++) {

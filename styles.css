@@ -2176,6 +2176,62 @@ html.readable .crystal-name {
   }
 }
 
+/* ------- picture pad (kid-lock) ------- */
+.pic-pad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0;
+}
+/* .pic-grid, .pic-btn, .pic-chosen, .pic-slot already defined above near sync-code */
+
+/* snapshot rows (Time machine / rollback list) */
+.snapshot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--panel-border);
+  flex-wrap: wrap;
+}
+.snapshot-row:first-child {
+  border-top: none;
+}
+.snapshot-info {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+.snapshot-when {
+  font-weight: 700;
+  color: var(--ink);
+}
+.snapshot-label {
+  color: var(--ink-dim);
+}
+
+/* lock-pad overlay inside profiles "who's playing?" */
+.lock-pad-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 0;
+}
+.lock-pad-wrap.shake {
+  animation: shake 0.4s ease;
+}
+
+/* sensitive-block: parent-gated area in Parents & privacy panel */
+.sensitive-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 /* ============================================================================
    PHONE OVERRIDES (≤480px). Placed LAST so they win over the iPad-tuned base
    rules above (a media query adds no specificity, so source order decides). The
@@ -2300,5 +2356,18 @@ html.readable .crystal-name {
     box-shadow:
       0 0 0 10px var(--bg-0),
       0 10px 26px -6px rgba(0, 0, 0, 0.85);
+  }
+
+  /* Picture pad: fewer columns so the buttons stay tappable on narrow phones. */
+  .pic-grid {
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 100%;
+  }
+
+  /* Snapshot rows: stack info + restore button vertically on narrow phones. */
+  .snapshot-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 }
