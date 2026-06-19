@@ -23,3 +23,6 @@ deploy/
 
 # Cloudflare Wrangler local dev state (miniflare KV/cache + bundles) — regenerable.
 .wrangler/
+
+# EMNIST training data cache (scripts/train_recognizer.mjs)
+scripts/_emnist/
