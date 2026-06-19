@@ -86,7 +86,7 @@
 //      onboarding/"Who's playing?" glow (.onboarding inset:-10% ::before) and level cards were
 //      pannable ~33-39px every launch -> overflow:clip; grids -> minmax(0,1fr) so long labels
 //      clip not expand; .onboard-body -> touch-action:pan-y. 0 pan on every Galaxy × screen.
-const VERSION = 'csc-v33';
+const VERSION = 'csc-v34';
 
 const CORE = [
   '/',
@@ -114,6 +114,9 @@ const CORE = [
   '/src/engine/assessment.js',
   '/src/engine/progress.js',
   '/src/engine/session.js',
+  '/src/engine/categories.js',
+  '/src/engine/selection.js',
+  '/src/engine/handwriting.js',
   '/src/engine/nonsense.js',
   '/src/engine/puzzle.js',
   '/src/engine/streak.js',
@@ -127,6 +130,7 @@ const CORE = [
   '/src/cloud_sync_backend.js',
   '/src/modes/rhythm.js',
   '/src/modes/puzzle.js',
+  '/src/modes/mastery.js',
   '/src/modes/lab.js',
   '/src/screens/home.js',
   '/src/screens/settings.js',
