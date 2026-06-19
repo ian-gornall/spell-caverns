@@ -6,13 +6,13 @@
 > **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
-> `npm test` green (**220 tests**); `npm run smoke` green (repaired §29); `node scripts/qa.mjs` = 0
+> `npm test` green (**261 tests**); `npm run smoke` green; `node scripts/qa.mjs` = 0
 > console errors; `node scripts/qa_responsive.mjs` = 0 overflow; **`node scripts/qa_overflow.mjs` =
 > 0 inner-scroll/bleed at 8 Galaxy sizes × 2 text scales** (the §29 deep guard); `node
-> scripts/qa_fold.mjs` = above-the-fold PASS; sw **csc-v29** (pushed; see §29).
-> **➡️ START AT §0 (current state) → §28 (the user backlog — now SHIPPED + LIVE: feedback-to-Ian,
-> pricier crystals, offline printables, always-ask "Who's playing?"+add-player) → §27 (the
-> §26-A design brief + the audio-manifest stuck-on-TTS fix).**
+> scripts/qa_fold.mjs` = above-the-fold PASS; sw **csc-v34** (LIVE; **§30 SHIPPED** — see §30).
+> **➡️ NEW: §30 (LEARNING-MODEL REDESIGN + draw-the-letters MASTERY mode) is SHIPPED + LIVE
+> (csc-v34, verified on prod via `qa_prod.mjs`). Owed: a real-device iPad pass on the draw mode.
+> START AT §0 (current state) → §30.** Older: §28 user backlog, §27 §26-A design brief.
 > **§28.A FEEDBACK DELIVERY — fully LIVE + verified end-to-end on prod (csc-v26):** feedback now
 > reaches Ian via durable KV + instant web-push to his devices (laptop + phone both registered &
 > confirmed buzzing). Plus an in-app **FEEDBACK ARCHIVE** (`screens/admin_feedback.js`): tap a
@@ -172,31 +172,32 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    [[approval-before-consuming-limits]] (any paid pack needs per-purchase OK). Partial §26-B
    already shipped dependency-free: owned-crystal glint + prefers-reduced-motion (§29, csc-v30).
 4. ✅ **§26-A #8 (slim child Settings) — DONE (§29, csc-v28).**
-5. ✅ **§30 — LEARNING-MODEL REDESIGN + MASTERY (draw) mode (Ian 2026-06-19d) — FEATURE-COMPLETE
-   (2026-06-19e), committed to LOCAL main, NOT yet deployed.** All 6 steps done: state machine
-   (`categories.js`), selection + adaptive level (`selection.js`), the free/offline draw recognizer
-   (`handwriting.js`, grid/Dice), the CRAFT (gem-cost hints) + MINING (~5s timer, mastered-gate) +
-   new **MASTERY draw mode** (`modes/mastery.js`) UI, the Craft→Mastery→Mining unlock chain, and the
-   kid-visible Progress category view. **261 tests + smoke + all phone guards green.** ⚠️ To SHIP:
-   bump `sw.js`/`version.js`, push (Git-CD deploys), real-device pass. Recognizer is best-effort
-   (right letter in the ≤4 candidates, not always #1) — tune vs real kid handwriting. §30 below.
+5. ✅ **§30 — LEARNING-MODEL REDESIGN + MASTERY (draw) mode (Ian 2026-06-19d) — SHIPPED + LIVE
+   (2026-06-19e, sw `csc-v34`), verified on prod.** All 6 steps: state machine (`categories.js`),
+   selection + adaptive level (`selection.js`), the free/offline draw recognizer (`handwriting.js`,
+   grid/Dice), the CRAFT (gem-cost hints) + MINING (~5s timer, mastered-gate) + new **MASTERY draw
+   mode** (`modes/mastery.js`) UI, the Craft→Mastery→Mining unlock chain, and the kid-visible
+   Progress category view. **261 tests + smoke + all phone guards green; `qa_prod.mjs` confirmed the
+   live bundle boots + the draw mode works.** ⚠️ Owed: a **real-device pass on the iPad** + tuning
+   the recognizer vs real kid handwriting (right letter in the ≤4 candidates, not always #1). §30 below.
 
 ---
 
-## §30 — LEARNING-MODEL REDESIGN + MASTERY (DRAW) MODE (Ian 2026-06-19d) — ✅ FEATURE-COMPLETE (local)
+## §30 — LEARNING-MODEL REDESIGN + MASTERY (DRAW) MODE (Ian 2026-06-19d) — ✅ SHIPPED + LIVE (csc-v34)
 
-> **DONE (2026-06-19e): ALL SIX build-order steps built, test-first, QA'd, and committed.**
+> **DONE + DEPLOYED (2026-06-19e): all SIX build-order steps built test-first, QA'd, and SHIPPED.**
 > 261 tests green; `npm run smoke` green; `qa_overflow`/`qa_responsive`/`qa_fold` green; visual
-> probes (`qa_s30`/`qa_mastery`/`qa_s30b`) screenshots reviewed. The full §30 learning model now
-> runs end-to-end: discrete categories, focused craft with gem-cost hints, the ~5s mining timer,
-> the brand-new **draw-the-letters Mastery mode** (free/offline recognizer), the **Craft → Mastery
-> → Mining unlock chain**, and the kid-visible Progress category view.
-> ⚠️ **DEPLOY STATUS: committed to LOCAL main only — NOT pushed, NOT deployed (no `sw.js`/
-> `version.js` bump).** Prod is still **csc-v29 (§29)**. Prod is Git-CD from `main`, so pushing
-> deploys it — when shipping §30, bump `sw.js`/`version.js` first and do a real-device pass.
+> probes (`qa_s30`/`qa_mastery`/`qa_s30b`) reviewed. **LIVE on prod (sw `csc-v34`) and verified
+> end-to-end** (`scripts/qa_prod.mjs`: boot ✓, Mastery card ✓, draw-mode recognizer returns
+> candidates on the live bundle ✓, 0 console errors). The full §30 learning model runs end-to-end:
+> discrete categories, focused craft with gem-cost hints, the ~5s mining timer, the brand-new
+> **draw-the-letters Mastery mode** (free/offline recognizer), the **Craft → Mastery → Mining unlock
+> chain**, and the kid-visible Progress category view. (Deploy = bumped `sw.js`/`version.js`
+> v33→v34 + added the 4 new files to the SW CORE precache, pushed to `main`, Git-CD built+deployed.)
 > ⚠️ **Recognizer is BEST-EFFORT:** the draw-mode handwriting match (grid/Dice vs font glyphs) puts
 > the right letter among the ≤4 tap-a-candidate options reliably but not always #1; worth tuning
-> against real kid handwriting (more templates / per-letter thresholds) before/after ship. Modules:
+> against real kid handwriting (more templates / per-letter thresholds) + a **real-device pass on
+> Ian's iPad** (the only QA not yet done — emulated drawing only). Modules:
 > - **`src/engine/categories.js`** (+`test/categories.test.js`, 16 tests) — the §30 state machine:
 >   `new→learning→known→mastered` + `tricky`. API: `createCategoryState({setSize,level})`,
 >   `recordCraft(state,word,correct,{pool})` (2-in-a-row→known; craft miss→learning; evicts the
