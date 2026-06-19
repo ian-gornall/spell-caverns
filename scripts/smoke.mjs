@@ -25,9 +25,44 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 820, height: 1180 } }); // iPad-ish portrait
 
 page.on('console', (m) => {
-  if (m.type() === 'error') errors.push('console.error: ' + m.text());
+  if (m.type() !== 'error') return;
+  const t = m.text();
+  // EXPECTED + handled: only ~1678/2949 audio clips ship, so dictating a word whose clip
+  // isn't in the shipped subset makes the browser log a generic resource-load 404 while the
+  // app silently falls back to TTS (see audio.js ensureManifest/self-heal). The response
+  // listener below is the authoritative 404 check (it fails only on NON-audio misses), so
+  // drop the generic resource-load console noise here.
+  if (/Failed to load resource.*\b404\b/.test(t)) return;
+  errors.push('console.error: ' + t);
 });
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
+// Authoritative 404 check: a missing pre-generated audio clip is the documented audio-tail
+// gap (TTS fallback covers it). ANY OTHER 404 (JS/CSS/icon/manifest) is a real bug -> fail.
+page.on('response', (r) => {
+  if (r.status() !== 404) return;
+  const u = r.url();
+  if (/\/audio\/(words|phrases)\/[^/]+\.mp3(\?|$)/.test(u)) return; // audio-tail gap, tolerated
+  // /api/* (sync, feedback, push) are Cloudflare Worker routes that don't exist on the local
+  // static dev server (server.js). The client treats them as best-effort + queues on failure,
+  // so a local 404 here is expected; only flag missing STATIC assets as real bugs.
+  if (/\/api\//.test(u)) return;
+  errors.push('404 (real missing asset): ' + u);
+});
+
+// §28.D: boot ALWAYS routes to the "Who's playing?" picker for any profile count >= 1.
+// If the picker is showing on page `p`, select the (only) explorer to land on home.
+async function dismissPicker(p) {
+  await p.waitForSelector('.menu-card.play, .profile-card', { timeout: 5000 });
+  if (await p.locator('.profile-card:not(.add)').count()) {
+    await p.locator('.profile-card:not(.add)').first().click();
+    await p.waitForSelector('.menu-card.play', { timeout: 5000 });
+  }
+}
+// Reload the main page and land on home (through the picker).
+async function gotoHome() {
+  await page.goto(URL, { waitUntil: 'networkidle' });
+  await dismissPicker(page);
+}
 
 try {
   // --- first-run onboarding (mascot + name + colour + guaranteed-win wave) ---
@@ -54,19 +89,18 @@ try {
   const fwDots = await page.locator('.rhythm .dots .dot').count();
   if (fwDots === 5) ok('onboarding launched a short guaranteed-win first wave (5 words)');
   else fail(`first wave expected 5 words, got ${fwDots}`);
-  // back to a normal home for the main flow (onboarded now persisted)
-  await page.goto(URL, { waitUntil: 'networkidle' });
-
-  // --- home ---
-  await page.waitForSelector('.menu-card.play', { timeout: 5000 });
-  ok('home screen rendered (Play card present)');
+  // back to a normal home for the main flow (onboarded now persisted; picker -> home)
+  await gotoHome();
+  ok('"Who\'s playing?" picker -> home screen rendered (Play card present)');
 
   // --- start a wave ---
   await page.click('.menu-card.play');
   await page.waitForSelector('.rhythm .tile', { timeout: 5000 });
   const tileCount = await page.locator('.rhythm .tile').count();
-  if (tileCount >= 3) ok(`rhythm round rendered ${tileCount} answer tiles`);
-  else fail(`expected >=3 tiles, got ${tileCount}`);
+  // §27 youngest-tier anti-imprinting clamp (recognitionOptionCount): tier 1-2 words show
+  // only 2 options on purpose, so the cold-start first round can legitimately render 2 tiles.
+  if (tileCount >= 2) ok(`rhythm round rendered ${tileCount} answer tiles`);
+  else fail(`expected >=2 tiles, got ${tileCount}`);
 
   const sentence = (await page.locator('.sentence').textContent())?.trim();
   if (sentence && sentence.includes('_')) ok(`blanked sentence shown: "${sentence}"`);
@@ -177,7 +211,7 @@ try {
   else fail(`TTS clip did not load: ${clipOk}`);
 
   // --- puzzle (build-the-word) mode: hear -> build from tiles -> gems + advance ---
-  await page.goto(URL, { waitUntil: 'networkidle' });
+  await gotoHome();
   await page.click('.menu-card.craft');
   await page.waitForSelector('.puzzle .slot', { timeout: 5000 });
   const slotCount = await page.locator('.puzzle .slot').count();
@@ -211,7 +245,7 @@ try {
   ok('puzzle advanced to the next word after a correct build');
 
   // --- crystal lab: invent -> spell -> draw -> name -> save a specimen ---
-  await page.goto(URL, { waitUntil: 'networkidle' });
+  await gotoHome();
   await page.click('.menu-card.lab');
   await page.waitForSelector('.lab .lab-go', { timeout: 5000 });
   ok('crystal lab opened (invent step)');
@@ -246,7 +280,7 @@ try {
   ok('specimen appears in the Progress collection');
 
   // --- feedback: rate + send (state.addFeedback) ---
-  await page.goto(URL, { waitUntil: 'networkidle' });
+  await gotoHome();
   await page.click('.menu-card.feedback');
   await page.waitForSelector('.rating-row .rating', { timeout: 4000 });
   await page.locator('.rating-row .rating').nth(4).click(); // 🤩
@@ -308,6 +342,7 @@ try {
     } catch {}
   });
   await idlePage.goto(URL, { waitUntil: 'networkidle' });
+  await dismissPicker(idlePage);
   await idlePage.click('.menu-card.play');
   await idlePage.waitForSelector('.rhythm .tile', { timeout: 5000 });
   // deliberately do NOT interact -> the pause overlay must appear on its own
@@ -329,6 +364,7 @@ try {
     } catch {}
   });
   await menuPage.goto(URL, { waitUntil: 'networkidle' });
+  await dismissPicker(menuPage);
   await menuPage.click('.home-title'); // a harmless tap unlocks audio so it WILL launch
   // now sit idle on the menu — it should highlight Craft then drop into a craft round on its own
   await menuPage.waitForSelector('.puzzle .slot', { timeout: 5000 });

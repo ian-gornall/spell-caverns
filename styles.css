@@ -54,6 +54,16 @@ body {
   margin: 0;
   height: 100%;
   overscroll-behavior: none;
+  /* HARD GUARD against phantom horizontal scroll. Real Android/Samsung devices report
+     occasional "I can pan the page a few px right / it looks oversize" even when no screen
+     legitimately overflows — a transient fixed overlay (drag-ghost), a sub-pixel %/vw round,
+     or the browser's own viewport handling can nudge the LAYOUT viewport wider than the
+     VISUAL one. Nothing in this app should ever paint outside the viewport horizontally, so
+     clip that axis at the root. `clip` (not `hidden`) avoids creating a scroll container and
+     leaves the vertical axis `visible` untouched (the per-screen containers own vertical
+     scroll). Supported in Chromium 90+ / Samsung Internet 15+. */
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 body {
@@ -78,6 +88,8 @@ body {
   flex-direction: column;
   padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
     max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  /* Second line of defence (with html,body above): the app shell never scrolls sideways. */
+  overflow-x: clip;
 }
 
 /* ------- screen container + entry animation ------- */
@@ -2451,8 +2463,12 @@ html.readable .crystal-name {
   .onboarding .level-cta::before {
     content: '';
     position: absolute;
-    left: -50vw;
-    right: -50vw;
+    /* Bleed past the pill to cover the onboarding/app padding, but NOT a full 100vw — a
+       -50vw/-50vw box is (containerWidth + 100vw) wide and only `.onboarding{overflow:hidden}`
+       stops it forcing a giant horizontal scroll area. Fixed insets are clipped cleanly and
+       can never widen the layout viewport. */
+    left: -60px;
+    right: -60px;
     top: -30px;
     bottom: -22px;
     background: linear-gradient(to top, var(--bg-0) 62%, transparent);

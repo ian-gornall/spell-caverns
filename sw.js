@@ -64,7 +64,10 @@
 // v26 (§28.A): in-app FEEDBACK ARCHIVE (screens/admin_feedback.js + src/admin.js) — the admin
 //      device remembers the key and can browse ALL feedback newest-first; feedback notifications
 //      now deep-link (/?view=feedback) straight into it; 7-tap opens the archive once registered.
-const VERSION = 'csc-v26';
+// v27: root-level overflow-x:clip guard (html/body/#app) kills phantom horizontal scroll on
+//      real Android/Samsung devices (the layout viewport could pan a few px past the visual
+//      one); also tamed the onboarding -50vw full-bleed to fixed insets. styles.css changed.
+const VERSION = 'csc-v27';
 
 const CORE = [
   '/',
