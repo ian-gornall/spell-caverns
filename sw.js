@@ -48,7 +48,11 @@
 // v22: pre-generated neural-TTS audio now SHIPS (audio/ committed, was git-ignored so prod
 //      served the robotic device voice); optional daily-reminder Web Push (src/push.js +
 //      sw push/notificationclick handlers + worker.js /api/push + scheduled sender).
-const VERSION = 'csc-v22';
+// v23 (DESIGN_ANALYSIS §26-A free-polish pass): landscape/short-phone hero collapse + pinned
+//      reward/boss/geode CTA (no primary action below the fold); two below-AA contrast spots
+//      lifted (Craft-hero gradient + wrong-verdict slate); self-hosted Atkinson Hyperlegible
+//      (letter-distinct spelling font) + fuller dyslexia "Easy-read" mode.
+const VERSION = 'csc-v23';
 
 const CORE = [
   '/',

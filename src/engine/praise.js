@@ -78,7 +78,8 @@ export const SPEED_TIERS = [
 export const MISS_TIER = {
   key: 'tryagain',
   label: 'Try again',
-  color: '#6C7A89', // muted slate, not alarm red
+  color: '#8593A3', // muted slate-blue, not alarm red — lifted to clear WCAG AA (≈5.8:1) for the
+  //                   wrong-verdict text/"The gem was…" subtext, while staying calm not punitive.
   mult: 0,
   maxMs: Infinity,
 };

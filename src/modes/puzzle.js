@@ -335,7 +335,7 @@ export function startPuzzle(ctx, params = {}) {
     audio.sfx('miss');
     const phrase = pickGentle();
     audio.speakPraise(phrase);
-    flashVerdict(phrase, 'Keep the letters that fit', '#6C7A89');
+    flashVerdict(phrase, 'Keep the letters that fit', '#8593A3'); // AA-lifted slate (see praise.MISS_TIER)
     updateCombo(null);
     // lock the letters that are right; return the rest to the tray to retry
     slots.forEach((s, i) => {
