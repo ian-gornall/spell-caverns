@@ -105,11 +105,59 @@ QA'd** (see §24). What's done this session:
   `push`/`notificationclick`, Worker `/api/push/subscribe` + `/api/push/test` + daily `scheduled()`
   sender, cron `0 16 * * *` (`wrangler.toml`). Subs reuse `FAMILY_SYNC` KV under a `push:` prefix.
   Validated end-to-end in local `workerd` (encrypt + VAPID sign run; routes return correctly).
-  **Ian's two steps to go live: `wrangler secret put VAPID_PRIVATE` (value in `.env`) + deploy — see
-  `PUSH_SETUP.md` — then verify on a real installed PWA (iOS 16.4+ Home-Screen app).**
+  **Ian's two steps to go live (CLI is `npx wrangler`, NOT a global cmd): `npx wrangler login`
+  then `npx wrangler secret put VAPID_PRIVATE` (value in `.env`) — the secret takes effect with NO
+  redeploy (cron + routes already live; prod `/api/push/test` returns 503 until the secret is set).
+  See `PUSH_SETUP.md`, then verify on a real installed PWA (iOS 16.4+ Home-Screen app).**
 - 📄 **Design + engine-migration research** delivered: `DESIGN_ANALYSIS.md` (pro UX critique vs
   best-in-class, cited) and `ENGINE_MIGRATION.md` (verdict: **stay vanilla**, upgrade assets/feel;
   PixiJS v8 / Phaser 4 only if a renderer is ever justified). Both built from live exploratory QA.
+
+---
+
+## NEXT STEPS (§26 — planned, NOT yet started)
+
+Two independent workstreams come out of the §25 research. They do not depend on each other.
+
+### A. Act on the DESIGN brief — fix, then verify with a fresh design agent
+1. **Read `DESIGN_ANALYSIS.md` in full** and triage its prioritized table (impact × effort). The
+   headline "free polish we can do now" items, in the report's own priority order:
+   - **Landscape / short-phone top-heaviness** — phone-landscape home + wave-reward push ALL primary
+     actions below the fold (reward overflows by a measured **+213px**); the hero must collapse in
+     landscape. (S–M)
+   - **Letter-distinct font** — replace Baloo 2 (poor b/d/p/q, I/l/1 distinction — wrong for a
+     spelling task) with **Atkinson Hyperlegible** or **Lexend**; upgrade the thin "Easy-read" toggle
+     into a real dyslexia mode. (M, free fonts)
+   - **Differentiate locked catalog art** — all 24 un-owned minerals render as one identical grey
+     hexagon, undercutting the collection motivator. (M)
+   - **Raise two below-AA contrast spots** — white-on-Craft-pink (~3.95:1) and the slate wrong-answer
+     subtext (4.12:1). (S)
+   - **Tune the youngest-tier recognition mode** to further limit misspelling exposure. (S–M)
+2. **Implement the agreed fixes test-first / `node --check` + Playwright-load each UI change** (the
+   standing QA lesson — `npm test` does not cover screen/CSS files). Bump `sw.js` + `version.js`.
+3. **Run ANOTHER design agent (same brief as §25 agent A) to VERIFY the fixes** — live exploratory
+   QA at phone/tablet/landscape, confirm the flagged items are resolved and nothing regressed, and
+   diff against the original `DESIGN_ANALYSIS.md` findings. Flag real-device-only items (notch/
+   safe-area/OS-font-scaling) for Ian to check on hardware.
+
+### B. Act on the ENGINE brief — acquire assets, then implement (stay vanilla)
+The engine verdict was **do NOT migrate**; the real gap is **professional, engine-independent
+assets** dropped into the current vanilla app. From `ENGINE_MIGRATION.md`:
+1. **Acquire assets** matching the report's sourcing guidance — e.g. **Kenney** (CC0) and
+   **CraftPix** 2D art/UI/particle packs, a **Spine** mascot animation (run via the plain-web Spine
+   runtime, no build step), and drop-in libs **GSAP** (tween/motion) + **tsParticles** (effects),
+   plus recorded/neural **audio** to replace synth SFX where it helps. Confirm **licensing** for each
+   (CC0 / commercial-OK) before use, and keep the no-build, offline-PWA, dependency-free ethos
+   (load via CDN/UMD or vendored static files; nothing that forces a bundler).
+2. **Implement them on the existing surfaces only** (home, rhythm, craft, geode, catalog, onboarding
+   mascot) — replace procedural-SVG art / CSS particles / Web-Audio synth with the acquired assets
+   where they raise polish, **without touching `src/engine/**`** (the tested pedagogy IP). Mind PWA
+   precache size (`sw.js` CORE) and offline behaviour; version-bump on ship.
+
+> ⚠️ Asset acquisition may involve **paid packs or commissions** → falls under
+> [[approval-before-consuming-limits]]: surface cost + get Ian's per-purchase OK before spending.
+> Prefer CC0/free (Kenney) first. Both workstreams are agent-doable except the actual purchase
+> approvals + any real-device design check.
 
 **Still genuinely user-gated (agent cannot do):** finish the audio tail on the paid quota (above);
 the two `wrangler` push-deploy steps + real-device push verification (above).
