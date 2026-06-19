@@ -1030,6 +1030,17 @@ export function settingsScreen(ctx) {
       el(
         'div',
         { class: 'panel' },
+        el('h3', {}, 'Practice sheets'),
+        el('p', { class: 'field-hint' }, 'Print word lists and look-cover-write-check sheets for screen-free practice.'),
+        el(
+          'div',
+          { class: 'data-actions' },
+          el('button', { class: 'btn', onClick: () => ctx.nav('printables') }, '🖨️ Make a printable sheet'),
+        ),
+      ),
+      el(
+        'div',
+        { class: 'panel' },
         el('h3', {}, 'Parents & privacy'),
         dataPanel,
       ),

@@ -76,6 +76,12 @@ for (const v of VIEWS) {
 
   // HOME — is the Craft hero fully above the fold?
   await page.goto(URL, { waitUntil: 'networkidle' }); await page.waitForTimeout(300);
+  // §28.D: a fresh open now ALWAYS shows "Who's playing?" (even for one child) — tap the
+  // profile card to enter the game.
+  if (await page.locator('.profile-card:not(.add)').count()) {
+    await page.locator('.profile-card:not(.add)').first().click();
+    await page.waitForTimeout(300);
+  }
   if (await page.locator('.home').count() === 0) { await clickText(page, /home/); await page.waitForTimeout(300); }
   const hero = await measure(page, '.menu-card.craft.hero');
   const practice = await measure(page, '.menu-card.play.practice');

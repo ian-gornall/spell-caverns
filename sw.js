@@ -54,7 +54,7 @@
 //      (letter-distinct spelling font) + fuller dyslexia "Easy-read" mode. ALSO: audio
 //      manifest load now RETRIES on failure (was once-and-never-retry) so a long-lived
 //      installed-PWA session can't get permanently stuck on the robotic device voice.
-const VERSION = 'csc-v23';
+const VERSION = 'csc-v24';
 
 const CORE = [
   '/',
@@ -71,6 +71,7 @@ const CORE = [
   '/src/state.js',
   '/src/audio.js',
   '/src/push.js',
+  '/src/feedback_client.js',
   '/src/pwa.js',
   '/src/version.js',
   '/src/engine/pushconfig.js',
@@ -85,6 +86,7 @@ const CORE = [
   '/src/engine/streak.js',
   '/src/engine/quests.js',
   '/src/engine/catalog.js',
+  '/src/engine/printables.js',
   '/src/engine/narrative.js',
   '/src/engine/backup.js',
   '/src/engine/cloudsync.js',
@@ -102,6 +104,7 @@ const CORE = [
   '/src/screens/profiles.js',
   '/src/screens/boss.js',
   '/src/screens/geode.js',
+  '/src/screens/printables.js',
   '/data/words.js',
   '/data/patterns.js',
   '/data/nonsense_blocklist.js',

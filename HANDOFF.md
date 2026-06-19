@@ -6,12 +6,28 @@
 > **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
-> `npm test` green (**212 tests**); `npm run smoke` green; `node scripts/qa.mjs` = 0
+> `npm test` green (**220 tests**); `npm run smoke` green; `node scripts/qa.mjs` = 0
 > console errors; `node scripts/qa_responsive.mjs` = 0 overflow; **`node scripts/qa_fold.mjs`
-> = above-the-fold PASS**; sw **csc-v23** (LIVE + verified on prod).
-> **➡️ START AT §0 (current state) → §28 (the NEW user backlog to BUILD NEXT: feedback-to-Ian,
-> pricier crystals, offline printables, always-ask "Who's playing?"+add-player) → §27 (what
-> last session shipped — §26-A design brief + the audio-manifest stuck-on-TTS fix).**
+> = above-the-fold PASS**; sw **csc-v24** (LIVE + verified on prod).
+> **➡️ START AT §0 (current state) → §28 (the user backlog — now SHIPPED: feedback-to-Ian,
+> pricier crystals, offline printables, always-ask "Who's playing?"+add-player) → §27 (the
+> §26-A design brief + the audio-manifest stuck-on-TTS fix).**
+> **§28 (2026-06-19, csc-v24 — code DONE + QA'd, push pending):** built all four user asks.
+> **B** crystal prices ~2.5× (400/1200/3000/6500, `catalog.js`). **D** boot routing now shows
+> "Who's playing?" for ANY count≥1 (solo kids too; `app.js`) — always asks + always surfaces
+> Add-explorer. **C** OFFLINE PRINTABLES: pure `engine/printables.js` (8 tests) + `screens/
+> printables.js` + `@media print` CSS + Settings "Practice sheets" entry; 3 sources (target
+> words / pattern family / age tier) × 2 formats (word list / look-cover-write-check grid);
+> verified clean print output (chrome hidden, big black-on-white). **A** FEEDBACK NOW REACHES
+> IAN: `POST /api/feedback` → durable KV (`feedback:` prefix) + instant web-push to the
+> developer's admin device + (dormant) email. Client (`feedback_client.js`) POSTs best-effort,
+> queues unsent, flushes on next open. **Email via Resend was DROPPED** (free-tier cliff;
+> push+KV already = "notified immediately + stored long term"); the Resend code path is a
+> graceful no-op unless `RESEND_API_KEY` is set ([[prefer-free-services]] — owed: a full
+> third-party-dep audit). Secrets DONE by Ian: `VAPID_PRIVATE` (already), `ADMIN_KEY` (set).
+> REMAINING manual step (after deploy): Ian registers his installed-PWA device as admin push
+> via the `/api/push/admin` console one-liner (see `FEEDBACK_SETUP.md`), then submit test
+> feedback to confirm push + KV.
 > **§27 (2026-06-19, csc-v23 — LIVE+verified):** shipped the whole §26-A design brief —
 > landscape/short-phone fold collapse + pinned reward CTA (no action below the fold), two
 > below-AA contrast lifts, **self-hosted Atkinson Hyperlegible** (letter-distinct spelling
@@ -141,7 +157,12 @@ backlog (A/B/C/D) and the long-deferred multi-user UI are **all DONE, deployed, 
 
 ---
 
-## §28 — NEXT-SESSION BACKLOG (user 2026-06-19, NOT started) — DO THIS NEXT
+## §28 — USER BACKLOG (user 2026-06-19) — ✅ SHIPPED (code done + QA'd; see top banner)
+
+> All four items below are BUILT, unit-tested, and visually QA'd (csc-v24, 220 tests). Decisions
+> Ian made: prices ~2.5× (400/1200/3000/6500); printables = all four types; feedback delivery =
+> KV + push (email DROPPED, free-first — see [[prefer-free-services]]); always-ask who's-playing
+> = always-on for count≥1. The original briefs are kept below for reference.
 
 Four items Ian asked for after the §27 ship. Each below has the ask, the CURRENT state I
 verified read-only, and a recommended approach + the files to touch. Build test-first where

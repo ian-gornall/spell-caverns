@@ -72,6 +72,16 @@ and delete).
 This is a deliberately small, single-purpose collection (sync, nothing else). The family code
 is the access key, so a parent should keep it private.
 
+## In-app feedback (sent to the developer)
+
+When someone uses the in-app **Feedback** screen, that single feedback (a fun-rating, a
+difficulty choice, an optional short note, and the chosen **nickname**) is sent to the
+developer so the game can be improved. This is the **only** content that leaves the device
+outside of opt-in family sync, and it is **pseudonymous** — the same minimization applies: no
+real name, no email, no contact info, no device/advertising identifiers. The feedback is stored
+durably for the developer and may also be emailed/notified to the developer. Feedback is
+voluntary; nothing is collected unless someone chooses to send it from the Feedback screen.
+
 ## Contact
 
 This is a personal/educational project. Questions about data handling go to the project owner.

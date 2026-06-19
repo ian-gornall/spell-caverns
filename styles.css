@@ -2584,3 +2584,124 @@ html.readable .crystal-name {
     z-index: 2;
   }
 }
+
+/* ── Printables (§28.C): offline practice sheets ───────────────────────────── */
+.print-controls {
+  margin-bottom: 18px;
+}
+.print-sub {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.print-sub-label {
+  font-weight: 700;
+  font-size: 0.95rem;
+  opacity: 0.85;
+}
+.print-select {
+  width: 100%;
+  min-height: var(--tap-min);
+  border-radius: 14px;
+  border: 2px solid var(--panel-border);
+  background: var(--panel);
+  color: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+/* The sheet preview on screen: a white "paper" so a grown-up sees what prints. */
+.printable-sheet {
+  background: #ffffff;
+  color: #111111;
+  border-radius: 12px;
+  padding: 22px 24px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+.printable-sheet .sheet-head {
+  border-bottom: 2px solid #111;
+  padding-bottom: 10px;
+  margin-bottom: 16px;
+}
+.printable-sheet .sheet-title {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
+  color: #111;
+}
+.printable-sheet .sheet-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+}
+.printable-sheet .word-list {
+  margin: 0;
+  padding-left: 1.4em;
+  columns: 2;
+  column-gap: 32px;
+  font-size: 1.35rem;
+  line-height: 2;
+}
+.printable-sheet .word-list li {
+  break-inside: avoid;
+}
+.printable-sheet .sheet-empty {
+  font-size: 1.1rem;
+  color: #444;
+}
+.printable-sheet table.lcwc {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1.15rem;
+}
+.printable-sheet table.lcwc th,
+.printable-sheet table.lcwc td {
+  border: 1.5px solid #222;
+  padding: 10px 8px;
+  text-align: left;
+}
+.printable-sheet table.lcwc th {
+  background: #eee;
+  font-size: 0.95rem;
+}
+.printable-sheet .lcwc-n {
+  width: 2.2em;
+  text-align: center;
+  color: #555;
+}
+.printable-sheet .lcwc-word {
+  font-weight: 800;
+  white-space: nowrap;
+}
+.printable-sheet .lcwc-blank {
+  min-width: 5.5em;
+}
+
+/* Print: hide ALL app chrome, show only the sheet, full black-on-white. */
+@media print {
+  body {
+    background: #fff;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .printable-sheet,
+  .printable-sheet * {
+    visibility: visible;
+  }
+  .printable-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

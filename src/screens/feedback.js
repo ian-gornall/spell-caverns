@@ -7,6 +7,7 @@
 // stored locally and leaves only via export. Giving feedback earns a few gems so
 // it feels worth doing. UI module — never imported by `node --test`.
 import { el, header, toast } from '../ui.js';
+import { postFeedback } from '../feedback_client.js';
 
 const RATINGS = [
   { v: 1, emoji: '😞', label: 'Meh' },
@@ -77,7 +78,11 @@ export function feedbackScreen(ctx) {
       toast('Tap a face or pick a level first! 🙂');
       return;
     }
-    ctx.store.addFeedback({ rating, difficulty, note: note.value.trim() });
+    // Store on-device first (never lose it), then deliver to the developer best-effort: on
+    // success mark it sent; on failure it stays queued for the next app open (§28.A).
+    const nick = (ctx.state && ctx.state.profile && ctx.state.profile.name) || '';
+    const rec = ctx.store.addFeedback({ rating, difficulty, note: note.value.trim(), nick });
+    postFeedback(rec).then((ok) => ok && ctx.store.markFeedbackSent(rec.ts));
     ctx.store.addGems(FEEDBACK_GEMS);
     ctx.save();
     toast(`Thanks! +${FEEDBACK_GEMS} gems for helping 💎`);

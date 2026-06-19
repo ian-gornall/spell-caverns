@@ -16,6 +16,7 @@ import { feedbackScreen } from './screens/feedback.js';
 import { catalogScreen } from './screens/catalog.js';
 import { bossScreen } from './screens/boss.js';
 import { geodeScreen } from './screens/geode.js';
+import { printablesScreen } from './screens/printables.js';
 import { startRhythm } from './modes/rhythm.js';
 import { startPuzzle } from './modes/puzzle.js';
 import { startLab } from './modes/lab.js';
@@ -35,6 +36,7 @@ const routes = {
   profiles: profilesScreen,
   boss: bossScreen,
   geode: geodeScreen,
+  printables: printablesScreen,
 };
 
 let ctx = null;
@@ -106,17 +108,25 @@ function boot() {
   // gesture (HANDOFF §4). `{ once:true }` removes the listener after.
   window.addEventListener('pointerdown', () => audio.prime(), { once: true });
 
+  // Deliver any feedback that didn't reach the developer last time (offline at submit). Lazy +
+  // best-effort — never blocks boot, never throws. (§28.A)
+  import('./feedback_client.js')
+    .then((fc) => fc.flushUnsent(store))
+    .catch(() => {});
+
   // Route by how many explorers exist:
   //  - none yet → first-run onboarding (creates explorer #1)
-  //  - exactly one → straight into their game (no need to choose)
-  //  - more than one → "Who's playing?" EVERY launch (in case it's a different sibling —
-  //    what the game serves depends on that learner's progress; user 2026-06-18)
+  //  - one or more → "Who's playing?" EVERY launch (user 2026-06-19, §28.D): ALWAYS ask
+  //    who's playing AND always surface the "Add explorer" option — even for a one-child
+  //    family — because what the game serves depends on that learner's progress, and a
+  //    grown-up needs an easy way to add a sibling. (The only exception: a single profile
+  //    still mid-onboarding resumes onboarding directly — no point picking an unfinished one.)
   const count = store.profileCount();
   if (count === 0) {
     nav('onboarding');
-  } else if (count === 1) {
+  } else if (count === 1 && !store.get().profile.onboarded) {
     refreshActive();
-    nav(ctx.state.profile.onboarded ? 'home' : 'onboarding');
+    nav('onboarding');
     maybeBootSync();
   } else {
     nav('profiles');

@@ -338,9 +338,27 @@ export function recordSessionPlayed() {
   if (lastDay !== todayKey()) takeSnapshot('auto');
 }
 
+// Feedback is stored locally AND delivered to the developer (§28.A). We stamp each entry with
+// `sent:false`; the caller POSTs it to /api/feedback best-effort and calls markFeedbackSent on
+// success. Anything still unsent (offline at the time) is flushed on the next app open, so a
+// kid's feedback is never lost and always eventually reaches the developer.
 export function addFeedback(entry) {
-  state.feedback.push({ ts: Date.now(), ...entry });
+  const rec = { ts: Date.now(), sent: false, ...entry };
+  state.feedback.push(rec);
   save();
+  return rec;
+}
+
+export function markFeedbackSent(ts) {
+  const rec = state.feedback.find((f) => f.ts === ts);
+  if (rec && !rec.sent) {
+    rec.sent = true;
+    save();
+  }
+}
+
+export function unsentFeedback() {
+  return state.feedback.filter((f) => f && f.sent === false);
 }
 
 export function addSpecimen(spec) {
