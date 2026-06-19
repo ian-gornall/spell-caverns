@@ -263,7 +263,11 @@ button {
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--emerald), var(--cyan), var(--gold));
+  box-shadow: 0 0 12px -2px var(--cyan), inset 0 1px 0 rgba(255, 255, 255, 0.55);
   transition: width 0.4s ease;
+}
+.goal-bar {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 .goal-label {
   text-align: center;
@@ -416,6 +420,7 @@ button.quest {
   padding-bottom: 12px;
 }
 .menu-card {
+  position: relative;
   min-height: 118px;
   border-radius: 28px;
   padding: 18px 20px;
@@ -425,9 +430,16 @@ button.quest {
   justify-content: center;
   gap: 6px;
   text-align: left;
-  background: var(--panel);
+  /* The utility cards aren't flat slate — a soft top-lit gradient + inner highlight +
+     drop shadow give them depth so the whole hub reads as one game world, not a settings
+     list (§A polish). The hero/craft/lab/etc. variants layer their own gradient on top. */
+  background: linear-gradient(160deg, #222c54, #1a2240);
   border: 1px solid var(--panel-border);
-  transition: transform 0.12s ease, box-shadow 0.2s ease;
+  box-shadow: 0 10px 26px -16px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.menu-card .ic {
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.35));
 }
 .menu-card:active {
   transform: scale(0.96);
@@ -541,16 +553,17 @@ button.quest {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  gap: clamp(12px, 3vh, 40px);
-  /* Auto margins on the children center the prompt+answer pair on tall screens but
-     collapse to 0 when space is tight, so content packs from the top and can scroll
-     instead of clipping on short screens (reduced-height Safari chrome). */
+  gap: clamp(16px, 5vh, 56px);
+  /* `safe center` centers the prompt+answer pair on tall screens but, when space is
+     tight, aligns to the START edge so content packs from the top and scrolls — instead
+     of the margin-top:auto flexbox bug that CLIPPED the top of the prompt (the "Hear it
+     again" button) unreachably on short phones (QA §A regression fix). */
+  justify-content: safe center;
   overflow-y: auto;
-  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  padding: 12px 0 max(10px, env(safe-area-inset-bottom));
 }
 .answer-zone {
   flex: 0 1 auto;
-  margin-bottom: auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -601,7 +614,6 @@ button.quest {
 
 .prompt {
   flex: 0 1 auto;
-  margin-top: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1830,22 +1842,51 @@ select {
   margin: 0 auto;
 }
 .level-card {
+  position: relative;
+  overflow: hidden;
   text-align: left;
-  padding: 12px 16px;
+  padding: 12px 16px 12px 20px;
   border-radius: 16px;
-  background: var(--panel);
+  background: linear-gradient(155deg, #1d2649, #161d3a);
   border: 2px solid var(--panel-border);
   display: flex;
   flex-direction: column;
   gap: 2px;
-  transition: transform 0.1s ease, border-color 0.15s ease;
+  transition: transform 0.1s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
+/* A per-tier DEPTH STRIPE turns the flat 9-card grid into a visual ladder: a cool→warm
+   progression (shallow/easy cyan → deep/hard magenta) so picking a level reads as
+   choosing how deep to dig, not ticking a form row (§A polish). */
+.level-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: var(--tier, var(--cyan));
+  opacity: 0.9;
+}
+.level-grid .level-card:nth-child(1) { --tier: #36f1cd; }
+.level-grid .level-card:nth-child(2) { --tier: #36e0e0; }
+.level-grid .level-card:nth-child(3) { --tier: #7ae582; }
+.level-grid .level-card:nth-child(4) { --tier: #b6e36a; }
+.level-grid .level-card:nth-child(5) { --tier: #ffd23f; }
+.level-grid .level-card:nth-child(6) { --tier: #ffae42; }
+.level-grid .level-card:nth-child(7) { --tier: #ff8a5c; }
+.level-grid .level-card:nth-child(8) { --tier: #c08cff; }
+.level-grid .level-card:nth-child(9) { --tier: #ff6ec7; }
 .level-card:active {
   transform: scale(0.98);
 }
 .level-card.on {
-  border-color: var(--accent);
-  box-shadow: 0 0 18px -6px var(--accent);
+  border-color: var(--tier, var(--accent));
+  background: linear-gradient(155deg, color-mix(in srgb, var(--tier, var(--accent)) 22%, #1d2649), #161d3a);
+  box-shadow: 0 0 22px -6px var(--tier, var(--accent));
+}
+.level-card.on::before {
+  width: 7px;
+  box-shadow: 0 0 14px var(--tier);
 }
 .level-label {
   font-weight: 800;
@@ -2148,25 +2189,25 @@ html.readable .crystal-name {
     font-size: 0.9rem;
   }
   .home-grid {
-    gap: 10px;
+    gap: 9px;
   }
   .menu-card {
-    min-height: 84px;
+    min-height: 78px;
     border-radius: 22px;
-    padding: 12px 16px;
+    padding: 11px 16px;
     gap: 3px;
   }
   .menu-card.craft.hero {
-    min-height: 126px;
+    min-height: 112px;
   }
   .menu-card.craft.hero .ic {
-    font-size: 2.5rem;
+    font-size: 2.4rem;
   }
   .menu-card.craft.hero .lbl {
-    font-size: 1.55rem;
+    font-size: 1.5rem;
   }
   .menu-card.play.practice {
-    min-height: 76px;
+    min-height: 64px;
   }
   .menu-card.play.practice .ic {
     font-size: 2rem;

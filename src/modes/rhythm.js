@@ -451,7 +451,7 @@ export function startRhythm(ctx, params = {}) {
     );
 
     screen.replaceChildren(
-      header(ctx, { title: 'Wave complete', onBack: () => ctx.nav('home') }),
+      header(ctx, { title: 'Wave done', onBack: () => ctx.nav('home') }),
       reward,
     );
     if (newly.length > 0) audio.sfx('combo');
