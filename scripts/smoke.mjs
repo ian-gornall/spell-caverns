@@ -345,9 +345,9 @@ try {
     window.__idleTest = 0.03; // 15s nudge -> ~450ms, 45s pause -> ~1350ms
     try {
       const KEY = 'crystal-spell-caverns:v1';
-      // §30: mining is gated until words are KNOWN, so seed a profile with a few known words
-      // (real dataset words) so the Practice wave is playable and the pause-overlay fires.
-      const known = (w, i) => ({ word: w, tier: 1, pattern: 'short-a', rank: 50 + i, category: 'known', craftStreak: 2, craftAttempts: 2, craftCorrect: 2, order: i + 1 });
+      // §30: mining is gated until [set size] words are MASTERED, so seed a profile with a few
+      // MASTERED words + the mastered high-water so the Practice wave is playable + the overlay fires.
+      const mastered = (w, i) => ({ word: w, tier: 1, pattern: 'short-a', rank: 50 + i, category: 'mastered', craftStreak: 2, craftAttempts: 2, craftCorrect: 2, order: i + 1 });
       if (!localStorage.getItem(KEY))
         localStorage.setItem(
           KEY,
@@ -355,7 +355,7 @@ try {
             schema: 2, syncCode: null, syncConsent: false, parentPassword: null, activeId: 'idle1',
             profiles: [{
               id: 'idle1', version: 1, profile: { name: 'Explorer', onboarded: true },
-              categories: { setSize: 10, level: 1, recent: [], order: 3, peakKnownish: 3, peakMastered: 0, words: ['cat', 'dog', 'sun'].map(known) },
+              categories: { setSize: 10, level: 1, recent: [], order: 3, peakKnownish: 10, peakMastered: 10, words: ['cat', 'dog', 'sun'].map(mastered) },
             }],
           }),
         );

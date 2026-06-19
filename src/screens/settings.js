@@ -1078,7 +1078,13 @@ export function settingsScreen(ctx) {
           levelGridEl,
         ),
         el('div', { class: 'field' }, el('label', {}, 'Difficulty'), diffSeg),
-        el('div', { class: 'field' }, el('label', {}, 'Words per dig'), lenSeg),
+        el(
+          'div',
+          { class: 'field' },
+          el('label', {}, 'Words per dig'),
+          el('p', { class: 'field-hint' }, 'How many words are being learned at once — and how many to master before Mastery, then Mining, unlock. Smaller = quicker unlocks for younger spellers.'),
+          lenSeg,
+        ),
       ),
       el(
         'div',

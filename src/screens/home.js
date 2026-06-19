@@ -115,10 +115,10 @@ export function homeScreen(ctx) {
     // clearly secondary to crafting (§B): the calmer, shorter "practice" banner.
     el(
       'button',
-      { class: 'menu-card play practice', onClick: () => ctx.nav('rhythm') },
-      el('span', { class: 'ic' }, '⛏️'),
+      { class: 'menu-card play practice' + (gates.mining ? '' : ' locked'), onClick: () => ctx.nav('rhythm') },
+      el('span', { class: 'ic' }, gates.mining ? '⛏️' : '🔒'),
       el('span', { class: 'lbl' }, 'Practice'),
-      el('span', { class: 'desc' }, 'Warm up — spell the words you hear'),
+      el('span', { class: 'desc' }, gates.mining ? 'Warm up — spell the words you hear' : 'Master words in Mastery to unlock fast mining'),
     ),
     el(
       'button',

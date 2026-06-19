@@ -20,6 +20,7 @@
 import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
 import { buildFirstWave, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { buildMiningPool } from '../engine/selection.js';
+import { unlocks } from '../engine/categories.js';
 import { buildOptions, mulberry32, recognitionOptionCount } from '../engine/distractors.js';
 import { byRank } from '../engine/lexicon.js';
 import { gradeAnswer, projectedScore, MINING_SPEED_TIERS } from '../engine/praise.js';
@@ -139,15 +140,23 @@ export function startRhythm(ctx, params = {}) {
     praiseDone = new Promise((res) => audio.speakPraise(phrase, { onDone: res }));
   };
 
-  if (!session.length) {
-    // §30 interim gate: nothing known yet → the mine is empty. Steer to CRAFT (the always-open
-    // assessment) to fill it, rather than a dead end.
+  // §30.C unlock chain: MINING is the LAST rung — it opens only after [set size] words are
+  // MASTERED (via the draw mode). The first-run welcome wave bypasses this. A locked/empty
+  // mine steers onward (Mastery → Craft) instead of dead-ending.
+  const miningLocked = !firstRun && !unlocks(state.categories).mining;
+  if (miningLocked || !session.length) {
     speedMeter.style.display = 'none';
     tilesEl.replaceChildren(
-      el('button', { class: 'btn primary', onClick: () => ctx.nav('puzzle') }, '🔨 Craft some words first ✨'),
+      el(
+        'button',
+        { class: 'btn primary', onClick: () => ctx.nav(miningLocked ? 'mastery' : 'puzzle') },
+        miningLocked ? '✍️ Master words to unlock mining' : '🔨 Craft some words first ✨',
+      ),
       el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
     );
-    sentenceEl.textContent = 'Craft a few words to fill your mine — then come dig them for gems!';
+    sentenceEl.textContent = miningLocked
+      ? 'Mining unlocks once you’ve MASTERED enough words — draw them in Mastery! ✍️'
+      : 'Craft a few words to fill your mine — then come dig them for gems!';
     return screen;
   }
 

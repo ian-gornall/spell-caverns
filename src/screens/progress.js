@@ -6,34 +6,16 @@
 // Buckets are display-only — never a gate.
 import { el, header, toast } from '../ui.js';
 import { summary, lapsedWords } from '../engine/progress.js';
+import { categorySummary } from '../engine/categories.js';
+import { byRank } from '../engine/lexicon.js';
 import { dailyQuests, questProgress, allQuestsDone } from '../engine/quests.js';
 import { catalogSummary } from '../engine/catalog.js';
 
 export function progressScreen(ctx) {
-  const sum = summary(ctx.state.tracker);
-  const { known, learning, shaky, tracked } = sum.counts;
-  const total = Math.max(1, tracked);
-  const pct = (n) => `${(n / total) * 100}%`;
   const crackedWords = lapsedWords(ctx.state.tracker);
   const cracked = crackedWords.length;
   const streak = ctx.state.streak || {};
   const records = ctx.state.records || {};
-
-  const spectrum = el(
-    'div',
-    { class: 'spectrum' },
-    el('span', { class: 'known', style: { width: pct(known) } }),
-    el('span', { class: 'learning', style: { width: pct(learning) } }),
-    el('span', { class: 'shaky', style: { width: pct(shaky) } }),
-  );
-
-  const legend = el(
-    'div',
-    { class: 'legend' },
-    el('span', {}, el('i', { style: { background: 'var(--emerald)' } }), `Mastered (${known})`),
-    el('span', {}, el('i', { style: { background: 'var(--amethyst)' } }), `Learning (${learning})`),
-    el('span', {}, el('i', { style: { background: 'var(--slate)' } }), `Tricky (${shaky})`),
-  );
 
   // recent-days accuracy strip
   const byDay = ctx.state.stats.byDay || {};
@@ -89,28 +71,9 @@ export function progressScreen(ctx) {
           ),
         ),
       ),
+      wordsPanel(ctx, cracked),
       cavernMap(ctx),
       questsPanel(ctx),
-      el(
-        'div',
-        { class: 'panel' },
-        el('h3', {}, `Words explored (${tracked})`),
-        spectrum,
-        legend,
-        cracked > 0 &&
-          el(
-            'div',
-            { class: 'tricky' },
-            ...crackedWords.slice(0, 12).map((w) => el('span', { class: 'tricky-word' }, w)),
-            cracked > 12 && el('span', { class: 'tricky-word more' }, `+${cracked - 12}`),
-          ),
-        cracked > 0 &&
-          el(
-            'button',
-            { class: 'btn', style: { marginTop: '14px', width: '100%' }, onClick: () => ctx.nav('puzzle', { review: true }) },
-            `🔧 Repair ${cracked} cracked crystal${cracked === 1 ? '' : 's'}`,
-          ),
-      ),
       el(
         'div',
         { class: 'panel' },
@@ -136,6 +99,54 @@ export function progressScreen(ctx) {
       catalogPanel(ctx),
       specimenPanel(ctx),
     ),
+  );
+}
+
+// §30 kid-visible category view: the "Words I'm learning" working set (each with a 2-step
+// progress toward KNOWN) + a known / mastered / new-remaining tally. The `tricky` bucket is
+// GROWN-UP-ONLY (never shown here) — a child never sees a "tricky/hard" label on their words.
+function wordsPanel(ctx, cracked) {
+  const pool = byRank().filter((w) => w.word.length >= 3);
+  const s = categorySummary(ctx.state.categories, pool);
+  const learnList = s.learning.length
+    ? el(
+        'div',
+        { class: 'learn-grid' },
+        ...s.learning.map((w) =>
+          el(
+            'div',
+            { class: 'learn-word' },
+            el('span', { class: 'learn-text' }, w.word),
+            el(
+              'div',
+              { class: 'learn-pips' },
+              ...Array.from({ length: w.needed }, (_, i) => el('span', { class: 'pip' + (i < w.steps ? ' on' : '') })),
+            ),
+          ),
+        ),
+      )
+    : el('p', { style: { color: 'var(--ink-dim)' } }, 'Craft some words to start your learning set! 🔨');
+
+  const tile = (ic, n, label) =>
+    el(
+      'div',
+      { class: 'stat', style: { flexDirection: 'column' } },
+      el('span', { class: 'big-num' }, `${ic} ${n}`),
+      el('span', { style: { color: 'var(--ink-dim)' } }, label),
+    );
+
+  return el(
+    'div',
+    { class: 'panel' },
+    el('h3', {}, 'Words I’m learning'),
+    learnList,
+    el('div', { class: 'seg', style: { marginTop: '12px' } }, tile('🌱', s.known, 'known'), tile('⭐', s.mastered, 'mastered'), tile('✨', s.newRemaining, 'new to find')),
+    cracked > 0 &&
+      el(
+        'button',
+        { class: 'btn', style: { marginTop: '14px', width: '100%' }, onClick: () => ctx.nav('puzzle', { review: true }) },
+        `🔧 Repair ${cracked} word${cracked === 1 ? '' : 's'} you missed`,
+      ),
   );
 }
 

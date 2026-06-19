@@ -574,6 +574,12 @@ button.quest {
   background: linear-gradient(150deg, #8a6a1f55, #2a2350);
   border-color: #ffd23f66;
 }
+/* §30 a not-yet-unlocked mode (e.g. Practice/mining before [set size] mastered): dimmed so
+   it reads as "coming soon", but still tappable so the kid can see how to unlock it. */
+.menu-card.locked {
+  opacity: 0.6;
+  filter: saturate(0.6);
+}
 /* Repair is a full-width amber call-to-action banner when there are cracked words
    (keeps the home grid balanced + gives "fix your misses" real prominence). */
 .menu-card.repair {
@@ -1055,6 +1061,41 @@ button.quest {
   gap: 12px;
   justify-content: center;
   flex-wrap: wrap;
+}
+
+/* §30 Progress: the kid-visible "Words I'm learning" set (2-step pips toward known). */
+.learn-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.learn-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, #2a3a78, #1b2350);
+  border: 1px solid #ffffff14;
+}
+.learn-text {
+  font-weight: 700;
+  text-transform: lowercase;
+}
+.learn-pips {
+  display: inline-flex;
+  gap: 4px;
+}
+.learn-pips .pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ffffff22;
+  box-shadow: inset 0 0 0 1px #ffffff1f;
+}
+.learn-pips .pip.on {
+  background: var(--emerald, #2bb673);
+  box-shadow: 0 0 8px rgba(43, 182, 115, 0.7);
 }
 
 /* ------- crystal lab ------- */
