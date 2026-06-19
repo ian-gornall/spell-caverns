@@ -45,7 +45,10 @@
 // v21: final §A polish loop — onboarding "Let's dig!" sticky CTA gets a full-bleed footer
 //      backdrop (cards fade behind it, no longer peek around the pill); more breathing room
 //      between the craft verdict flash and the answer tiles on short phones.
-const VERSION = 'csc-v21';
+// v22: pre-generated neural-TTS audio now SHIPS (audio/ committed, was git-ignored so prod
+//      served the robotic device voice); optional daily-reminder Web Push (src/push.js +
+//      sw push/notificationclick handlers + worker.js /api/push + scheduled sender).
+const VERSION = 'csc-v22';
 
 const CORE = [
   '/',
@@ -59,8 +62,10 @@ const CORE = [
   '/src/ui.js',
   '/src/state.js',
   '/src/audio.js',
+  '/src/push.js',
   '/src/pwa.js',
   '/src/version.js',
+  '/src/engine/pushconfig.js',
   '/src/engine/lexicon.js',
   '/src/engine/distractors.js',
   '/src/engine/praise.js',
@@ -110,6 +115,51 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'GET_VERSION') {
     event.ports[0] && event.ports[0].postMessage({ version: VERSION });
   }
+});
+
+// Daily-reminder Web Push (opt-in; see src/push.js + worker.js). The payload is the JSON the
+// Worker encrypted ({ title, body, url }); show it as a notification. userVisibleOnly means we
+// MUST show something, so we fall back to generic copy if the payload is missing/garbled.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title = data.title || 'Crystal Spell Caverns';
+  const options = {
+    body: data.body || 'Your daily geode is ready to open! 💎',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    tag: data.tag || 'daily-geode',
+    renotify: true,
+    data: { url: data.url || '/' },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Tapping the notification focuses an open app window, or opens one.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of all) {
+        if ('focus' in client) {
+          try {
+            await client.navigate(target);
+          } catch {
+            /* cross-origin or unsupported — just focus */
+          }
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+      return undefined;
+    })(),
+  );
 });
 
 self.addEventListener('activate', (event) => {

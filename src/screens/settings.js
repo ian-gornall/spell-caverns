@@ -6,6 +6,7 @@
 // one explains how to unlock it rather than doing nothing.
 import { el, header, toast, applyTheme, applyReadable, picturePad } from '../ui.js';
 import * as audio from '../audio.js';
+import * as push from '../push.js';
 import * as sync from '../cloud_sync_backend.js';
 import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
 import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
@@ -442,6 +443,85 @@ export function settingsScreen(ctx) {
     { class: 'btn ghost', style: { marginTop: '10px' }, onClick: () => audio.say('Hello! Ready to spell some words?') },
     '🔊 Test voice',
   );
+
+  // --- Daily reminder (opt-in Web Push) -----------------------------------------
+  // A gentle once-a-day "your geode is ready" nudge. Off by default; a grown-up turns it on,
+  // which prompts the OS for notification permission and subscribes via the service worker
+  // (see src/push.js + worker.js). Unsupported browsers (e.g. an iOS tab that isn't installed
+  // to the Home Screen) just show a hint instead of a broken toggle.
+  const reasonMsg = {
+    denied: 'Allow notifications for this app in your device settings, then try again.',
+    unsupported: 'Add the app to your Home Screen first, then reminders can be turned on.',
+    'no-sw': 'Reminders need the installed app — try reopening it from your Home Screen.',
+    server: 'Couldn’t reach the reminder service. Try again later.',
+    error: 'Couldn’t turn on reminders just now.',
+  };
+  const remindersField = push.isSupported()
+    ? el(
+        'div',
+        { class: 'field' },
+        el('label', {}, 'Daily reminder'),
+        el('p', { class: 'field-hint' }, 'A friendly once-a-day nudge to open the daily geode and keep the streak going.'),
+        el(
+          'div',
+          { class: 'seg' },
+          el(
+            'button',
+            {
+              class: s.reminders ? 'on' : '',
+              onClick: async (e) => {
+                e.currentTarget.disabled = true;
+                const r = await push.enable();
+                if (r.ok) {
+                  s.reminders = true;
+                  apply();
+                  toast('Daily reminder on 💎');
+                } else {
+                  toast(reasonMsg[r.reason] || reasonMsg.error);
+                }
+                ctx.nav('settings');
+              },
+            },
+            '🔔 On',
+          ),
+          el(
+            'button',
+            {
+              class: !s.reminders ? 'on' : '',
+              onClick: async () => {
+                await push.disable();
+                s.reminders = false;
+                apply();
+                toast('Reminder off');
+                ctx.nav('settings');
+              },
+            },
+            'Off',
+          ),
+        ),
+        s.reminders
+          ? el(
+              'button',
+              {
+                class: 'btn ghost',
+                style: { marginTop: '10px' },
+                onClick: async (e) => {
+                  e.currentTarget.disabled = true;
+                  const r = await push.sendTest();
+                  toast(r.ok ? 'Sent! Check your notifications 🔔' : 'Couldn’t send a test just now.');
+                  ctx.nav('settings');
+                },
+              },
+              '🔔 Send a test',
+            )
+          : null,
+      )
+    : el(
+        'div',
+        { class: 'field' },
+        el('label', {}, 'Daily reminder'),
+        el('p', { class: 'field-hint' }, 'Add the app to your Home Screen on a supported device to enable a gentle daily reminder.'),
+      );
 
   // --- Parents & Privacy: backup / restore / delete + a plain-language data note ---
   // All data lives on THIS device. A "backup" is a file the PARENT keeps in their own
@@ -919,6 +999,7 @@ export function settingsScreen(ctx) {
         el('div', { class: 'field' }, el('label', {}, 'Voice speed'), rateSeg),
         el('div', { class: 'field' }, el('label', {}, 'Volume'), vol),
         el('div', { class: 'field' }, el('label', {}, 'Voice choice'), voicePicker, testVoiceBtn),
+        remindersField,
       ),
       el(
         'div',

@@ -86,17 +86,33 @@ QA'd** (see §24). What's done this session:
    "Who's playing?"), an optional grown-up password gate over the Parents panel, and a snapshot
    **Time machine** (rollback). All wired to the pre-existing tested engine helpers.
 
-**The ONLY remaining items are user-gated / external — an agent cannot complete them safely:**
-- 🔑 **Rotate the Gemini API key** — the repo is verified **key-free** (no `AIza…` / key in any
-  tracked file; `gen_audio.mjs` reads `GEMINI_API_KEY` from env). Rotation itself is a **user
-  action** in Google AI Studio (the key was only ever pasted in chat). **Action: Ian rotates it.**
-- 🔊 **Regenerate the remaining audio clips (722/2949)** — uses the **paid Gemini TTS quota**, which
-  the standing rule [[approval-before-consuming-limits]] forbids spending without explicit per-run
-  OK. The app already falls back to the device Web-Speech voice, so it is fully functional today.
-  **Action: Ian approves a run, then `GEMINI_API_KEY=… npm run gen:audio` (batches ~30/run).**
-- 🔔 **Web push** — needs VAPID keys + push endpoints on the Worker + an OS notification opt-in the
-  user must grant. The in-app "welcome back" re-engagement nudge (§17.A) already covers the MVP.
-  **Action: only if Ian wants true off-device reminders; requires his infra/opt-in.**
+**§25 — 2026-06-19 (csc-v22): the long-deferred user-gated items, now done where an agent can.**
+- 🔑 **Gemini key rotated** by Ian (his Google action). Repo stays key-free (`gen_audio.mjs` reads
+  `GEMINI_API_KEY` from the git-ignored `.env`).
+- 🔊 **Audio NOW SHIPS to prod.** Root cause of the silent-on-prod bug: `audio/` was git-ignored, but
+  prod builds via **Git-CD from the repo**, so the build never saw the clips (manifest 404 → every
+  user got the robotic device voice). Fix: **un-git-ignored `audio/` and committed the clips**
+  (`audio/_oneshot/` scratch stays ignored). Generated up to **1678 words + 32 phrases** (the
+  frequency-TOP words — the ones actually dictated most); the free-tier preview-TTS models cap at
+  ~3 req/min so the tail (~1271 least-frequent words) walled. The runtime already falls back to the
+  device voice for any word without a clip, so this is purely additive. **To finish the tail:** enable
+  billing on the Gemini project then `npm run gen:audio` once (≈$1–3, ~1hr), OR re-run free on later
+  days (it skips done clips). [[approval-before-consuming-limits]] still applies to the paid path.
+- 🔔 **Web push BUILT + runtime-validated** (deploy is account-gated). RFC 8291 (`aes128gcm`) + RFC
+  8292 (VAPID) in `src/engine/webpush.js` on WebCrypto (runs on Workers AND `node --test`);
+  `test/webpush.test.js` reproduces the RFC 8291 Appendix-A vector **byte-for-byte** (+ round-trip +
+  JWT verify). Wired: Settings "Daily reminder" opt-in + "Send a test" (`src/push.js`), SW
+  `push`/`notificationclick`, Worker `/api/push/subscribe` + `/api/push/test` + daily `scheduled()`
+  sender, cron `0 16 * * *` (`wrangler.toml`). Subs reuse `FAMILY_SYNC` KV under a `push:` prefix.
+  Validated end-to-end in local `workerd` (encrypt + VAPID sign run; routes return correctly).
+  **Ian's two steps to go live: `wrangler secret put VAPID_PRIVATE` (value in `.env`) + deploy — see
+  `PUSH_SETUP.md` — then verify on a real installed PWA (iOS 16.4+ Home-Screen app).**
+- 📄 **Design + engine-migration research** delivered: `DESIGN_ANALYSIS.md` (pro UX critique vs
+  best-in-class, cited) and `ENGINE_MIGRATION.md` (verdict: **stay vanilla**, upgrade assets/feel;
+  PixiJS v8 / Phaser 4 only if a renderer is ever justified). Both built from live exploratory QA.
+
+**Still genuinely user-gated (agent cannot do):** finish the audio tail on the paid quota (above);
+the two `wrangler` push-deploy steps + real-device push verification (above).
 
 Build **test-first where it's pure**, keep `npm test` green (a **PreToolUse gate runs `npm test`
 before Bash**), **follow `QA.md` (interactive view-as-you-go QA) before shipping major UI**,

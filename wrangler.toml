@@ -19,6 +19,13 @@ binding = "ASSETS"
 
 # Family-sync storage (worker.js handleSync, engine/cloudsync reconcile). Namespace created
 # 2026-06-18 via `wrangler kv namespace create FAMILY_SYNC`. Git deploys honour this binding.
+# ALSO holds opt-in Web-Push subscriptions under the "push:" key prefix (worker.js handlePush).
 [[kv_namespaces]]
 binding = "FAMILY_SYNC"
 id = "8646bafb7f3c43a28808b93b8007ce4d"
+
+# Daily-reminder Web Push (worker.js scheduled() → sendDailyReminders). 16:00 UTC ≈ after
+# school in the UK. Needs the VAPID_PRIVATE secret (`wrangler secret put VAPID_PRIVATE`);
+# until that's set scheduled() is a safe no-op. See PUSH_SETUP.md.
+[triggers]
+crons = ["0 16 * * *"]
