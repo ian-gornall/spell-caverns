@@ -149,7 +149,9 @@ export function onboardingScreen(ctx) {
       mascot('Where should we start?'),
       el('p', { class: 'field-hint', style: { maxWidth: '460px' } }, "Pick the words that look about right — the game finds the ones you don't know yet and adjusts."),
       cards,
-      el('button', { class: 'btn primary onboard-go', onClick: firstRun ? syncStep : ready }, "Let's dig! →"),
+      // `level-cta` makes this button STICKY to the bottom on phones (CSS) so it stays visible
+      // while the 9 level cards scroll — otherwise the CTA sits below the fold on a phone.
+      el('button', { class: 'btn primary onboard-go level-cta', onClick: firstRun ? syncStep : ready }, "Let's dig! →"),
     );
     audio.say(line);
   }

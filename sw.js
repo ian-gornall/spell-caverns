@@ -34,7 +34,9 @@
 // v17: PWA UPDATE FLOW — registration moved to src/pwa.js (updateViaCache:none + update on
 //      foreground + reload-on-controllerchange) so installed apps (Android) pick up deploys
 //      without a reload button; visible app/cache VERSION in Settings (GET_VERSION below).
-const VERSION = 'csc-v17';
+// v18: phone exploratory-QA fixes — compact home hero (whole menu fits a phone, was 4/7 cards
+//      below the fold), sticky onboarding "Let's dig!" CTA, compact level cards. CSS+onboarding.
+const VERSION = 'csc-v18';
 
 const CORE = [
   '/',

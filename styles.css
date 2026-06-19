@@ -131,35 +131,6 @@ body {
   }
 }
 
-/* Phones: the in-game header is back-button + title + gem/depth chips. At iPad size the
-   chips fit, but on a phone the two full-size pills run the "Depth N" chip off the right
-   edge. Shrink the pills (and let the title ellipsize) so the header always fits. */
-@media (max-width: 480px) {
-  .app-header {
-    gap: 8px;
-    padding: 4px 2px 12px;
-  }
-  .header-title {
-    font-size: 1.1rem;
-  }
-  .header-stats {
-    gap: 6px;
-  }
-  .stat {
-    padding: 6px 10px;
-    font-size: 0.9rem;
-    gap: 5px;
-  }
-  .stat .icon {
-    font-size: 1rem;
-  }
-  /* drop the "Depth" word on phones (the ⛏️ icon + number is enough) so the title has
-     room and never has to ellipsize on the common short screens. */
-  .depth-word {
-    display: none;
-  }
-}
-
 /* ------- buttons ------- */
 button {
   font-family: inherit;
@@ -2019,5 +1990,111 @@ html.readable .crystal-name {
   * {
     animation-duration: 0.001s !important;
     transition-duration: 0.001s !important;
+  }
+}
+
+/* ============================================================================
+   PHONE OVERRIDES (≤480px). Placed LAST so they win over the iPad-tuned base
+   rules above (a media query adds no specificity, so source order decides). The
+   app was laid out at iPad proportions; these compact the header, home hero, and
+   level cards so a phone isn't top-heavy with content shoved below the fold.
+   ============================================================================ */
+@media (max-width: 480px) {
+  /* In-game header: shrink the gem/depth pills + drop the "Depth" word so the title
+     never clips and the depth chip can't run off the right edge. */
+  .app-header {
+    gap: 8px;
+    padding: 4px 2px 12px;
+  }
+  .header-title {
+    font-size: 1.1rem;
+  }
+  .header-stats {
+    gap: 6px;
+  }
+  .stat {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    gap: 5px;
+  }
+  .stat .icon {
+    font-size: 1rem;
+  }
+  .depth-word {
+    display: none;
+  }
+
+  /* Home: the hero (title + welcome + streak/goal) ate ~40% of a phone screen, pushing 4
+     of 7 menu cards below the fold. Compact the hero + cards so the whole menu fits. */
+  .home-hero {
+    padding: 4px 0 2px;
+  }
+  .home-title {
+    font-size: clamp(1.5rem, 6.5vw, 2rem);
+    letter-spacing: 0;
+  }
+  .home-sub {
+    font-size: 0.95rem;
+    margin-top: 4px;
+  }
+  .home-streak {
+    margin-top: 9px;
+    gap: 7px;
+  }
+  .streak-chip {
+    padding: 5px 12px;
+    font-size: 0.9rem;
+  }
+  .home-grid {
+    gap: 10px;
+  }
+  .menu-card {
+    min-height: 84px;
+    border-radius: 22px;
+    padding: 12px 16px;
+    gap: 3px;
+  }
+  .menu-card.play {
+    min-height: 100px;
+  }
+  .menu-card.repair {
+    min-height: 70px;
+  }
+  .menu-card .ic {
+    font-size: 1.9rem;
+  }
+  .menu-card .lbl {
+    font-size: 1.2rem;
+  }
+  .menu-card .desc {
+    font-size: 0.88rem;
+  }
+
+  /* Level select (onboarding + Settings): 9 cards (one per tier) are tall on a phone —
+     compact each so far less scrolling is needed to reach them + the CTA. */
+  .level-card {
+    padding: 9px 12px;
+  }
+  .level-label {
+    font-size: 1rem;
+  }
+  .level-examples {
+    font-size: 0.88rem;
+  }
+  .level-age {
+    font-size: 0.78rem;
+  }
+
+  /* Onboarding "Let's dig!" — pin it to the bottom of the scroll area so it's always
+     reachable while the 9 level cards scroll behind it (it otherwise fell below the fold).
+     The opaque button + a bg-coloured halo keep it readable over the scrolling cards. */
+  .onboarding .level-cta {
+    position: sticky;
+    bottom: 8px;
+    z-index: 3;
+    margin-top: 6px;
+    box-shadow:
+      0 0 0 10px var(--bg-0),
+      0 10px 26px -6px rgba(0, 0, 0, 0.85);
   }
 }

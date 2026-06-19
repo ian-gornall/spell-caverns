@@ -30,10 +30,11 @@
   `node scripts/build_deploy.mjs` → publishes `deploy/`; functions in `netlify/functions`).
 - `npm test` = **180 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
   `node scripts/qa.mjs` = 0 console/JS errors; `node scripts/qa_responsive.mjs` = 0 horizontal
-  overflow at 7 viewports (360–820px). sw VERSION **csc-v17** (bump on any precached change —
-  AND bump `src/version.js` `APP_VERSION` to match; Settings shows both).
-- ✅ §22 (learning-model rework) + the phone/PWA responsive fix + the PWA update-flow/version
-  fix are all **pushed and LIVE** (csc-v17).
+  overflow at 7 viewports (360–820px). sw VERSION **csc-v18** (bump on any precached change —
+  AND bump `src/version.js` `APP_VERSION` to match; Settings shows both). **Before major UI
+  changes, follow `QA.md`** (interactive view-as-you-go QA + the phone device matrix).
+- ✅ §22 + the phone/PWA responsive fix + PWA update-flow + the phone exploratory-QA pass are
+  all **pushed and LIVE** (csc-v18).
 
 **What exists**
 - **Data:** `data/words.js` = 2,919 frequency-ordered words (ages 5–13), 63 pattern families;
@@ -1327,6 +1328,21 @@ message handler; `src/version.js` (new) holds `APP_VERSION`; Settings → Parent
 mismatch). Netlify already serves `sw.js`/`index.html` `no-cache` and modules `must-revalidate`.
 **KEEP `src/version.js` APP_VERSION == `sw.js` VERSION on every deploy.** A device stuck on a
 pre-fix SW may need ONE extra full close+reopen to cross over to the auto-updating build.
+
+### Phone exploratory-QA pass (deployed csc-v18) + a QA STANDARD
+User: UI "still jank on a phone," and asked for real interactive QA (act→screenshot→LOOK→
+decide), documented as a standard before major ships. Built a live-session harness
+(`scripts/qa_session.mjs` = persistent CDP browser; `scripts/qa_do.mjs` = drive it one step at
+a time, screenshots to `scripts/qa/live/`) and walked the app as a user. **Found + fixed:**
+(1) home hero was tuned at iPad size and ate ~40% of a phone screen, pushing 4 of 7 menu cards
+below the fold — compacted the hero/title/cards so the whole menu fits (scroll need 397px→47px);
+(2) onboarding "Let's dig!" CTA sat below the 9 level cards on a phone — made it **sticky** to
+the bottom; (3) compacted level cards. **CSS gotcha that bit us:** phone overrides must live in
+ONE `@media (max-width:480px)` block at the END of `styles.css` (a media query adds no
+specificity, so a phone override placed before its base rule silently loses). The full QA
+process is now written up in **`QA.md` — read + follow it before shipping major UI changes.**
+Limitation: headless Chromium can't reproduce iOS/Android standalone (notch/safe-area) — for
+device-specific reports, get a screenshot from the real phone.
 
 ### Still DEFERRED (unchanged from §20 — the next job)
 Kid-lock setter UI, parent-password zone, snapshot-rollback UI (all have data + tested helpers;
