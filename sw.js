@@ -39,7 +39,10 @@
 // v19: pedagogy rebalance (§B) — CRAFT is now the home hero + best-paying path (CRAFT_MULT gems)
 //      + the nudged-toward action (idle route + mining-reward CTA steer to craft); mining reframed
 //      as "Practice". Word-discovery (§D): surface once-crafted words for a quick proof follow-up.
-const VERSION = 'csc-v19';
+// v20: daily GEODE (§C: tap-to-open + ratcheting harder goals); App-Store polish (§A: craft crystal
+//      sockets, level depth-ladder, card depth, play-body top-clip fix, treasure-tile haul, colour
+//      halo); deferred parental UI now built (kid-lock picture password, grown-up gate, time machine).
+const VERSION = 'csc-v20';
 
 const CORE = [
   '/',

@@ -5,4 +5,4 @@
 // next to the SERVICE-WORKER cache version (see pwa.js / sw.js): if they differ, the PWA
 // is serving a stale cache and an update is pending. KEEP THIS IN SYNC WITH sw.js VERSION
 // on every deploy (bump both together).
-export const APP_VERSION = 'csc-v19';
+export const APP_VERSION = 'csc-v20';
