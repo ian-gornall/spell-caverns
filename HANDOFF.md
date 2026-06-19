@@ -190,19 +190,21 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 > on phones** (the §29 `qa_overflow.mjs` / `qa_galaxy.mjs` guards must stay green). iPad is still
 > the primary viewport.
 
-**A. Word categories + the state machine (the backbone — see OPEN QUESTIONS).**
-Categories: **new/unseen → learning → known → mastered**, plus **tricky** (struggled/regressed).
+**A. Word categories + the state machine (CLARIFIED 2026-06-19d).**
+Categories: **new/unseen → learning → known → mastered**, plus **tricky** (a demotion/overflow bucket).
 - **Learning = a fixed working set of exactly 10** words the student does NOT yet know. Always
-  kept at 10: when a word leaves learning (→known), a new word enters; when a word **regresses**,
-  move one **learning → tricky** (so still 10 in learning at all times).
-- **Known** = believed-known from CRAFT (successfully spelled in craft). Eligible for MINING.
-- **Mastered** = a NEW category set ONLY by results in the new MASTERY (draw) mode. Once a word is
-  **mastered it may appear again in ALL modes**.
-- **Tricky** = words that moved backwards / are hardest. Early on we want to **quickly establish a
-  balanced 10 known + 10 learning + 10 tricky**, then keep discovering more known/unknown over time
-  while **repeatedly practising the learning set until those words move to known**.
-- **Settings display:** show **at most 10 "learning in progress"**; the rest are mastered or tricky
-  (and known). (Exact display layout = OPEN QUESTION.)
+  kept at 10: when a word leaves learning (→known), another word takes its slot.
+- **Known** = a word crafted correctly **twice in a row** in CRAFT. (A miss sends it back to learning.)
+  Known words are eligible for MINING (once mining is unlocked).
+- **Mastered** = a known word with **one success in the new MASTERY (draw) mode**. (A miss sends it
+  back to known.) Mastered is set ONLY by mastery-mode results; a mastered word may appear in **all
+  modes** again.
+- **Tricky** = words that were in learning but had to be **moved out to keep learning at exactly 10**:
+  the **hardest / lowest-accuracy** words, evicted when the student is **demoted a level** OR when
+  there are already >10 in learning. (So tricky is the demotion/overflow pool, NOT a proactive target.
+  The "10 known / 10 learning / 10 tricky" balance emerges from play, it isn't forced.)
+- **Settings display:** show **at most 10 "learning in progress"**; the rest are mastered / known /
+  tricky. (Exact panel layout still to confirm.)
 
 **B. CRAFT mode = the productive-struggle hub (fix it).** Today craft only serves words the student
 does NOT know. Change it to balance **known / learning / tricky** in the productive-struggle zone,
@@ -213,39 +215,48 @@ priority. When a learning word becomes known, a different word rotates into lear
   if not pressed — and still costs gems.
 
 **C. MINING mode (recognition) = known-words only + slower, less-pressured.**
-- Only serves words that have been **successfully spelled in CRAFT** (i.e. known). 
-- **Unlocked only after the student has mastered/known 10 words in craft** (a "set").
+- Only serves **known** words (crafted correctly 2× in a row).
+- **Unlocked only after [set size] words are MASTERED** (i.e. via the draw mode — NOT merely known;
+  Ian corrected this: the *mastered* count opens mining). So the unlock chain is **Craft (open from
+  start) → Mastery (after [set size] KNOWN) → Mining (after [set size] MASTERED).**
 - **Timer is too pressured now.** Make the bar **start draining earlier but MUCH slower** — give
   ~**5 seconds** to respond before it bottoms out (reaching the bottom still has value as it does
   today). Goal: the student actually considers all options before answering.
 
-**D. Adaptive level (auto up/down).** The student picks a starting level, but the game **adapts up
-or down based on performance** on that level. **Doing poorly → push DOWN a level.** The near-term
-aim is to rapidly reach the balanced **10 known / 10 learning / 10 tricky**, then evenly discover
-more known/unknown as they progress, while continuously re-practising the learning set.
+**D. Adaptive level (auto up/down) — "medium" aggressiveness (Ian).** The student picks a starting
+level, but the game **adapts up or down based on performance** on that level. **Doing poorly → push
+DOWN a level.** Use a MEDIUM cadence (not hair-trigger, not glacial — e.g. move after a short run of
+clearly-strong or clearly-weak results). The near-term aim is to rapidly reach a balanced working
+set, then evenly discover more known/unknown while continuously re-practising the learning set.
 
 **E. 🆕 MASTERY mode = draw the letters (the new headline).** The student spells a word **without
 choosing from given letters** — they **DRAW each letter** on screen; the app offers a few
 **high-confidence letter matches** to what they drew (pick one) **or redraw**. The spelling
 **populates one letter at a time** as each drawn letter is confirmed. This is the **mastery** test.
-- **Unlocks only once there are words believed "known"** from craft (a set of 10 known, or a
-  configurable set size).
-- **"Mastered" is determined ONLY by results in this mode.** A mastered word may then reappear in
-  all modes.
-- Needs on-screen handwriting → letter recognition (FREE/low-cost; offline-friendly). Approach =
-  OPEN QUESTION (template/stroke matching vs a tiny model vs a lib).
+- **Unlocks after [set size] words are KNOWN** from craft.
+- **One draw-mode success = mastered**; a miss drops the word back to known. **"Mastered" is set
+  ONLY here.** A mastered word may then reappear in all modes.
+- Recognition must be **FREE and OFFLINE** (Ian confirmed). Implement with on-device stroke/template
+  matching (no cloud, no paid API); offer a few high-confidence letter candidates → pick or redraw.
 
 **F. Constraints.** iPad-primary; **no horizontal-scroll regressions on phones** (keep §29 guards
 green). Stay vanilla / dependency-free where possible; flag any dep ([[prefer-free-services]]).
 
-**OPEN QUESTIONS for Ian (asking one at a time, in the chat):**
-1. "Tricky" semantics — proactive hard-words pool, demotion bucket, or both? (asked first)
-2. Exact thresholds: #correct-in-craft → known; #success-in-mastery → mastered; #misses → regress.
-3. Is the "set size" (10) configurable, and does it gate mining (10 known) and mastery (10 known)?
-4. Settings display layout for the categories.
-5. Mastery-mode handwriting-recognition approach (free/low-cost options).
-6. Adaptive-level granularity (the 9 tiers) + how fast to move up/down.
-> (Answers will be folded into this section as they arrive, then built test-first.)
+**ANSWERED (2026-06-19d):** ✅ tricky = demotion/overflow bucket (hardest words evicted to keep
+learning at 10, on demotion or overflow). ✅ known = 2 correct crafts in a row (miss → learning);
+mastered = 1 draw success (miss → known). ✅ unlock chain Craft→Mastery(after set-size known)→
+Mining(after set-size mastered). ✅ mastery recognition = free + offline (on-device stroke/template
+match). ✅ adaptive cadence = medium.
+
+**STILL OPEN (asking one at a time, NO answer choices per Ian):**
+- Default **set size** (10?) and whether it's a grown-up-configurable setting.
+- When a learning slot frees up (a word → known), what fills it — a NEW unseen word, a previously-
+  demoted TRICKY word, or a mix — and do tricky words ever cycle back into learning?
+- **Hint economy**: gem cost per hint + the auto-fire delay (and whether cost scales).
+- **Mining timer** exact numbers (drain start + ~5s window) and whether it's per-difficulty.
+- **Mastery draw UX**: how many candidate letters to offer; behaviour on low-confidence / redraw.
+- **Settings/category display** layout for a grown-up.
+> (Answers folded in as they arrive, then built test-first.)
 
 ---
 
