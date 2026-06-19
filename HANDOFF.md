@@ -29,8 +29,9 @@
 - Auto-deploys from **github.com/ian-gornall/spell-caverns** (`main`) via Netlify CD (build =
   `node scripts/build_deploy.mjs` → publishes `deploy/`; functions in `netlify/functions`).
 - `npm test` = **180 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
-  `node scripts/qa.mjs` = 0 console/JS errors. sw VERSION **csc-v15** (bump on any precached change).
-- ⚠️ **UNPUSHED**: §22 (this session) is committed locally but NOT yet pushed. `git push` to deploy.
+  `node scripts/qa.mjs` = 0 console/JS errors; `node scripts/qa_responsive.mjs` = 0 horizontal
+  overflow at 7 viewports (360–820px). sw VERSION **csc-v16** (bump on any precached change).
+- ✅ §22 (learning-model rework) + the phone/PWA responsive fix are **pushed and LIVE** (csc-v16).
 
 **What exists**
 - **Data:** `data/words.js` = 2,919 frequency-ordered words (ages 5–13), 63 pattern families;
@@ -1300,6 +1301,18 @@ qa green, **180 tests**. **NOT pushed yet** — `git push` to deploy (sw **csc-v
   chosen-level-led ordering, target reserve, `buildFirstWave` level + starvation). New probe
   `scripts/qa_levels.mjs` (9-level select + first-wave level + Settings control) kept as a
   regression check; screenshots in `scripts/qa/levels-*.png`.
+
+### Phone/PWA responsive fix (after §22, deployed csc-v16)
+User reported the installed PWA "doesn't look right on my phone." A multi-resolution QA pass
+(new `scripts/qa_responsive.mjs`, 7 viewports 360–820px) found the in-game header clipped the
+**"Depth N"** chip off the right edge on every phone (≤430px), and the Settings level grid used
+`94vw` so it overflowed the panel padding. Fixed in `styles.css` + `ui.js`: `.header-title`
+shrinks (min-width:0 + ellipsis); a `@media (max-width:480px)` shrinks the gem/depth pills and
+hides the word "Depth" (⛏️ + number remains); `.level-grid` is `width:100%`/`max-width:520px`.
+iPad (design target) unchanged. 0 overflow at every tested size. (Caveat: headless Chromium can't
+reproduce iOS safe-area insets — `#app` already pads with `env(safe-area-inset-*)` + viewport-fit
+cover, so the notch is handled; if the kid still sees a notch issue on the real device, that's the
+next thing to check on-device.)
 
 ### Still DEFERRED (unchanged from §20 — the next job)
 Kid-lock setter UI, parent-password zone, snapshot-rollback UI (all have data + tested helpers;
