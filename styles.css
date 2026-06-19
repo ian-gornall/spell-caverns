@@ -1349,6 +1349,45 @@ select {
   font-weight: 800;
 }
 
+/* "Your haul" treasure tiles (§A): the gems/depth/streak stats read like loot — each a
+   glowing gradient tile, not a flat pill — so Progress feels rewarding, not analytics. */
+.seg.haul {
+  gap: 12px;
+}
+.seg.haul .haul-tile {
+  flex: 1;
+  min-width: 92px;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 20px;
+  padding: 14px 10px;
+  text-align: center;
+  border: 1px solid var(--panel-border);
+  background: linear-gradient(160deg, #232d57, #1a2240);
+  box-shadow: 0 10px 26px -16px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.seg.haul .haul-tile.gem {
+  background: linear-gradient(160deg, #1d3a6b, #16244a);
+  border-color: #36f1cd55;
+}
+.seg.haul .haul-tile.depth {
+  background: linear-gradient(160deg, #2b2766, #1a1c40);
+  border-color: #9d8df155;
+}
+.seg.haul .haul-tile.streak {
+  background: linear-gradient(160deg, #4a2c1f, #2a1c30);
+  border-color: #ffae4255;
+}
+.seg.haul .big-num {
+  font-size: 2rem;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+.seg.haul .haul-label {
+  font-size: 0.82rem;
+  color: var(--ink-dim);
+  font-weight: 700;
+}
+
 /* ------- feedback ------- */
 .rating-row {
   display: flex;
