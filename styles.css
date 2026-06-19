@@ -1669,8 +1669,18 @@ select {
   opacity: 0.85;
 }
 .crystal-cell.owned .crystal-art {
-  animation: pop 0.5s ease;
+  /* pop once on collect, then a slow, subtle GLINT so an owned gem reads as alive/premium
+     (§26-B "feel" polish, dependency-free — no GSAP). Idle ~90% of the cycle; staggered by
+     nth-child below so the 24 specimens twinkle out of sync, not in a single coordinated flash. */
+  animation: pop 0.5s ease, crystal-glint 5.5s ease-in-out 0.6s infinite;
 }
+@keyframes crystal-glint {
+  0%, 86%, 100% { filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45)) brightness(1) saturate(1); }
+  93% { filter: drop-shadow(0 5px 14px rgba(255, 255, 255, 0.22)) brightness(1.2) saturate(1.12); }
+}
+.crystal-cell.owned:nth-child(3n+1) .crystal-art { animation-delay: 0.6s, 1.4s; }
+.crystal-cell.owned:nth-child(3n+2) .crystal-art { animation-delay: 0.6s, 3.1s; }
+.crystal-cell.owned:nth-child(4n) .crystal-art { animation-delay: 0.6s, 4.3s; }
 .crystal-name {
   font-size: 0.98rem;
   font-weight: 700;
@@ -2740,6 +2750,35 @@ html.readable .crystal-name {
 }
 .printable-sheet .lcwc-blank {
   min-width: 5.5em;
+}
+
+/* ============================================================================
+   REDUCED-MOTION (accessibility + professional polish). The app uses a lot of
+   decorative/looping motion (screen-in, breathe, glint, bob, geo-cheer, drift,
+   socket-glow, geode-shake, nudge-pulse…). Some kids — and the vestibular-
+   sensitive — set the OS "reduce motion" preference; honour it. We KEEP brief,
+   meaning-carrying feedback (the press/active scale, correct/wrong tile states)
+   but cut the looping ambience and the entrance animation to a near-instant
+   fade, so nothing pulses or drifts continuously. Placed LAST so it wins.
+   ============================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* kill INFINITE/decorative loops; leave short one-shot transitions intact */
+    animation-iteration-count: 1 !important;
+    animation-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* the screen entrance + appear pops should simply not move the layout */
+  .screen {
+    animation: none !important;
+  }
+  /* still allow the quick tactile press feedback (transform on :active) */
+  .crystal-cell.affordable,
+  .crystal-cell.owned .crystal-art {
+    animation: none !important;
+  }
 }
 
 /* Print: hide ALL app chrome, show only the sheet, full black-on-white. */

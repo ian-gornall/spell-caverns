@@ -72,7 +72,10 @@
 //      the default view is just the simple kid controls. settings.js + styles.css changed.
 // v29: clip overflow-x on the onboarding level-select scroller (.onboard-body) — its 9 level
 //      cards' shadows caused a ~3px phantom horizontal pan an overflow-y:auto box permits.
-const VERSION = 'csc-v29';
+// v30 (§26-B feel): subtle staggered GLINT on owned catalog crystals (dependency-free motion,
+//      no GSAP) + a global prefers-reduced-motion guard (was missing) that stills the looping
+//      ambience for vestibular-sensitive users. styles.css only.
+const VERSION = 'csc-v30';
 
 const CORE = [
   '/',
