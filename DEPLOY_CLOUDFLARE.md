@@ -23,8 +23,10 @@ Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to G
 to `main` now auto-builds — same workflow as before. You'll get a `*.pages.dev` URL; add the
 custom domain later if you want.
 
-Optional (leaner/faster builds): Pages → Settings → **Environment variables** → add
-`NODE_ENV = production` so the build skips devDependencies (playwright/lamejs are local-only).
+The project is **dependency-free** (`package.json` has no deps; `package-lock.json` is minimal),
+so Cloudflare's `npm ci` installs nothing and can't drift — the build is just `node
+scripts/build_deploy.mjs`. (Local-only tools install without touching the repo:
+`npm i --no-save playwright` for smoke/QA, `npm i --no-save @breezystack/lamejs` for audio gen.)
 
 ## 2. Turn on family sync (KV) — optional, only if you use cross-device sync
 

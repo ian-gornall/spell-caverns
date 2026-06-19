@@ -11,11 +11,5 @@
     "smoke": "node scripts/smoke.mjs",
     "gen:audio": "node scripts/gen_audio.mjs"
   },
-  "dependencies": {
-    "@netlify/blobs": "^10.7.9"
-  },
-  "devDependencies": {
-    "@breezystack/lamejs": "^1.2.7",
-    "playwright": "^1.61.0"
-  }
+  "comment": "Intentionally DEPENDENCY-FREE: the app has no bundler/runtime npm deps, the build (scripts/build_deploy.mjs) uses only Node built-ins, and the Cloudflare Pages Function imports only pure local code — so `npm ci` on the host installs nothing and can't drift. LOCAL-ONLY tools install without touching this file: `npm i --no-save playwright` (smoke/QA) and `npm i --no-save @breezystack/lamejs` (audio gen). Reviving the Netlify fallback (netlify/functions/sync.mjs) needs `npm i @netlify/blobs`."
 }
