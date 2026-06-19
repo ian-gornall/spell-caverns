@@ -102,16 +102,32 @@ for (const scale of [1, 1.3]) {
       ['craft', /craft|build/],
       ['practice', /practice|mine|dig|play/],
     ];
-    for (const [name, re] of screens) {
-      if (re) { await gotoHome(page); if (scale !== 1) await page.evaluate((s) => (document.documentElement.style.fontSize = 18 * s + 'px'), scale); await openByText(page, re); }
-      const r = await scan(page, `${tag} [${name}]`);
+    const report = (name, r) => {
       const probs = [];
       if (r.scrollers.length) probs.push(`INNER-SCROLL: ${r.scrollers.join(' || ')}`);
       if (r.bleeders.length) probs.push(`BLEED: ${r.bleeders.join(' || ')}`);
       if (r.docHoriz > 1) probs.push(`docHoriz=${r.docHoriz}`);
-      console.log(`  ${name.padEnd(10)} vw=${r.vw} appRight=${r.appRight} ${probs.length ? '⚠ ' + probs.join(' ;; ') : 'ok'}`);
+      console.log(`  ${name.padEnd(14)} vw=${r.vw} appRight=${r.appRight} ${probs.length ? '⚠ ' + probs.join(' ;; ') : 'ok'}`);
       if (probs.length) findings.push(`${tag} [${name}]: ${probs.join(' ;; ')}`);
+    };
+
+    for (const [name, re] of screens) {
+      if (re) { await gotoHome(page); if (scale !== 1) await page.evaluate((s) => (document.documentElement.style.fontSize = 18 * s + 'px'), scale); await openByText(page, re); }
+      report(name, await scan(page, `${tag} [${name}]`));
     }
+
+    // Onboarding level-select: a fresh-install path the seeded-home loop never reaches. Its
+    // 9-card level grid + card shadows were the source of a few-px phantom inner pan (csc-v29).
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(URL, { waitUntil: 'networkidle' });
+    if (scale !== 1) await page.evaluate((s) => (document.documentElement.style.fontSize = 18 * s + 'px'), scale);
+    await page.click('.onboard-go').catch(() => {});
+    await page.fill('.onboard-name', 'Sam').catch(() => {});
+    await page.click('.onboard-go').catch(() => {});
+    await page.click('.onboard-go').catch(() => {});
+    await page.waitForSelector('.level-card', { timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(250);
+    report('onboard-levels', await scan(page, `${tag} [onboard-levels]`));
     console.log(`=== ${tag} done ===\n`);
     await ctx.close();
   }

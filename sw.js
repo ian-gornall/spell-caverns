@@ -70,7 +70,9 @@
 // v28 (§26-A #8): SLIM child-facing Settings — advanced levers + players + printables + the
 //      Parents&privacy block now live in a collapsed "Grown-up settings" <details> disclosure;
 //      the default view is just the simple kid controls. settings.js + styles.css changed.
-const VERSION = 'csc-v28';
+// v29: clip overflow-x on the onboarding level-select scroller (.onboard-body) — its 9 level
+//      cards' shadows caused a ~3px phantom horizontal pan an overflow-y:auto box permits.
+const VERSION = 'csc-v29';
 
 const CORE = [
   '/',
