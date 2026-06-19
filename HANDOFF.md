@@ -118,15 +118,21 @@ Built from the user's report "things still cut off on the right / I can scroll a
 Samsung Galaxy." Root cause analysis: pure-width Chromium emulation at 8 Galaxy viewports × 2 text
 scales shows ZERO overflow, so the real-device pan is **layout-viewport-level** (a transient fixed
 overlay / sub-pixel %·vw round / the browser nudging the layout viewport past the visual one).
-- ✅ **Overflow killed at the root (csc-v27):** `overflow-x: clip` guard on `html, body, #app` —
-  nothing in this app should ever paint outside the viewport horizontally. Tamed the onboarding
-  `-50vw` full-bleed → fixed insets. **csc-v29:** clipped `.onboard-body` x (its 9 level cards'
-  shadows caused a ~3px phantom inner pan that the root clip can't stop — inner scrollers own their
-  axis). New `scripts/qa_overflow.mjs` is a DEEP regression guard that catches **inner-scroller**
-  overflow (`scrollWidth>clientWidth`) the document-level `qa_responsive.mjs` can't see, + a 1.3×
-  text-scale pass + the onboarding path. `scripts/qa_shots.mjs` = Galaxy-width eyeball shots.
-  ⚠️ **Real-device confirmation is Ian's to make** on the actual Galaxy (emulation can't reproduce
-  Samsung Internet / split-screen / safe-area exactly; the root clip is the correct catch-all).
+- ✅ **THE Samsung right-side pan — ROOT CAUSE FOUND + FIXED (csc-v32).** Using Playwright's real
+  **Galaxy device descriptors** (S24/A55/S9+/S8/Z-Fold-6, real Samsung UA+DPR) against PROD and
+  ACTIVELY trying to pan right (`scripts/qa_galaxy.mjs`), the culprit surfaced: **`.header-title`**
+  was `overflow:hidden` + `white-space:nowrap` + a long title → its OWN touch-scroll container.
+  On a narrow 320-360px phone the clipped title is ~55-95px wider than its box, so the title element
+  itself **panned right under a finger** (the page didn't — `doc=0,winX=0`). Only bites at narrow
+  widths (the A55/Fold at 480/928px were clean) — fits "narrow Samsung." Fix = `overflow:clip`
+  (keeps the ellipsis, creates no scroll container). After: **0 pan on every Galaxy × every screen.**
+  This is almost certainly the user's exact "scroll a bit right / oversize" symptom.
+- ✅ **Defensive root guards (csc-v27/v29):** `overflow-x: clip` on `html, body, #app`; clipped
+  `.onboard-body` (its level-card shadows caused a ~3px phantom inner pan). `scripts/qa_overflow.mjs`
+  = DEEP guard catching **inner-scroller** overflow `qa_responsive.mjs` can't see (+1.3× text scale +
+  onboarding). `scripts/qa_galaxy.mjs` = the real-device-descriptor PAN test (run it against prod).
+  ⚠️ **Ian: please still hard-reload the PWA on the actual Galaxy to confirm** — but the pannable
+  element is now provably gone under the closest-to-real Samsung emulation.
 - ✅ **Stale smoke REPAIRED:** the HANDOFF claimed `npm run smoke` green, but §28's always-ask
   "Who's playing?" picker + §27's youngest-tier option clamp had silently broken it (it failed at
   the first post-onboarding home hop). Added `dismissPicker()` through every boot, relaxed the tile

@@ -77,7 +77,11 @@
 //      ambience for vestibular-sensitive users. styles.css only.
 // v31: AUDIO TAIL batch — +160 dictation clips (1678→1838 words; 1081 remain for future free
 //      runs). Additive; runtime falls back to TTS for any word without a clip.
-const VERSION = 'csc-v31';
+// v32: THE actual Samsung right-side pan — `.header-title` was overflow:hidden+nowrap+long title,
+//      i.e. its own touch-scroll container that panned ~55-95px on narrow (320-360px) phones.
+//      overflow:clip keeps the ellipsis but makes it un-pannable. Reproduced + fixed via real
+//      Galaxy device descriptors (scripts/qa_galaxy.mjs), now 0 pan on every Galaxy × screen.
+const VERSION = 'csc-v32';
 
 const CORE = [
   '/',

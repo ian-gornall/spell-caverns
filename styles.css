@@ -125,7 +125,13 @@ body {
   /* let the title shrink (flexbox defaults to min-width:auto = won't shrink below its
      text) so the gem/depth chips can never be pushed off the right edge on a phone. */
   min-width: 0;
-  overflow: hidden;
+  /* clip — NOT hidden. A long truncated title (e.g. on the catalog) with `overflow:hidden`
+     + nowrap becomes its own horizontal SCROLL container: on a narrow phone its clipped text
+     is ~55-95px wider than the box, so the title element itself can be PANNED right by a finger
+     (root overflow-x:clip can't reach an inner overflow:hidden box). `overflow:clip` keeps the
+     ellipsis but creates no scroll container, so it can't pan. (Caught by qa_galaxy.mjs on real
+     Galaxy S8/S9+/S24 descriptors — the user's "I can scroll a bit right / oversize" symptom.) */
+  overflow: clip;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
