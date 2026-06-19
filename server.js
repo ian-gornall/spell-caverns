@@ -23,6 +23,7 @@ const MIME = {
   '.ico': 'image/x-icon',
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav',
+  '.woff2': 'font/woff2',
   '.ogg': 'audio/ogg',
 };
 

@@ -58,6 +58,8 @@ const CORE = [
   '/',
   '/index.html',
   '/styles.css',
+  '/fonts/atkinson-hyperlegible-400.woff2',
+  '/fonts/atkinson-hyperlegible-700.woff2',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',

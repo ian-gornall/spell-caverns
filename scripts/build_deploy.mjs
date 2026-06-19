@@ -16,7 +16,7 @@ const OUT = path.join(ROOT, 'deploy');
 // kept as a fallback host config (ignored by Cloudflare). Cloudflare Pages Functions live in
 // the repo-root /functions dir and are processed by Cloudflare directly — NOT copied here.
 const FILES = ['index.html', 'styles.css', 'manifest.webmanifest', 'sw.js', '_headers', 'netlify.toml'];
-const DIRS = ['icons', 'src', 'audio']; // audio is optional (nice TTS clips; falls back to device voice)
+const DIRS = ['icons', 'src', 'audio', 'fonts']; // audio optional (TTS clips, device-voice fallback); fonts = self-hosted Atkinson Hyperlegible (precached)
 const DATA = ['words.js', 'patterns.js', 'nonsense_blocklist.js']; // the runtime dataset (not the build inputs)
 
 fs.rmSync(OUT, { recursive: true, force: true });

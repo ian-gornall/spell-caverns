@@ -3,6 +3,25 @@
    < 64px), generous spacing, large rounded text, high contrast, and the
    praise.js tier colors reused everywhere for consistent meaning. */
 
+/* Self-hosted Atkinson Hyperlegible — the UI/spelling typeface (latin subset, SIL OFL;
+   see fonts/README.md). Purpose-built for letter DISTINCTION (I/l/1, 0/O, b/d/p/q), the
+   property a spelling task needs most. font-display:swap so first paint never blocks; the
+   system fallback below covers the (rare) offline-first-load gap. */
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/atkinson-hyperlegible-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/atkinson-hyperlegible-700.woff2') format('woff2');
+}
+
 :root {
   --gold: #ffd23f; /* perfect  */
   --cyan: #36f1cd; /* amazing  */
@@ -38,8 +57,10 @@ body {
 }
 
 body {
-  font-family: "Baloo 2", "Quicksand", "Segoe UI Rounded", "Nunito", system-ui, -apple-system,
-    sans-serif;
+  /* Atkinson Hyperlegible leads (letter-distinct, self-hosted); the rounded display fonts
+     stay as fallbacks. The big decorative .home-title re-asserts Baloo 2 for character. */
+  font-family: "Atkinson Hyperlegible", "Quicksand", "Segoe UI Rounded", "Nunito", system-ui,
+    -apple-system, sans-serif;
   color: var(--ink);
   background:
     radial-gradient(1200px 800px at 50% -10%, #21306e 0%, transparent 60%),
@@ -204,6 +225,8 @@ button {
   padding: 12px 0 4px;
 }
 .home-title {
+  /* the one big decorative title keeps the rounded display font for character */
+  font-family: "Baloo 2", "Quicksand", system-ui, sans-serif;
   font-size: clamp(2rem, 7vw, 3.2rem);
   font-weight: 800;
   margin: 0;
