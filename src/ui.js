@@ -70,10 +70,13 @@ export function applyReadable(on) {
 // Geo — the friendly crystal guide (mascot). A procedural gem "character" (no art
 // assets) with a speech bubble; used on first-run onboarding (research Tier 2 #9:
 // a named guide supports autonomy/competence). `text` is also a good thing to speak.
-export function mascot(text, { name = 'Geo' } = {}) {
+// `mood` adds a CSS expression state to Geo (DESIGN_ANALYSIS rec #6): 'cheer' (a happy
+// bounce + bigger grin, for celebratory moments) or 'wink' (a friendly greeting). Default
+// is the calm idle bob. Pure CSS on the existing hexagon — see styles.css `.mascot.cheer/.wink`.
+export function mascot(text, { name = 'Geo', mood = '' } = {}) {
   return el(
     'div',
-    { class: 'mascot' },
+    { class: 'mascot' + (mood ? ' ' + mood : '') },
     el(
       'div',
       { class: 'mascot-char', 'aria-hidden': 'true' },

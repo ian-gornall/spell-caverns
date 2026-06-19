@@ -90,7 +90,7 @@ export function onboardingScreen(ctx) {
   function welcome() {
     const line = "Hi! I'm Geo, your crystal guide. Ready to dig for sparkly gems with me?";
     body.replaceChildren(
-      mascot(line),
+      mascot(line, { mood: 'wink' }),
       el('button', { class: 'btn primary onboard-go', onClick: askName }, "Let's go! ✨"),
     );
     audio.say("Hi! I'm Geo, your crystal guide. Ready to dig for gems with me?");

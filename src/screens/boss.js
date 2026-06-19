@@ -130,7 +130,7 @@ export function bossScreen(ctx, params = {}) {
       ),
       crystal && el('h2', { class: 'boss-crystal-name' }, crystal.name),
       crystal && el('p', { class: 'boss-fact' }, crystal.fact),
-      mascot(line),
+      mascot(line, { mood: 'cheer' }),
       el('div', { class: 'earned' }, `+${bonus} bonus gems!  ·  Total 💎 ${ctx.state.gems || 0}`),
       el(
         'div',

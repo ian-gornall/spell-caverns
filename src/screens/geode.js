@@ -131,7 +131,7 @@ export function geodeScreen(ctx) {
       el('div', { class: 'earned' }, `+${reward.gems} gems!  ·  Total 💎 ${ctx.state.gems || 0}`),
       el('div', { class: 'depth-banner' }, '⛏️ New goals unlocked — tougher this time!'),
       el('div', { class: 'geode-goals' }, ...goalRows),
-      mascot('Crafting earns the biggest gems! 🔨'),
+      mascot('Crafting earns the biggest gems! 🔨', { mood: 'cheer' }),
       el(
         'div',
         { class: 'row' },
