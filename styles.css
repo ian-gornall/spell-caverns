@@ -2184,13 +2184,27 @@ select {
 }
 
 /* ------- accessibility: easy-read text ------- */
-/* Extra letter-spacing + line-height on the spelling-critical text, to help a
-   struggling reader discriminate similar spellings (e.g. free / freu / frree).
-   Scoped to those elements so it never reflows the chrome; modest values so the
-   existing overflow-wrap/clamp guards on tiles still hold. */
+/* Easy-read / dyslexia-friendly mode (opt-in via Settings → html.readable). Built on the
+   British Dyslexia Association Style Guide + the readability research (Rello & Baeza-Yates
+   2013; the gains come from SPACING + letter clarity, not a "special" font — the app already
+   ships Atkinson Hyperlegible). Three levers: (a) global generous line-height + a touch more
+   tracking on running text, (b) extra tracking on the spelling-critical elements so similar
+   spellings separate (free / freu / frree), (c) LEFT-align the dictated sentence (the BDA
+   advises against centring body text — left-align reduces "rivers" and is easier to track).
+   Scoped to text so it never reflows the chrome; modest values so tile clamp/wrap guards hold. */
+html.readable .sentence,
+html.readable .menu-card .desc,
+html.readable .field-hint,
+html.readable .boss-fact,
+html.readable .home-sub,
+html.readable p {
+  line-height: 1.6;
+  letter-spacing: 0.018em;
+}
 html.readable .sentence {
   letter-spacing: 0.03em;
   line-height: 1.65;
+  text-align: left; /* BDA: left-align the reading line, not centred */
 }
 html.readable .tile,
 html.readable .tray-tile,

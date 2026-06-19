@@ -1013,7 +1013,17 @@ export function settingsScreen(ctx) {
           el('p', { class: 'field-hint' }, 'A nickname is perfect — no real name needed.'),
         ),
         el('div', { class: 'field' }, el('label', {}, 'Crystal colour'), colourRow),
-        el('div', { class: 'field' }, el('label', {}, 'Easy-read text'), readableSeg),
+        el(
+          'div',
+          { class: 'field' },
+          el('label', {}, 'Easy-read text (dyslexia-friendly)'),
+          readableSeg,
+          el(
+            'p',
+            { class: 'field-hint' },
+            'Roomier letter-spacing, taller lines, and left-aligned sentences — evidence-based spacing that helps a struggling or dyslexic reader.',
+          ),
+        ),
         kidLockSection(ctx),
       ),
       playersPanel,
