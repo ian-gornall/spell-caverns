@@ -173,21 +173,32 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    already shipped dependency-free: owned-crystal glint + prefers-reduced-motion (§29, csc-v30).
 4. ✅ **§26-A #8 (slim child Settings) — DONE (§29, csc-v28).**
 5. **🆕 §30 — LEARNING-MODEL REDESIGN + new MASTERY (draw) mode** (Ian 2026-06-19d) — the big one.
-   🚧 **PURE ENGINE DONE (2026-06-19e):** state machine (`categories.js`), selection + adaptive
-   level (`selection.js`), and the free/offline draw recognizer (`handwriting.js`) — all test-first,
-   committed, **252 tests green**. **REMAINS = the kid-facing UI integration** (wire `categories`
-   into `state.js`; craft/mining/mastery modes; gem-cost hints; ~5s mining timer; the draw-mode
-   canvas; unlock-chain + Progress display). Needs the live-app visual-QA loop (`QA.md`). Full spec
-   + the engine API + the integration plan are in §30 below.
+   🚧 **ENGINE + CRAFT + MINING DONE (2026-06-19e):** state machine (`categories.js`), selection +
+   adaptive level (`selection.js`), the free/offline draw recognizer (`handwriting.js`), AND the
+   CRAFT + MINING UI integration (steps 3, 4: `categories` in `state.js`, gem-cost hints, ~5s mining
+   timer, known-only mining) — all test-first + QA'd + committed, **255 tests green, smoke + all
+   phone guards green**. **REMAINS = (a) the MASTERY draw-mode UI** (step 5-UI: `modes/mastery.js`
+   + canvas, calls `handwriting.recognize` + `categories.recordDraw`); **(b) the unlock-chain +
+   Progress category display + Words-per-dig help text** (step 6), which also tightens mining from
+   the interim known-gate to the §30.C mastered-gate. Full spec + engine API + plan in §30 below.
 
 ---
 
 ## §30 — LEARNING-MODEL REDESIGN + MASTERY (DRAW) MODE (Ian 2026-06-19d) — 🚧 ENGINE DONE, UI NEXT
 
-> **PROGRESS (2026-06-19e): the whole PURE ENGINE backbone is built test-first, committed, and
-> green (252 tests).** Done = build-order steps **1, 2, and the core of 5** (the recognizer math).
-> What remains is the kid-facing **UI integration** (steps 3, 4, 5-UI, 6 + wiring `categories`
-> into `state.js`), which needs the live-app interactive visual-QA loop (`QA.md`). New modules:
+> **PROGRESS (2026-06-19e):** PURE engine backbone (steps **1, 2, recognizer core of 5**) +
+> **CRAFT and MINING UI integration (steps 3, 4)** are built, QA'd, and committed — 255 tests
+> green, `npm run smoke` green, `qa_overflow`/`qa_responsive`/`qa_fold` all green, `qa_s30` visual
+> probe reviewed. `categories` is wired into `state.js` (per-profile, persisted). CRAFT is the
+> always-open hub (buildCraftPool + recordCraft + adaptive level + gem-cost hints @4s/@8s); MINING
+> serves known-only words with the ~5s stretched timer and an INTERIM known-based gate (the
+> §30.C mastered-gate awaits the draw mode). **What REMAINS: the MASTERY draw-mode UI (step 5-UI,
+> deferred by the CRAFT+MINING-first choice), then the unlock-chain + Progress category display +
+> Words-per-dig help text (step 6), which also tightens mining to the mastered-gate.**
+> ⚠️ **DEPLOY STATUS: committed to LOCAL main only — NOT pushed, NOT deployed (no `sw.js`/
+> `version.js` bump).** Prod is still **csc-v29 (§29)**. Because prod is Git-CD from `main`,
+> pushing deploys it — so DON'T push until §30 is complete (or you deliberately want the
+> craft+mining intermediate state live + bump the sw version first). Modules:
 > - **`src/engine/categories.js`** (+`test/categories.test.js`, 16 tests) — the §30 state machine:
 >   `new→learning→known→mastered` + `tricky`. API: `createCategoryState({setSize,level})`,
 >   `recordCraft(state,word,correct,{pool})` (2-in-a-row→known; craft miss→learning; evicts the
@@ -358,11 +369,15 @@ the §29 phone no-horizontal-scroll guards green):**
    `buildCraftPool` (focus learning, ~25% review), `buildMiningPool` (known∪mastered),
    `buildMasteryPool` (known-lead), + the adaptive level (medium up/down). ⚠️ The UI WIRING of
    these into `state.js` + the modes is part of steps 3–6 below (not yet done).
-3. ⛔ **Craft mode UI** (`modes/puzzle.js`): wire `categories.recordCraft` + `buildCraftPool` +
-   `applyAdaptiveLevel` + `fillLearning`; ADD gem-cost hints (2×pts/len, half→0, never negative),
-   highlight @4s, auto-fire @8s.
-4. ⛔ **Mining mode** (`modes/rhythm.js`): source via `buildMiningPool`, known-gated unlock (after
-   [set size] mastered) + ~5s stretched timer (same for all difficulty).
+3. ✅ **DONE (2026-06-19e) — Craft mode UI** (`modes/puzzle.js`): wired `categories.recordCraft` +
+   `buildCraftPool` + `applyAdaptiveLevel` + `fillLearning` (pool excludes 1-2 letter words);
+   gem-cost hints (2×value/len, half→0, never negative), highlight @4s + auto-fire @8s (clock
+   resets on each correct letter; `.hint-ready` glow). `categories` persisted in `state.js`.
+4. ✅ **MOSTLY DONE (2026-06-19e) — Mining mode** (`modes/rhythm.js`): sources via `buildMiningPool`
+   (known∪mastered only); ~5s stretched timer (`MINING_SPEED_TIERS`, same for all difficulty).
+   ⚠️ **INTERIM gate:** §30.C's "after [set size] MASTERED" needs the draw mode (deferred per the
+   user's CRAFT+MINING-first choice), so until it ships mining opens once there are KNOWN words
+   to mine (empty mine steers to Craft). Tighten to the mastered-gate when step 5-UI lands.
 5. **🆕 Mastery (draw) mode**: ✅ recognizer math DONE → `src/engine/handwriting.js` (+9 tests).
    ⛔ UI remains: `modes/mastery.js` + canvas, up-to-4 candidate letterforms, force-redraw on low
    confidence, build-one-letter-at-a-time, tap-to-redo, case-insensitive; calls `recordDraw`.
