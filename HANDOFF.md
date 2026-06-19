@@ -246,9 +246,13 @@ priority. When a learning word becomes known, a different word rotates into lear
 - **Unlocked only after [set size] words are MASTERED** (i.e. via the draw mode — NOT merely known;
   Ian corrected this: the *mastered* count opens mining). So the unlock chain is **Craft (open from
   start) → Mastery (after [set size] KNOWN) → Mining (after [set size] MASTERED).**
-- **Timer is too pressured now.** Make the bar **start draining earlier but MUCH slower** — give
-  ~**5 seconds** to respond before it bottoms out (reaching the bottom still has value as it does
-  today). Goal: the student actually considers all options before answering.
+- **Timer retune (CLARIFIED 2026-06-19d).** The bar **starts draining earlier but MUCH slower**,
+  reaching the bottom in ~**5 seconds**, **the same for EVERY difficulty** (not shorter at higher
+  difficulty). Reaching the bottom still scores the minimum (value retained, as today).
+- **Keep the speed-tier bonus, STRETCHED** across the ~5s window: re-map the praise.js SPEED_TIERS
+  (currently ~1.2/2.2/3.5s for perfect/amazing/great) proportionally to ~5s so a **thoughtful answer
+  at ~2s still earns a strong tier** and only the **last ~1-2s** drops toward the minimum. Goal: the
+  student actually considers all options before answering, without losing the DDR-style reward feel.
 
 **D. Adaptive level (auto up/down) — "medium" aggressiveness (Ian).** The student picks a starting
 level, but the game **adapts up or down based on performance** on that level. **Doing poorly → push
@@ -298,9 +302,11 @@ letter to redo; case-insensitive (expect lowercase, accept uppercase).
 **MORE ANSWERED (2026-06-19d):** ✅ set size = the existing "Words per dig" setting (default 10),
 driving learning-set size + both unlock thresholds; update its help text.
 
+**MORE ANSWERED (2026-06-19d):** ✅ mining timer ~5s to bottom, SAME for every difficulty; keep the
+speed-tier bonus stretched across the ~5s (≈2s still a strong tier; last ~1-2s → minimum).
+
 **STILL OPEN (asking one at a time, NO answer choices per Ian):**
-- **Mining timer** exact numbers (drain start + ~5s window) and whether it's per-difficulty.
-- **Settings/category display** layout for a grown-up.
+- **Settings/category display** layout for a grown-up (last one — will propose a concrete layout).
 > (Answers folded in as they arrive, then built test-first.)
 
 ---
