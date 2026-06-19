@@ -758,15 +758,25 @@ export function settingsScreen(ctx) {
     }, 1500);
     if (versionTaps < 7) return;
     versionTaps = 0;
-    const key = window.prompt('Developer: enter admin key to send feedback alerts to this device');
-    if (!key) return;
-    toast('Registering this device…');
-    push.registerAdmin(key.trim()).then((r) => {
-      if (r.ok) toast('✅ Feedback alerts will come to this device');
-      else if (r.reason === 'forbidden') toast('Wrong admin key 🔒');
-      else if (r.reason === 'denied') toast('Allow notifications first, then retry');
-      else if (r.reason === 'unsupported') toast('This device can’t receive push (install the app first)');
-      else toast('Could not register this device 😕');
+    // Already an admin device? Go straight to the feedback archive. Otherwise prompt for the
+    // key, register for push (which remembers the key), then open the archive.
+    import('../admin.js').then((admin) => {
+      if (admin.isAdmin()) {
+        ctx.nav('admin');
+        return;
+      }
+      const key = window.prompt('Developer: enter admin key to view feedback + get alerts on this device');
+      if (!key) return;
+      toast('Registering this device…');
+      push.registerAdmin(key.trim()).then((r) => {
+        if (r.ok) {
+          toast('✅ Feedback alerts on; opening archive');
+          ctx.nav('admin');
+        } else if (r.reason === 'forbidden') toast('Wrong admin key 🔒');
+        else if (r.reason === 'denied') toast('Allow notifications first, then retry');
+        else if (r.reason === 'unsupported') toast('This device can’t receive push (install the app first)');
+        else toast('Could not register this device 😕');
+      });
     });
   });
   swCacheVersion().then((sw) => {

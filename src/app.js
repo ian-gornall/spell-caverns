@@ -17,6 +17,7 @@ import { catalogScreen } from './screens/catalog.js';
 import { bossScreen } from './screens/boss.js';
 import { geodeScreen } from './screens/geode.js';
 import { printablesScreen } from './screens/printables.js';
+import { adminFeedbackScreen } from './screens/admin_feedback.js';
 import { startRhythm } from './modes/rhythm.js';
 import { startPuzzle } from './modes/puzzle.js';
 import { startLab } from './modes/lab.js';
@@ -37,6 +38,7 @@ const routes = {
   boss: bossScreen,
   geode: geodeScreen,
   printables: printablesScreen,
+  admin: adminFeedbackScreen,
 };
 
 let ctx = null;
@@ -113,6 +115,23 @@ function boot() {
   import('./feedback_client.js')
     .then((fc) => fc.flushUnsent(store))
     .catch(() => {});
+
+  // DEVELOPER deep-link (§28.A): a feedback notification opens "/?view=feedback". On the
+  // developer's own (admin-registered) device, jump straight to the feedback archive and SKIP
+  // the normal launch flow. Checked synchronously (read the stored key) so there's no flash of
+  // the picker. For everyone else (no admin key) the param is ignored → normal boot.
+  let adminKey = '';
+  try {
+    adminKey = localStorage.getItem('csc_admin_key') || '';
+  } catch {
+    /* storage disabled */
+  }
+  if (adminKey && new URLSearchParams(location.search).get('view') === 'feedback') {
+    if (store.profileCount() >= 1) refreshActive(); // give screens a ctx.state if possible
+    nav('admin');
+    maybeBootSync();
+    return;
+  }
 
   // Route by how many explorers exist:
   //  - none yet → first-run onboarding (creates explorer #1)

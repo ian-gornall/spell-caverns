@@ -61,7 +61,10 @@
 // v25 (§28.A follow-up): hidden developer unlock — tap the Settings version line 7× to register
 //      THIS device for instant feedback push (push.registerAdmin, gated by ADMIN_KEY). No
 //      visible UI (single-admin app). push.js + screens/settings.js changed.
-const VERSION = 'csc-v25';
+// v26 (§28.A): in-app FEEDBACK ARCHIVE (screens/admin_feedback.js + src/admin.js) — the admin
+//      device remembers the key and can browse ALL feedback newest-first; feedback notifications
+//      now deep-link (/?view=feedback) straight into it; 7-tap opens the archive once registered.
+const VERSION = 'csc-v26';
 
 const CORE = [
   '/',
@@ -79,6 +82,7 @@ const CORE = [
   '/src/audio.js',
   '/src/push.js',
   '/src/feedback_client.js',
+  '/src/admin.js',
   '/src/pwa.js',
   '/src/version.js',
   '/src/engine/pushconfig.js',
@@ -112,6 +116,7 @@ const CORE = [
   '/src/screens/boss.js',
   '/src/screens/geode.js',
   '/src/screens/printables.js',
+  '/src/screens/admin_feedback.js',
   '/data/words.js',
   '/data/patterns.js',
   '/data/nonsense_blocklist.js',

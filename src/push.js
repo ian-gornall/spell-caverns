@@ -114,6 +114,9 @@ export async function registerAdmin(adminKey) {
     });
     if (res.status === 403) return { ok: false, reason: 'forbidden' };
     if (!res.ok) return { ok: false, reason: 'server' };
+    // Remember the key on this device so the in-app feedback archive works without re-prompting.
+    const { setAdminKey } = await import('./admin.js');
+    setAdminKey(adminKey);
     return { ok: true };
   } catch {
     return { ok: false, reason: 'error' };

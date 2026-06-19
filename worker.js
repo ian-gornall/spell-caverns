@@ -164,7 +164,7 @@ async function pushFeedbackToAdmin(env, fb, nowSec) {
   const payload = JSON.stringify({
     title: '🔮 New feedback',
     body: `${fb.nick || 'A player'}: ${fb.note ? fb.note.slice(0, 80) : `rated ${fb.rating || '—'}/5`}`,
-    url: '/',
+    url: '/?view=feedback', // deep-link: opens the in-app feedback archive on the admin device
     tag: 'feedback',
   });
   let cursor;

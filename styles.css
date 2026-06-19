@@ -2705,3 +2705,20 @@ html.readable .crystal-name {
     display: none !important;
   }
 }
+
+/* ── Feedback archive (§28.A, developer-only) ──────────────────────────────── */
+.feedback-archive { display: flex; flex-direction: column; gap: 12px; }
+.archive-count { font-weight: 700; opacity: 0.8; margin: 2px 2px 0; }
+.feedback-entry { padding: 14px 16px; }
+.feedback-entry .fb-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+}
+.feedback-entry .fb-stars { font-size: 1.1rem; letter-spacing: 1px; }
+.feedback-entry .fb-when { font-size: 0.85rem; opacity: 0.65; white-space: nowrap; }
+.feedback-entry .fb-meta {
+  display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 6px 0 4px; font-size: 0.95rem; font-weight: 600;
+}
+.feedback-entry .fb-nick { opacity: 0.9; }
+.feedback-entry .fb-diff { opacity: 0.75; }
+.feedback-entry .fb-note { margin: 4px 0 0; line-height: 1.4; white-space: pre-wrap; }
+.feedback-entry .fb-note.muted { opacity: 0.5; font-style: italic; }
