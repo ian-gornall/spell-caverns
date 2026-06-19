@@ -1,23 +1,26 @@
-# wrangler.toml — Cloudflare Pages config (config-as-code).
+# wrangler.toml — Cloudflare Worker (Static Assets model).
 #
-# Hosting moved off Netlify (free-tier build credits ran out) to Cloudflare Pages, whose free
-# tier doesn't meter build minutes the same way and serves static assets unmetered.
+# Hosting moved off Netlify (free-tier build credits ran out). Cloudflare's "Connect to Git"
+# provisions a WORKER and runs `wrangler deploy`, so this is configured as a Worker that serves
+# the static PWA (deploy/) plus the /api/sync route (worker.js).
 #
-# Build (set in the Pages dashboard, or via `wrangler pages deploy`):
-#   Build command:            node scripts/build_deploy.mjs
-#   Build output directory:   deploy   (mirrored by pages_build_output_dir below)
-# Pages Functions are auto-detected from the repo-root /functions dir → functions/api/sync.js
-# serves /api/sync.
+# Cloudflare dashboard → your Worker → Settings → Build:
+#   Build command:  node scripts/build_deploy.mjs     (assembles ./deploy)
+#   Deploy command: npx wrangler deploy                (default; reads this file)
 name = "spell-caverns"
-pages_build_output_dir = "deploy"
+main = "worker.js"
 compatibility_date = "2024-11-01"
 
-# Family-sync storage (engine/cloudsync reconcile, see functions/api/sync.js). Create a KV
-# namespace and bind it as FAMILY_SYNC. Either set this binding in the Pages dashboard
-# (Settings → Functions → KV namespace bindings, for BOTH Production and Preview), OR create
-# it with wrangler and uncomment below with the real id:
-#
-#   npx wrangler kv namespace create FAMILY_SYNC
+# Static PWA assets (assembled by scripts/build_deploy.mjs). Served first; the Worker only
+# runs for non-asset paths (e.g. /api/sync). _headers in deploy/ sets the cache rules.
+[assets]
+directory = "./deploy"
+binding = "ASSETS"
+
+# Family-sync storage (worker.js handleSync, engine/cloudsync reconcile). OPTIONAL — the site
+# works without it (/api/sync returns 503; client sync is best-effort). To enable:
+#   1) npx wrangler kv namespace create FAMILY_SYNC      (prints an id)
+#   2) uncomment below + paste the id, commit (Git deploys honour wrangler.toml bindings)
 #
 # [[kv_namespaces]]
 # binding = "FAMILY_SYNC"
