@@ -7,7 +7,7 @@
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
 > `npm test` green (**205 tests**); `npm run smoke` green; `node scripts/qa.mjs` = 0
-> console errors; `node scripts/qa_responsive.mjs` = 0 overflow; sw **csc-v20**.
+> console errors; `node scripts/qa_responsive.mjs` = 0 overflow; sw **csc-v21**.
 > **➡️ START AT §0 (current state) then §24 (latest session — the §23 backlog SHIPPED).**
 > §24 shipped the whole §23 App-Store-quality backlog (CRAFT is the hero + best-paid +
 > nudged path; the daily GEODE tap-to-open with ratcheting harder goals; a sustained
@@ -42,10 +42,10 @@
   family sync. (Tell the user; the old Netlify site should be deleted.)
 - `npm test` = **205 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
   `node scripts/qa.mjs` = 0 console/JS errors; `node scripts/qa_responsive.mjs` = 0 horizontal
-  overflow at 7 viewports (360–820px). sw VERSION **csc-v20** (bump on any precached change —
+  overflow at 7 viewports (360–820px). sw VERSION **csc-v21** (bump on any precached change —
   AND bump `src/version.js` `APP_VERSION` to match; Settings shows both). **Before major UI
   changes, follow `QA.md`** (interactive view-as-you-go QA + the phone device matrix).
-- ✅ §24 (the §23 backlog + multi-user UI) is all **pushed and LIVE** (csc-v20, verified on prod).
+- ✅ §24 (the §23 backlog + multi-user UI) is all **pushed and LIVE** (csc-v21, verified on prod).
 
 **What exists**
 - **Data:** `data/words.js` = 2,919 frequency-ordered words (ages 5–13), 63 pattern families;
@@ -71,7 +71,7 @@
   a parental-consent gate; deletable. (PRIVACY.md, §18b)
 
 **→ NEXT ACTION — nothing is outstanding that an agent can build.** The §23 App-Store-quality
-backlog (A/B/C/D) and the long-deferred multi-user UI are **all DONE, deployed (csc-v20), and
+backlog (A/B/C/D) and the long-deferred multi-user UI are **all DONE, deployed (csc-v21), and
 QA'd** (see §24). What's done this session:
 1. ✅ **§23-A App-Store polish** — sustained phone iteration loops: CRAFT crystal sockets (was a
    web form), level-select depth-ladder, home utility-card depth, the play-body top-clip bug fix,
@@ -1386,7 +1386,7 @@ regenerate 722 audio clips, rotate the Gemini key.
 
 ## 23. BACKLOG — APP-STORE QUALITY + craft-as-assessment (user 2026-06-19) — ✅ SHIPPED in §24
 
-> **✅ DONE — all of A/B/C/D below shipped & deployed (csc-v20). See §24 for what was built.**
+> **✅ DONE — all of A/B/C/D below shipped & deployed (csc-v21). See §24 for what was built.**
 > Kept here as the verbatim intent that drove §24.
 
 Recorded verbatim-intent; ~~NOT yet implemented~~ **DONE (§24)**. **Deployment is now settled** (Cloudflare Worker,
@@ -1465,7 +1465,7 @@ on a real iPhone/iPad (standalone safe-area, true feel), ASK the user for an on-
 ## 24. SESSION UPDATE — 2026-06-19 (the §23 backlog + multi-user UI — ALL SHIPPED) — READ FIRST
 
 Autonomous build/QA session. Shipped the **entire §23 App-Store-quality backlog** AND the
-long-deferred **multi-user UI**, all committed, deployed (**csc-v20**), and verified live on
+long-deferred **multi-user UI**, all committed, deployed (**csc-v21**), and verified live on
 prod. `npm test` **205 green**; `npm run smoke` green; `qa.mjs` 0 console errors; `qa_responsive`
 0 overflow at every viewport. The only open items are **user-gated/external** (see §0 NEXT ACTION):
 rotate the Gemini key (Ian's account action — repo is verified key-free), regenerate audio clips
@@ -1499,7 +1499,10 @@ phone viewports, fix → re-verify: (1) the Craft letter slots now read as **glo
 unreachably on short phones → now `justify-content: safe center`; (5) **fixed a small-home fold
 regression** the taller hero introduced; (6) Progress "Your haul" → **treasure tiles**; (7)
 colour-swatch selection **glow halo**; (8) wave-reward header no longer truncates. Smoke + idle-route
-assertions updated for the new craft-nudge flow.
+assertions updated for the new craft-nudge flow. A **second critical review** confirmed convergence
+to App-Store quality and surfaced two final fixes (csc-v21): the onboarding "Let's dig!" sticky CTA
+got a **full-bleed gradient footer** (level cards fade behind it, not peek around the pill), and the
+craft verdict flash got more **breathing room** above the answer tiles on short phones.
 
 **Multi-user UI (was deferred — now built).** Engine helpers already existed + were tested; this was
 UI only. New `ui.picturePad({onComplete,length,icons})` — a kid-friendly **picture password** (tap a
