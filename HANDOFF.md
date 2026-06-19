@@ -145,9 +145,10 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 
 1. ✅ **Free-first SERVICES AUDIT — DONE (§29)** → `SERVICES_AUDIT.md`. (Owed follow-up still: confirm
    Gemini free-tier TTS *commercial-use licensing* — a legal, not cost, check.)
-2. **AUDIO TAIL** — ~1241 TTS clips remain (1678 word + 32 phrase clips ship; manifest matches).
-   FREE multi-day path. **Time-gated:** 2026-06-19's free quota was already spent, so the next run is
-   **due 2026-06-20+**. Then: `npm i --no-save @breezystack/lamejs` → `npm run gen:audio` → commit new
+2. **AUDIO TAIL** — **~1081 TTS clips remain** (1838 word + 32 phrase clips ship as of §29, csc-v31;
+   manifest matches). FREE multi-day path, **time-gated by the daily quota** (a §29 run added +160
+   then walled across all 3 preview models — quota now spent; resets daily, **next run 2026-06-20+**).
+   Each run: `npm i --no-save @breezystack/lamejs playwright` → `npm run gen:audio` → commit new
    `audio/` clips → bump `sw.js`/`version.js` → push. (Pre-approved free path; no re-asking needed.)
 3. **§26-B — professional ASSETS** (still open; §26-A design polish SHIPPED §27). Drop pro art/
    animation/audio into the existing vanilla surfaces WITHOUT touching `src/engine/**`. ⚠️ **Genuinely
@@ -178,9 +179,12 @@ model, multi-profile, family sync, economy/deploy.
   batch), then commit the new `audio/` clips + bump `sw.js`/`version.js` + push. No re-asking needed.
   - 📅 **AUDIO-TAIL RESUME LOG** (update this each run):
     - 2026-06-19: generated 960 clips → **1708/≈2949** done; daily free quota **SPENT** for the day.
-    - **Next run due: 2026-06-20 or later** (free quota is ~960 clips/day; resets daily). ~1241 left.
+    - 2026-06-19c (§29 session): quota had reset → generated **+160** clips (1678→**1838 words** +32
+      phrases) before all 3 preview-TTS models walled on the per-minute limit. **1081 words remain.**
+      Committed (csc-v31). **Next run due: 2026-06-20+** (resets daily).
     - ⚠️ Before running, reinstall the codec: `npm i --no-save @breezystack/lamejs` (a stray
-      `npm i --no-save` prunes it — see the gotcha note).
+      `npm i --no-save` prunes it — see the gotcha note). Tip: install it ALONGSIDE `playwright`
+      in one command so neither `--no-save` install prunes the other.
   - (Fast alt if Ian ever changes his mind: enable billing on the Gemini project → one `gen:audio`
     run finishes the tail in ~1hr for ≈$1–3; [[approval-before-consuming-limits]] governs that path.)
 - 🔔 **Web push BUILT + runtime-validated** (deploy is account-gated). RFC 8291 (`aes128gcm`) + RFC

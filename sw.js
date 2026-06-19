@@ -75,7 +75,9 @@
 // v30 (§26-B feel): subtle staggered GLINT on owned catalog crystals (dependency-free motion,
 //      no GSAP) + a global prefers-reduced-motion guard (was missing) that stills the looping
 //      ambience for vestibular-sensitive users. styles.css only.
-const VERSION = 'csc-v30';
+// v31: AUDIO TAIL batch — +160 dictation clips (1678→1838 words; 1081 remain for future free
+//      runs). Additive; runtime falls back to TTS for any word without a clip.
+const VERSION = 'csc-v31';
 
 const CORE = [
   '/',
