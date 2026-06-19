@@ -164,13 +164,90 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    then walled across all 3 preview models — quota now spent; resets daily, **next run 2026-06-20+**).
    Each run: `npm i --no-save @breezystack/lamejs playwright` → `npm run gen:audio` → commit new
    `audio/` clips → bump `sw.js`/`version.js` → push. (Pre-approved free path; no re-asking needed.)
-3. **§26-B — professional ASSETS** (still open; §26-A design polish SHIPPED §27). Drop pro art/
-   animation/audio into the existing vanilla surfaces WITHOUT touching `src/engine/**`. ⚠️ **Genuinely
-   user-gated:** paid packs/commissions need per-purchase OK ([[approval-before-consuming-limits]]),
-   and adding CDN/vendored libs (GSAP/tsParticles/Spine) or large CC0 packs trades against the
-   dependency-free + lean-precache ethos ([[prefer-free-services]]) — so this wants Ian's direction
-   before an agent bolts assets on. Prefer CC0/Kenney first. Detail in "NEXT STEPS (§26)" below.
+3. **§26-B — ASSETS: RESEARCH FIRST (free/low-cost focus).** Ian's direction (2026-06-19d): do a
+   **research pass on art/library/audio asset options focused on FREE / LOW-COST** before any
+   integration — produce a sourced shortlist (CC0/Kenney/OpenGameArt/free-tier libs; licence +
+   size + fit + cost) with recommendations, THEN integrate on existing vanilla surfaces WITHOUT
+   touching `src/engine/**`. Still respect [[prefer-free-services]] (flag any cliff) +
+   [[approval-before-consuming-limits]] (any paid pack needs per-purchase OK). Partial §26-B
+   already shipped dependency-free: owned-crystal glint + prefers-reduced-motion (§29, csc-v30).
 4. ✅ **§26-A #8 (slim child Settings) — DONE (§29, csc-v28).**
+5. **🆕 §30 — LEARNING-MODEL REDESIGN + new MASTERY (draw) mode** (Ian 2026-06-19d) — the big one;
+   full spec + open questions below. Touches the core engine, all modes, economy, and unlocks.
+
+---
+
+## §30 — LEARNING-MODEL REDESIGN + MASTERY (DRAW) MODE (Ian 2026-06-19d) — ⛔ NOT STARTED
+
+> The biggest change since the original build: a discrete **word-category state machine** with a
+> fixed **10-word "learning" working set**, mode **gating/unlocks** tied to it, an **adaptive
+> level** that moves up/down with performance, a new **draw-the-letters MASTERY mode**, and
+> economy/feel tweaks (gem-cost hints, slower mining timer). ⚠️ This partly SUPERSEDES the §4
+> "continuous mastery, no hard categories" decision — Ian is now explicitly asking for discrete
+> categories with hard counts. Implement categories as a layer (can still be derived from the
+> continuous score under the hood) but honour the hard rules below. **Build test-first** (pure
+> engine), keep `npm test` green, follow `QA.md`, and **prevent any horizontal-scroll regressions
+> on phones** (the §29 `qa_overflow.mjs` / `qa_galaxy.mjs` guards must stay green). iPad is still
+> the primary viewport.
+
+**A. Word categories + the state machine (the backbone — see OPEN QUESTIONS).**
+Categories: **new/unseen → learning → known → mastered**, plus **tricky** (struggled/regressed).
+- **Learning = a fixed working set of exactly 10** words the student does NOT yet know. Always
+  kept at 10: when a word leaves learning (→known), a new word enters; when a word **regresses**,
+  move one **learning → tricky** (so still 10 in learning at all times).
+- **Known** = believed-known from CRAFT (successfully spelled in craft). Eligible for MINING.
+- **Mastered** = a NEW category set ONLY by results in the new MASTERY (draw) mode. Once a word is
+  **mastered it may appear again in ALL modes**.
+- **Tricky** = words that moved backwards / are hardest. Early on we want to **quickly establish a
+  balanced 10 known + 10 learning + 10 tricky**, then keep discovering more known/unknown over time
+  while **repeatedly practising the learning set until those words move to known**.
+- **Settings display:** show **at most 10 "learning in progress"**; the rest are mastered or tricky
+  (and known). (Exact display layout = OPEN QUESTION.)
+
+**B. CRAFT mode = the productive-struggle hub (fix it).** Today craft only serves words the student
+does NOT know. Change it to balance **known / learning / tricky** in the productive-struggle zone,
+but with the **focus on the 10 "learning" words**. ANY word may appear in craft; learning is the
+priority. When a learning word becomes known, a different word rotates into learning.
+- **Hints cost GEMS** (a real decision point that still relieves frustration). If the student is
+  **not making progress, highlight the hint**. The hint also **auto-fires after a set period** even
+  if not pressed — and still costs gems.
+
+**C. MINING mode (recognition) = known-words only + slower, less-pressured.**
+- Only serves words that have been **successfully spelled in CRAFT** (i.e. known). 
+- **Unlocked only after the student has mastered/known 10 words in craft** (a "set").
+- **Timer is too pressured now.** Make the bar **start draining earlier but MUCH slower** — give
+  ~**5 seconds** to respond before it bottoms out (reaching the bottom still has value as it does
+  today). Goal: the student actually considers all options before answering.
+
+**D. Adaptive level (auto up/down).** The student picks a starting level, but the game **adapts up
+or down based on performance** on that level. **Doing poorly → push DOWN a level.** The near-term
+aim is to rapidly reach the balanced **10 known / 10 learning / 10 tricky**, then evenly discover
+more known/unknown as they progress, while continuously re-practising the learning set.
+
+**E. 🆕 MASTERY mode = draw the letters (the new headline).** The student spells a word **without
+choosing from given letters** — they **DRAW each letter** on screen; the app offers a few
+**high-confidence letter matches** to what they drew (pick one) **or redraw**. The spelling
+**populates one letter at a time** as each drawn letter is confirmed. This is the **mastery** test.
+- **Unlocks only once there are words believed "known"** from craft (a set of 10 known, or a
+  configurable set size).
+- **"Mastered" is determined ONLY by results in this mode.** A mastered word may then reappear in
+  all modes.
+- Needs on-screen handwriting → letter recognition (FREE/low-cost; offline-friendly). Approach =
+  OPEN QUESTION (template/stroke matching vs a tiny model vs a lib).
+
+**F. Constraints.** iPad-primary; **no horizontal-scroll regressions on phones** (keep §29 guards
+green). Stay vanilla / dependency-free where possible; flag any dep ([[prefer-free-services]]).
+
+**OPEN QUESTIONS for Ian (asking one at a time, in the chat):**
+1. "Tricky" semantics — proactive hard-words pool, demotion bucket, or both? (asked first)
+2. Exact thresholds: #correct-in-craft → known; #success-in-mastery → mastered; #misses → regress.
+3. Is the "set size" (10) configurable, and does it gate mining (10 known) and mastery (10 known)?
+4. Settings display layout for the categories.
+5. Mastery-mode handwriting-recognition approach (free/low-cost options).
+6. Adaptive-level granularity (the 9 tiers) + how fast to move up/down.
+> (Answers will be folded into this section as they arrive, then built test-first.)
+
+---
 
 History (all ✅ DONE, deployed, QA'd): **§28** user backlog (this section — pricier crystals,
 always-ask who's-playing, offline printables, feedback-to-Ian + in-app archive); **§27** §26-A
