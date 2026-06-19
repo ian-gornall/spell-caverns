@@ -256,7 +256,15 @@ choosing from given letters** — they **DRAW each letter** on screen; the app o
 - **One draw-mode success = mastered**; a miss drops the word back to known. **"Mastered" is set
   ONLY here.** A mastered word may then reappear in all modes.
 - Recognition must be **FREE and OFFLINE** (Ian confirmed). Implement with on-device stroke/template
-  matching (no cloud, no paid API); offer a few high-confidence letter candidates → pick or redraw.
+  matching (no cloud, no paid API).
+- **Draw-mode UX (CLARIFIED 2026-06-19d):**
+  - After each drawn letter, show **as many HIGH-CONFIDENCE candidates as there are, up to 4**,
+    rendered **as the letterforms themselves** (tap the "a"). If **no high-confidence** match →
+    **require a redraw** (no low-confidence guesses offered).
+  - The spelling **populates one letter at a time** as each is confirmed; the student can **tap a
+    placed letter to redo it**.
+  - **Case-insensitive** matching — **expect lowercase but accept uppercase** letterforms (consistent
+    with the rest of the app).
 
 **F. Constraints.** iPad-primary; **no horizontal-scroll regressions on phones** (keep §29 guards
 green). Stay vanilla / dependency-free where possible; flag any dep ([[prefer-free-services]]).
@@ -275,10 +283,13 @@ pattern-mastery trigger (adopted).
 the word → 0 points, floored, never negative); highlight hint @4s, auto-fire @8s without a correct
 letter placed (timers reset on each correct letter); auto-fire costs the same.
 
+**MORE ANSWERED (2026-06-19d):** ✅ draw-mode candidates = up to 4 high-confidence letterforms (tap
+the letter); no high-confidence → force redraw; spelling builds one letter at a time, tap a placed
+letter to redo; case-insensitive (expect lowercase, accept uppercase).
+
 **STILL OPEN (asking one at a time, NO answer choices per Ian):**
 - Default **set size** (10?) and whether it's a grown-up-configurable setting.
 - **Mining timer** exact numbers (drain start + ~5s window) and whether it's per-difficulty.
-- **Mastery draw UX**: how many candidate letters to offer; behaviour on low-confidence / redraw.
 - **Settings/category display** layout for a grown-up.
 > (Answers folded in as they arrive, then built test-first.)
 
