@@ -25,9 +25,17 @@
 **The app is feature-complete, deployed, and multi-user. Everything below is committed; tree clean.**
 
 **Live + deploy**
-- **https://spell-caverns.netlify.app/** — installable PWA, offline-capable, HTTPS.
-- Auto-deploys from **github.com/ian-gornall/spell-caverns** (`main`) via Netlify CD (build =
-  `node scripts/build_deploy.mjs` → publishes `deploy/`; functions in `netlify/functions`).
+- ⚠️ **HOSTING MOVED Netlify → Cloudflare Pages** (Netlify free-tier BUILD CREDITS ran out —
+  "es-999 has run out of credits" — so v18 never published there). Cloudflare Pages free tier
+  doesn't meter build minutes the same way + serves static unmetered. Repo is fully prepared
+  (`functions/api/sync.js` = the family-sync backend ported to a Pages Function on **KV**;
+  `_headers`, `wrangler.toml`; `build_deploy.mjs` copies `_headers`). **One-time connect +
+  KV bind is the user's to do — steps in `DEPLOY_CLOUDFLARE.md`.** New URL will be `*.pages.dev`.
+- Build (Cloudflare Pages, Git-connected to **github.com/ian-gornall/spell-caverns** `main`):
+  command `node scripts/build_deploy.mjs` → output `deploy/`; Functions auto-detected from
+  repo-root `functions/`. Old Netlify config (`netlify.toml`, `netlify/functions/`) kept as a
+  fallback (Cloudflare ignores it). Ported sync VERIFIED locally via `wrangler pages dev`
+  (GET/PUT/DELETE + never-lose-progress merge + `_headers` all pass).
 - `npm test` = **180 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
   `node scripts/qa.mjs` = 0 console/JS errors; `node scripts/qa_responsive.mjs` = 0 horizontal
   overflow at 7 viewports (360–820px). sw VERSION **csc-v18** (bump on any precached change —

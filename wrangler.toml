@@ -1,0 +1,24 @@
+# wrangler.toml — Cloudflare Pages config (config-as-code).
+#
+# Hosting moved off Netlify (free-tier build credits ran out) to Cloudflare Pages, whose free
+# tier doesn't meter build minutes the same way and serves static assets unmetered.
+#
+# Build (set in the Pages dashboard, or via `wrangler pages deploy`):
+#   Build command:            node scripts/build_deploy.mjs
+#   Build output directory:   deploy   (mirrored by pages_build_output_dir below)
+# Pages Functions are auto-detected from the repo-root /functions dir → functions/api/sync.js
+# serves /api/sync.
+name = "spell-caverns"
+pages_build_output_dir = "deploy"
+compatibility_date = "2024-11-01"
+
+# Family-sync storage (engine/cloudsync reconcile, see functions/api/sync.js). Create a KV
+# namespace and bind it as FAMILY_SYNC. Either set this binding in the Pages dashboard
+# (Settings → Functions → KV namespace bindings, for BOTH Production and Preview), OR create
+# it with wrangler and uncomment below with the real id:
+#
+#   npx wrangler kv namespace create FAMILY_SYNC
+#
+# [[kv_namespaces]]
+# binding = "FAMILY_SYNC"
+# id = "<paste-the-namespace-id-here>"

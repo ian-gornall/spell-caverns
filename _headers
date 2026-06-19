@@ -1,0 +1,8 @@
+# Cloudflare Pages (and Netlify) honor this file when it's in the published output dir.
+# build_deploy.mjs copies it into deploy/. Always revalidate the service worker + app shell
+# so a redeploy reaches installed devices promptly (the SW then swaps its precache on its
+# next VERSION bump). Hashless JS/CSS modules already revalidate via ETag by default.
+/sw.js
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache

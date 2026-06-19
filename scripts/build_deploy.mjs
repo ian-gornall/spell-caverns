@@ -11,8 +11,11 @@ import path from 'node:path';
 const ROOT = process.cwd();
 const OUT = path.join(ROOT, 'deploy');
 
-// Files + folders the running app + service worker actually reference.
-const FILES = ['index.html', 'styles.css', 'manifest.webmanifest', 'sw.js', 'netlify.toml'];
+// Files + folders the running app + service worker actually reference. `_headers` carries the
+// cache rules (Cloudflare Pages + Netlify both honor it in the output dir). netlify.toml is
+// kept as a fallback host config (ignored by Cloudflare). Cloudflare Pages Functions live in
+// the repo-root /functions dir and are processed by Cloudflare directly — NOT copied here.
+const FILES = ['index.html', 'styles.css', 'manifest.webmanifest', 'sw.js', '_headers', 'netlify.toml'];
 const DIRS = ['icons', 'src', 'audio']; // audio is optional (nice TTS clips; falls back to device voice)
 const DATA = ['words.js', 'patterns.js', 'nonsense_blocklist.js']; // the runtime dataset (not the build inputs)
 
