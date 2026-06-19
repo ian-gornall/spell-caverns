@@ -42,7 +42,10 @@
 // v20: daily GEODE (§C: tap-to-open + ratcheting harder goals); App-Store polish (§A: craft crystal
 //      sockets, level depth-ladder, card depth, play-body top-clip fix, treasure-tile haul, colour
 //      halo); deferred parental UI now built (kid-lock picture password, grown-up gate, time machine).
-const VERSION = 'csc-v20';
+// v21: final §A polish loop — onboarding "Let's dig!" sticky CTA gets a full-bleed footer
+//      backdrop (cards fade behind it, no longer peek around the pill); more breathing room
+//      between the craft verdict flash and the answer tiles on short phones.
+const VERSION = 'csc-v21';
 
 const CORE = [
   '/',

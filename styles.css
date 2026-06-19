@@ -553,7 +553,7 @@ button.quest {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  gap: clamp(16px, 5vh, 56px);
+  gap: clamp(26px, 6vh, 56px);
   /* `safe center` centers the prompt+answer pair on tall screens but, when space is
      tight, aligns to the START edge so content packs from the top and scrolls — instead
      of the margin-top:auto flexbox bug that CLIPPED the top of the prompt (the "Hear it
@@ -2347,15 +2347,25 @@ html.readable .crystal-name {
 
   /* Onboarding "Let's dig!" — pin it to the bottom of the scroll area so it's always
      reachable while the 9 level cards scroll behind it (it otherwise fell below the fold).
-     The opaque button + a bg-coloured halo keep it readable over the scrolling cards. */
+     A FULL-BLEED gradient footer backdrop (::before) makes the cards fade out cleanly
+     BEHIND a footer — not peek around the centered pill (§24 QA). */
   .onboarding .level-cta {
     position: sticky;
     bottom: 8px;
     z-index: 3;
-    margin-top: 6px;
-    box-shadow:
-      0 0 0 10px var(--bg-0),
-      0 10px 26px -6px rgba(0, 0, 0, 0.85);
+    margin-top: 10px;
+    box-shadow: 0 10px 26px -6px rgba(0, 0, 0, 0.85);
+  }
+  .onboarding .level-cta::before {
+    content: '';
+    position: absolute;
+    left: -50vw;
+    right: -50vw;
+    top: -30px;
+    bottom: -22px;
+    background: linear-gradient(to top, var(--bg-0) 62%, transparent);
+    z-index: -1;
+    pointer-events: none;
   }
 
   /* Picture pad: fewer columns so the buttons stay tappable on narrow phones. */
