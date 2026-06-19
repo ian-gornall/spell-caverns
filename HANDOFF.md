@@ -2,20 +2,20 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-18.
-> **The game is FEATURE-COMPLETE, DEPLOYED, and MULTI-USER.** Live (HTTPS, installable
-> PWA) at **https://spell-caverns.netlify.app/**, auto-deployed by Netlify from
-> **github.com/ian-gornall/spell-caverns** on every push to `main`. `npm test` green
-> (**180 tests**); `npm run smoke` green; sw **csc-v15**.
-> **➡️ START AT §0 (current state) then §22 (latest session).** §22 shipped the §21
-> backlog: **mastery = CRAFTING not mining** (recognition ≠ production), **chosen-level-led
-> sessions**, the **first-wave-ignores-level bug fix**, **9 levels** (one per tier), and a
-> **Settings "Starting level" control**. Earlier work (§20): target-words algorithm, multi-
-> profile, family-password sync, voice speed. Still **DEFERRED** (data + tested helpers
-> exist, screens unbuilt): the kid-lock setter UI, the parent-password zone, and the
-> snapshot-rollback UI.
+> `C:\Users\iango\spell`  •  Last updated 2026-06-19.
+> **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
+> installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
+> Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
+> `npm test` green (**205 tests**); `npm run smoke` green; `node scripts/qa.mjs` = 0
+> console errors; `node scripts/qa_responsive.mjs` = 0 overflow; sw **csc-v20**.
+> **➡️ START AT §0 (current state) then §24 (latest session — the §23 backlog SHIPPED).**
+> §24 shipped the whole §23 App-Store-quality backlog (CRAFT is the hero + best-paid +
+> nudged path; the daily GEODE tap-to-open with ratcheting harder goals; a sustained
+> phone-polish pass) AND the long-deferred multi-user UI (kid-lock picture password,
+> grown-up password gate, snapshot time-machine). Earlier: §22 (mastery = CRAFTING),
+> §20 (target-words algorithm, multi-profile, family sync), §17 (polish/economy/deploy).
 > Older sections are reference: §4/§7/§8 = design decisions (don't relitigate); §16 =
-> Catalog/onboarding/Geode-Boss; §17 = the (now-DONE) polish/economy/deploy backlog;
+> Catalog/onboarding/Geode-Boss; §17 = the (DONE) polish/economy/deploy backlog;
 > §18–18b = backup + cloud-sync design; §19 = deploy bring-up; §12 = audio (722/2949 clips).
 
 ---
@@ -40,13 +40,12 @@
 - ⚠️ **Per-origin data**: spell.pryzmio.com is a NEW origin vs the old netlify URL — localStorage
   doesn't carry over. To move a kid's progress: Settings → Back up (old) → Restore (new), or use
   family sync. (Tell the user; the old Netlify site should be deleted.)
-- `npm test` = **180 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
+- `npm test` = **205 green** (`node --test`); `npm run smoke` (Playwright, needs `npm start`) green;
   `node scripts/qa.mjs` = 0 console/JS errors; `node scripts/qa_responsive.mjs` = 0 horizontal
-  overflow at 7 viewports (360–820px). sw VERSION **csc-v18** (bump on any precached change —
+  overflow at 7 viewports (360–820px). sw VERSION **csc-v20** (bump on any precached change —
   AND bump `src/version.js` `APP_VERSION` to match; Settings shows both). **Before major UI
   changes, follow `QA.md`** (interactive view-as-you-go QA + the phone device matrix).
-- ✅ §22 + the phone/PWA responsive fix + PWA update-flow + the phone exploratory-QA pass are
-  all **pushed and LIVE** (csc-v18).
+- ✅ §24 (the §23 backlog + multi-user UI) is all **pushed and LIVE** (csc-v20, verified on prod).
 
 **What exists**
 - **Data:** `data/words.js` = 2,919 frequency-ordered words (ages 5–13), 63 pattern families;
@@ -61,30 +60,43 @@
 - **UI** (`src/`): `app.js` (boot/router/ctx + family sync), `state.js` (MULTI-PROFILE container —
   see below), `audio.js` (clip/Web-Speech dictation + synth SFX; configurable voice speed), `ui.js`.
   Screens: `home · onboarding · profiles ("who's playing") · settings · progress · feedback ·
-  catalog · boss`. Modes: `rhythm · puzzle · lab`.
+  catalog · boss · geode`. Modes: `rhythm · puzzle · lab`. The home leads with the **CRAFT hero**
+  (the assessment); the daily **geode** (`screens/geode.js`) is the ratcheting balanced-play reward.
+  Reusable `ui.picturePad` powers the kid-lock. (§24)
 - **Multi-profile:** one device/family, many kids, each with own progress; "Who's playing?" each
-  launch; per-profile level-select; family-password cloud sync (Netlify Function + Blobs). (§20)
+  launch; per-profile level-select; family-password cloud sync (KV). Each kid can set a **picture-
+  password kid-lock**; a grown-up can set an optional **parent password** gating the Parents panel
+  + a snapshot **Time machine** rollback. (§20, §24)
 - **Privacy/COPPA:** on-device by default; opt-in family sync stores only pseudonymous data behind
   a parental-consent gate; deletable. (PRIVACY.md, §18b)
 
-**→ NEXT ACTION — ⭐ APP-STORE-QUALITY POLISH (user's top priority 2026-06-19). Deployment is
-DONE; the work now is making this FEEL like a premium kids' app, not "a janky website on a
-phone." See §23 for the full brief.** In short:
-1. **Phone UI is still broken / amateur-looking.** Run real iteration loops (per `QA.md`:
-   navigate→screenshot→LOOK→fix→re-verify) on a PHONE until it reads as an App-Store-quality
-   game. iPad is assumed OK (verify). Visual problems / lack of polish are creeping back or were
-   never fixed — treat this as a sustained polish campaign, not a one-shot.
-2. **Pedagogy rebalance (user): MINING = practice, CRAFTING = the assessment.** Pushing kids to
-   CRAFT and prove their spelling is the KEY — crafting should be the MOST REWARDED and MOST
-   NUDGED-toward path. Keep some mining variety for engagement, but the loop should steer to craft.
-3. **Daily geode** = the balanced-play reward: add TAP-TO-OPEN + a satisfying animation, then it
-   RESETS with harder goals — always encouraging balanced (craft-leaning) play.
-4. **Word discovery/testing**: keep iterating + piloting ideas for finding and testing the words
-   that actually need testing (builds on §21-A craft-is-mastery).
+**→ NEXT ACTION — nothing is outstanding that an agent can build.** The §23 App-Store-quality
+backlog (A/B/C/D) and the long-deferred multi-user UI are **all DONE, deployed (csc-v20), and
+QA'd** (see §24). What's done this session:
+1. ✅ **§23-A App-Store polish** — sustained phone iteration loops: CRAFT crystal sockets (was a
+   web form), level-select depth-ladder, home utility-card depth, the play-body top-clip bug fix,
+   treasure-tile Progress haul, colour-swatch glow. 0 console errors, 0 overflow at all viewports.
+2. ✅ **§23-B pedagogy** — CRAFT is the home hero + the best-paid path (`CRAFT_MULT` gems) + the
+   most-nudged action (idle route + mining-reward CTA both steer to craft); mining reframed "Practice".
+3. ✅ **§23-C daily geode** — tap-to-open + burst animation + ratcheting harder goals each crack
+   (`dailyQuests({round})`, always craft-led), via the new `src/screens/geode.js`.
+4. ✅ **§23-D word discovery** — once-crafted-but-unproven words (`needsCraftConfirmation`,
+   `MIN_CRAFT_PROOF`) get a short cooldown + a reserved confirmation slot so they come back to prove.
+5. ✅ **Multi-user UI (was deferred)** — kid-lock PICTURE password (set in Settings, enforced on
+   "Who's playing?"), an optional grown-up password gate over the Parents panel, and a snapshot
+   **Time machine** (rollback). All wired to the pre-existing tested engine helpers.
 
-Deferred (was the old NEXT ACTION, now lower priority): multi-user UI — kid-lock setter,
-parent-password zone, snapshot-rollback UI (data + tested helpers exist; only screens unbuilt);
-then web-push, regenerate the 722 audio clips, rotate the Gemini key.
+**The ONLY remaining items are user-gated / external — an agent cannot complete them safely:**
+- 🔑 **Rotate the Gemini API key** — the repo is verified **key-free** (no `AIza…` / key in any
+  tracked file; `gen_audio.mjs` reads `GEMINI_API_KEY` from env). Rotation itself is a **user
+  action** in Google AI Studio (the key was only ever pasted in chat). **Action: Ian rotates it.**
+- 🔊 **Regenerate the remaining audio clips (722/2949)** — uses the **paid Gemini TTS quota**, which
+  the standing rule [[approval-before-consuming-limits]] forbids spending without explicit per-run
+  OK. The app already falls back to the device Web-Speech voice, so it is fully functional today.
+  **Action: Ian approves a run, then `GEMINI_API_KEY=… npm run gen:audio` (batches ~30/run).**
+- 🔔 **Web push** — needs VAPID keys + push endpoints on the Worker + an OS notification opt-in the
+  user must grant. The in-app "welcome back" re-engagement nudge (§17.A) already covers the MVP.
+  **Action: only if Ian wants true off-device reminders; requires his infra/opt-in.**
 
 Build **test-first where it's pure**, keep `npm test` green (a **PreToolUse gate runs `npm test`
 before Bash**), **follow `QA.md` (interactive view-as-you-go QA) before shipping major UI**,
@@ -1372,9 +1384,12 @@ regenerate 722 audio clips, rotate the Gemini key.
 
 ---
 
-## 23. NEXT-SESSION BACKLOG — APP-STORE QUALITY + craft-as-assessment (user 2026-06-19) — READ FIRST
+## 23. BACKLOG — APP-STORE QUALITY + craft-as-assessment (user 2026-06-19) — ✅ SHIPPED in §24
 
-Recorded verbatim-intent; NOT yet implemented. **Deployment is now settled** (Cloudflare Worker,
+> **✅ DONE — all of A/B/C/D below shipped & deployed (csc-v20). See §24 for what was built.**
+> Kept here as the verbatim intent that drove §24.
+
+Recorded verbatim-intent; ~~NOT yet implemented~~ **DONE (§24)**. **Deployment is now settled** (Cloudflare Worker,
 LIVE at https://spell.pryzmio.com, family sync working — see §0). The user's focus has shifted to
 **quality and pedagogy**. This is the current top priority (ahead of the §20/§22 deferred
 multi-user UI). Treat it as a SUSTAINED iteration campaign, not a one-shot.
@@ -1444,3 +1459,64 @@ Iterate in small, verified loops; commit per milestone; bump `sw.js` VERSION **a
 `src/version.js` APP_VERSION together; push → Cloudflare CD deploys to spell.pryzmio.com; then
 confirm live (version + the screen you changed). Follow `QA.md`. When something can only be judged
 on a real iPhone/iPad (standalone safe-area, true feel), ASK the user for an on-device screenshot.
+
+---
+
+## 24. SESSION UPDATE — 2026-06-19 (the §23 backlog + multi-user UI — ALL SHIPPED) — READ FIRST
+
+Autonomous build/QA session. Shipped the **entire §23 App-Store-quality backlog** AND the
+long-deferred **multi-user UI**, all committed, deployed (**csc-v20**), and verified live on
+prod. `npm test` **205 green**; `npm run smoke` green; `qa.mjs` 0 console errors; `qa_responsive`
+0 overflow at every viewport. The only open items are **user-gated/external** (see §0 NEXT ACTION):
+rotate the Gemini key (Ian's account action — repo is verified key-free), regenerate audio clips
+(paid quota — needs Ian's OK), web push (needs VAPID/infra + opt-in).
+
+**§23-B — CRAFT is the headline act (pedagogy).** Home now leads with a full-width **Craft hero**
+(premium gradient + "Best gems" badge); mining is reframed as a calmer secondary **"Practice"**
+banner. Crafting is the **best-paid** path: `praise.js` gained `CRAFT_MULT` (1.5×) applied via a
+`craft` flag through `projectedScore`/`gradeAnswer` (puzzle passes `craft:true`). Crafting is the
+**most-nudged**: the home idle auto-route now launches Craft, and the mining wave-reward's primary
+CTA + idle auto-route both steer to "Craft these words — prove it!". (`home.js`, `rhythm.js`,
+`puzzle.js`, `praise.js` + `test/praise.test.js`.)
+
+**§23-C — daily GEODE.** New `src/screens/geode.js` (route `geode`, reuses the boss tap-to-crack
+visuals): when the day's quests are all done the home/progress "Geode ready!" chip routes here →
+tap-to-crack → burst → variable always-positive reward (`openGeode(rng,{round})`, bigger each
+crack) → then the goals **RESET HARDER** for the next cycle. `quests.js`: `dailyQuests(date,{round})`
+ratchets targets by `ROUND_GROWTH^round` and **always leads with a CRAFT quest**; `state.js`:
+`geodeRound()` counts today's cracks, `dayStats().crafted` feeds the craft quest, `recordAnswerStat
+(correct, source)`. round 0 = byte-for-byte the old behavior (backward compatible).
+
+**§23-D — word discovery.** `progress.js`: `MIN_CRAFT_PROOF=2`, `needsCraftConfirmation`,
+`isCraftConfirmed`; a word produced **once** by craft gets a short cooldown (not the long one) and a
+reserved confirmation slot in `session.js buildSession` so it comes back soon for a second proof.
+
+**§23-A — App-Store polish (a sustained loop, per `QA.md`).** Driven by a critical visual review on
+phone viewports, fix → re-verify: (1) the Craft letter slots now read as **glowing crystal sockets**
+(was a flat web form); (2) the level-select is a **depth ladder** (per-tier cool→warm accent stripe);
+(3) home **utility cards gained depth** (gradient + inner highlight); (4) **fixed a real flexbox bug**
+— `margin-top:auto` in the `overflow:auto` `.play-body` clipped the top of "Hear it again"
+unreachably on short phones → now `justify-content: safe center`; (5) **fixed a small-home fold
+regression** the taller hero introduced; (6) Progress "Your haul" → **treasure tiles**; (7)
+colour-swatch selection **glow halo**; (8) wave-reward header no longer truncates. Smoke + idle-route
+assertions updated for the new craft-nudge flow.
+
+**Multi-user UI (was deferred — now built).** Engine helpers already existed + were tested; this was
+UI only. New `ui.picturePad({onComplete,length,icons})` — a kid-friendly **picture password** (tap a
+3-icon sequence). **Kid lock**: set in Settings → "You" (set/confirm/change/remove), **enforced** on
+the "Who's playing?" screen — a locked sibling's card demands the picture lock (wrong → shake +
+retry, right → enter). **Grown-up password**: an optional soft gate over the Parents panel's sensitive
+actions (Restore/Delete/Family-sync/Time-machine); Backup stays ungated; unlock persists across the
+settings re-render. **Time machine**: lists per-profile dated snapshots newest-first with friendly
+relative times + a Restore (`rollback`) button; empty-state hint otherwise. Verified end-to-end with
+Playwright (set+enforce lock, gate lock/unlock, rollback) — 0 console errors. (`ui.js`, `settings.js`,
+`profiles.js`, `styles.css`.)
+
+**Gotcha logged for next time:** a subagent's editor silently replaced ASCII quotes with **smart
+quotes** (`'` `'`) as *code* delimiters in `profiles.js` — invalid JS that `npm test` did NOT catch
+(UI modules aren't unit-tested). Caught it by reading the diff + a Playwright load (0-console-errors
+check). **Lesson: always runtime-load a UI change (Playwright), never trust `npm test` alone for
+screen/mode files.** `node --check <file>` is a fast syntax gate for UI JS.
+
+This session is complete: every §23 goal met, deferred multi-user UI built, everything committed +
+deployed + QA'd. Nothing is left for an agent to build — only the three user-gated/external items.
