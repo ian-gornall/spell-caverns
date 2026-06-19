@@ -1134,6 +1134,50 @@ button.quest {
   margin: 0 0 12px;
   font-size: 1.25rem;
 }
+
+/* Grown-up settings disclosure (§26-A rec #8): collapse the parent/advanced panels behind a
+   single tap so the child-facing Settings stays short and simple. Native <details>/<summary>. */
+.gp-disclosure {
+  margin-bottom: 16px;
+}
+.gp-summary {
+  list-style: none; /* hide the default disclosure triangle; we draw our own */
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--panel);
+  border: 1px dashed var(--panel-border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.gp-summary::-webkit-details-marker {
+  display: none;
+}
+.gp-summary-label {
+  font-weight: 800;
+  font-size: 1.15rem;
+}
+.gp-summary-label::after {
+  content: ' ▸';
+  color: var(--ink-dim);
+}
+.gp-disclosure[open] .gp-summary-label::after {
+  content: ' ▾';
+}
+.gp-summary-hint {
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+}
+.gp-body {
+  margin-top: 14px;
+}
+/* the inner panels keep their own spacing; trim the last margin so the disclosure ends clean */
+.gp-body > .panel:last-child {
+  margin-bottom: 0;
+}
 .field {
   margin-bottom: 16px;
 }

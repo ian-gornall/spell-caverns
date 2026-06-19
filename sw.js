@@ -67,7 +67,10 @@
 // v27: root-level overflow-x:clip guard (html/body/#app) kills phantom horizontal scroll on
 //      real Android/Samsung devices (the layout viewport could pan a few px past the visual
 //      one); also tamed the onboarding -50vw full-bleed to fixed insets. styles.css changed.
-const VERSION = 'csc-v27';
+// v28 (§26-A #8): SLIM child-facing Settings — advanced levers + players + printables + the
+//      Parents&privacy block now live in a collapsed "Grown-up settings" <details> disclosure;
+//      the default view is just the simple kid controls. settings.js + styles.css changed.
+const VERSION = 'csc-v28';
 
 const CORE = [
   '/',

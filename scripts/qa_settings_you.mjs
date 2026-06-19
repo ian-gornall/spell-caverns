@@ -9,6 +9,8 @@ p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
 await p.goto(URL, { waitUntil: 'networkidle' });
 await p.evaluate(() => localStorage.setItem('crystal-spell-caverns:v1', JSON.stringify({ gems: 100, profile: { name: 'Ada', onboarded: true }, settings: { difficulty: 'easy', length: 10, optionCount: 3, voice: true, volume: 0.85, themeColor: '#36F1CD', readableText: true } })));
 await p.goto(URL, { waitUntil: 'networkidle' });
+// §28.D: boot routes to the "Who's playing?" picker; select the explorer to reach home.
+if (await p.locator('.profile-card:not(.add)').count()) await p.locator('.profile-card:not(.add)').first().click();
 await p.click('[class*="menu-card"]:has(.lbl:text-is("Settings"))');
 await p.waitForSelector('.seg');
 await p.waitForTimeout(300);

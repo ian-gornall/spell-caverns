@@ -1003,6 +1003,62 @@ export function settingsScreen(ctx) {
     ),
   );
 
+  // --- Practice sheets (parent tool — tucked into the grown-up disclosure below) ---
+  const printablesPanel = el(
+    'div',
+    { class: 'panel' },
+    el('h3', {}, 'Practice sheets'),
+    el('p', { class: 'field-hint' }, 'Print word lists and look-cover-write-check sheets for screen-free practice.'),
+    el(
+      'div',
+      { class: 'data-actions' },
+      el('button', { class: 'btn', onClick: () => ctx.nav('printables') }, '🖨️ Make a printable sheet'),
+    ),
+  );
+
+  // --- Advanced play levers (parent-facing): answer-count + the device voice picker.
+  // The two CORE kid levers (difficulty + length) stay on the always-visible Adventure panel;
+  // these finer knobs move behind the grown-up disclosure (DESIGN_ANALYSIS rec #8). ---
+  const advancedPanel = el(
+    'div',
+    { class: 'panel' },
+    el('h3', {}, 'Advanced'),
+    el('div', { class: 'field' }, el('label', {}, 'Answer choices'), optSeg),
+    el('div', { class: 'field' }, el('label', {}, 'Voice choice'), voicePicker, testVoiceBtn),
+  );
+
+  // §26-A rec #8 — SLIM the child-facing Settings. The default view is just the simple,
+  // safe kid controls (level, difficulty, length, voice on/off + speed + volume, name,
+  // colour, easy-read, kid-lock). The advanced levers, players admin, practice sheets, and
+  // the whole Parents & privacy block (backup/restore/delete/family-sync/time-machine/
+  // grown-up password) live inside a collapsed <details> disclosure so a child isn't faced
+  // with — and can't idly wander into — the grown-up tools. Native <details> = zero-JS,
+  // accessible, and keyboard-toggleable; the destructive items inside still sit behind the
+  // parent-password gate (renderSensitive) when one is set.
+  const grownupSection = el(
+    'details',
+    { class: 'gp-disclosure' },
+    el(
+      'summary',
+      { class: 'gp-summary' },
+      el('span', { class: 'gp-summary-label' }, '🔧 Grown-up settings'),
+      el('span', { class: 'gp-summary-hint' }, 'players · printables · backup · privacy'),
+    ),
+    el(
+      'div',
+      { class: 'gp-body' },
+      advancedPanel,
+      playersPanel,
+      printablesPanel,
+      el(
+        'div',
+        { class: 'panel' },
+        el('h3', {}, 'Parents & privacy'),
+        dataPanel,
+      ),
+    ),
+  );
+
   return el(
     'div',
     { class: 'screen' },
@@ -1023,7 +1079,6 @@ export function settingsScreen(ctx) {
         ),
         el('div', { class: 'field' }, el('label', {}, 'Difficulty'), diffSeg),
         el('div', { class: 'field' }, el('label', {}, 'Words per dig'), lenSeg),
-        el('div', { class: 'field' }, el('label', {}, 'Answer choices'), optSeg),
       ),
       el(
         'div',
@@ -1032,7 +1087,6 @@ export function settingsScreen(ctx) {
         el('div', { class: 'field' }, el('label', {}, 'Spoken voice'), voiceSeg),
         el('div', { class: 'field' }, el('label', {}, 'Voice speed'), rateSeg),
         el('div', { class: 'field' }, el('label', {}, 'Volume'), vol),
-        el('div', { class: 'field' }, el('label', {}, 'Voice choice'), voicePicker, testVoiceBtn),
         remindersField,
       ),
       el(
@@ -1060,24 +1114,7 @@ export function settingsScreen(ctx) {
         ),
         kidLockSection(ctx),
       ),
-      playersPanel,
-      el(
-        'div',
-        { class: 'panel' },
-        el('h3', {}, 'Practice sheets'),
-        el('p', { class: 'field-hint' }, 'Print word lists and look-cover-write-check sheets for screen-free practice.'),
-        el(
-          'div',
-          { class: 'data-actions' },
-          el('button', { class: 'btn', onClick: () => ctx.nav('printables') }, '🖨️ Make a printable sheet'),
-        ),
-      ),
-      el(
-        'div',
-        { class: 'panel' },
-        el('h3', {}, 'Parents & privacy'),
-        dataPanel,
-      ),
+      grownupSection,
     ),
   );
 }
