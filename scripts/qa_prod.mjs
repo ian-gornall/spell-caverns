@@ -30,17 +30,28 @@ try {
   await page.locator('.menu-card.mastery').click();
   await page.waitForSelector('.draw-canvas', { timeout: 8000 });
   await page.waitForTimeout(500);
-  const word = await page.evaluate(() => window.__masteryCurrent?.word);
-  console.log('mastery word:', word);
-  // draw a vertical line, recognise → candidates should appear (templates from the live font)
+  console.log('mastery word:', await page.evaluate(() => window.__masteryCurrent?.word));
+  // confirm the CNN model actually loads over Cloudflare (not just the grid fallback)
+  const model = await page.evaluate(async () => {
+    const j = await fetch('/src/models/letters/model.json', { cache: 'no-store' });
+    const w = await fetch('/src/models/letters/weights.bin', { cache: 'no-store' });
+    return { json: j.status, jsonType: j.headers.get('content-type'), bin: w.status, binLen: w.headers.get('content-length') };
+  });
+  console.log('model files:', JSON.stringify(model));
+  // draw an "a" (bowl + right stem) — the reported-bug letter; CNN should put 'a' on top
   const box = await page.locator('.draw-canvas').boundingBox();
-  const pts = line(0.5, 0.14, 0.5, 0.86).map(([fx, fy]) => [box.x + fx * box.width, box.y + fy * box.height]);
-  await page.mouse.move(pts[0][0], pts[0][1]); await page.mouse.down();
-  for (const [x, y] of pts.slice(1)) await page.mouse.move(x, y, { steps: 2 });
-  await page.mouse.up();
-  await page.waitForTimeout(1100); // auto-recognise after the pen lifts (no button)
+  const stroke = async (frac) => {
+    const pt = (f) => [box.x + f[0] * box.width, box.y + f[1] * box.height];
+    await page.mouse.move(...pt(frac[0])); await page.mouse.down();
+    for (let i = 1; i < frac.length; i++) await page.mouse.move(...pt(frac[i]), { steps: 2 });
+    await page.mouse.up();
+  };
+  const circle = (cx, cy, r) => Array.from({ length: 31 }, (_, i) => { const a = (i / 30) * 2 * Math.PI; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; });
+  await stroke(circle(0.45, 0.55, 0.22));
+  await stroke([[0.67, 0.32], [0.67, 0.82]]);
+  await page.waitForTimeout(4000); // first recognition loads tf.min.js + the model
   const cands = await page.locator('.cand-letter').allTextContents();
-  console.log('drew a vertical stroke → candidates:', cands.length ? `[${cands.join(', ')}] ✓` : 'NONE ✗');
+  console.log(`drew 'a' → candidates=[${cands.join(', ')}]  top='${cands[0] || '—'}'  ${cands[0] === 'a' ? '✓ CNN active, fixes the bug' : cands.includes('a') ? '~ a in candidates' : '✗'}`);
   console.log('\nISSUES:', issues.length ? issues : 'none');
 } catch (e) {
   console.error('PROD PROBE ERROR:', e.message);

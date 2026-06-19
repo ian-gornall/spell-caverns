@@ -6,13 +6,15 @@
 > **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
-> `npm test` green (**261 tests**); `npm run smoke` green; `node scripts/qa.mjs` = 0
+> `npm test` green (**262 tests**); `npm run smoke` green; `node scripts/qa.mjs` = 0
 > console errors; `node scripts/qa_responsive.mjs` = 0 overflow; **`node scripts/qa_overflow.mjs` =
 > 0 inner-scroll/bleed at 8 Galaxy sizes × 2 text scales** (the §29 deep guard); `node
-> scripts/qa_fold.mjs` = above-the-fold PASS; sw **csc-v34** (LIVE; **§30 SHIPPED** — see §30).
+> scripts/qa_fold.mjs` = above-the-fold PASS; sw **csc-v36** (LIVE; **§30 SHIPPED + recognizer
+> upgraded** — see §30).
 > **➡️ NEW: §30 (LEARNING-MODEL REDESIGN + draw-the-letters MASTERY mode) is SHIPPED + LIVE
-> (csc-v34, verified on prod via `qa_prod.mjs`). Owed: a real-device iPad pass on the draw mode.
-> START AT §0 (current state) → §30.** Older: §28 user backlog, §27 §26-A design brief.
+> (csc-v36, verified on prod). The draw-mode recogniser is now a real on-device EMNIST-letters
+> CNN (TF.js, ~94% top-1, fixes the a/q/c/s confusion) + a keyboard fallback. Owed: a real-device
+> iPad pass. START AT §0 (current state) → §30.** Older: §28 user backlog, §27 §26-A design brief.
 > **§28.A FEEDBACK DELIVERY — fully LIVE + verified end-to-end on prod (csc-v26):** feedback now
 > reaches Ian via durable KV + instant web-push to his devices (laptop + phone both registered &
 > confirmed buzzing). Plus an in-app **FEEDBACK ARCHIVE** (`screens/admin_feedback.js`): tap a
@@ -183,21 +185,30 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 
 ---
 
-## §30 — LEARNING-MODEL REDESIGN + MASTERY (DRAW) MODE (Ian 2026-06-19d) — ✅ SHIPPED + LIVE (csc-v34)
+## §30 — LEARNING-MODEL REDESIGN + MASTERY (DRAW) MODE (Ian 2026-06-19d) — ✅ SHIPPED + LIVE (csc-v36)
 
-> **DONE + DEPLOYED (2026-06-19e): all SIX build-order steps built test-first, QA'd, and SHIPPED.**
-> 261 tests green; `npm run smoke` green; `qa_overflow`/`qa_responsive`/`qa_fold` green; visual
-> probes (`qa_s30`/`qa_mastery`/`qa_s30b`) reviewed. **LIVE on prod (sw `csc-v34`) and verified
-> end-to-end** (`scripts/qa_prod.mjs`: boot ✓, Mastery card ✓, draw-mode recognizer returns
-> candidates on the live bundle ✓, 0 console errors). The full §30 learning model runs end-to-end:
-> discrete categories, focused craft with gem-cost hints, the ~5s mining timer, the brand-new
-> **draw-the-letters Mastery mode** (free/offline recognizer), the **Craft → Mastery → Mining unlock
-> chain**, and the kid-visible Progress category view. (Deploy = bumped `sw.js`/`version.js`
-> v33→v34 + added the 4 new files to the SW CORE precache, pushed to `main`, Git-CD built+deployed.)
-> ⚠️ **Recognizer is BEST-EFFORT:** the draw-mode handwriting match (grid/Dice vs font glyphs) puts
-> the right letter among the ≤4 tap-a-candidate options reliably but not always #1; worth tuning
-> against real kid handwriting (more templates / per-letter thresholds) + a **real-device pass on
-> Ian's iPad** (the only QA not yet done — emulated drawing only). Modules:
+> **DONE + DEPLOYED: all SIX build-order steps + the user's 2026-06-19f follow-ups, shipped + verified.**
+> 262 tests green; `npm run smoke` green; `qa_overflow`/`qa_responsive`/`qa_fold` green; visual probes
+> reviewed. **LIVE on prod (sw `csc-v36`).** The full §30 learning model runs end-to-end: discrete
+> categories, focused craft with gem-cost hints, the ~5s mining timer, the **draw-the-letters Mastery
+> mode**, the **Craft → Mastery → Mining unlock chain**, and the kid-visible Progress category view.
+>
+> **USER FOLLOW-UPS (2026-06-19f) — all SHIPPED:**
+> - ✅ **Settings level change re-aims the learning set** (`categories.setLevelAndRefill`; was a no-op). v35.
+> - ✅ **Craft gems trimmed** (`CRAFT_MULT` 1.5→1.2). v35. (Tunable if still high.)
+> - ✅ **Draw mode auto-recognises** ~0.85s after the pen lifts — no "Read" button. v35.
+> - ✅ **Recognizer REPLACED with a real on-device CNN** (the headline fix). The old grid/Dice
+>   matcher confused round letters (a/q/c/s); now `src/cnn_recognizer.js` runs a small EMNIST-letters
+>   CNN in TF.js (vendored `src/vendor/tf.min.js` + a 0.4MB model under `src/models/letters/`, trained
+>   by `scripts/train_recognizer.mjs` with tfjs-node, ~94% top-1 / ~99% top-4). FULLY ON-DEVICE
+>   (no strokes leave the device — COPPA), free, offline (SW-precached). Grid matcher kept as a
+>   fallback if TF.js can't load. **Verified on prod: drawing 'a' → top='a'** (`qa_prod.mjs`). v36.
+> - ✅ **Keyboard fallback in Mastery** — toggle draw ↔ type the word with the on-screen/physical
+>   keyboard (`modes/mastery.js` type mode). v36.
+> - ⚠️ **Owed: a real-device iPad pass** on the draw mode (recognition validated with emulated
+>   drawing only — 7/7 letters top-1 incl. 'a'; real finger/stylus + a child's printing is the
+>   final check). To RETRAIN the model: `node scripts/train_recognizer.mjs` (needs tfjs-node — on
+>   Windows, copy `deps/lib/tensorflow.dll` next to `lib/napi-v8/` if it fails to load). Modules:
 > - **`src/engine/categories.js`** (+`test/categories.test.js`, 16 tests) — the §30 state machine:
 >   `new→learning→known→mastered` + `tricky`. API: `createCategoryState({setSize,level})`,
 >   `recordCraft(state,word,correct,{pool})` (2-in-a-row→known; craft miss→learning; evicts the
