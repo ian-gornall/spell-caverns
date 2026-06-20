@@ -2,7 +2,7 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-19.
+> `C:\Users\iango\spell`  •  Last updated 2026-06-20 • current live sw **csc-v47** (§11 autofill fix).
 > **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
@@ -247,18 +247,27 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 
 **🆕 NEW BACKLOG (Ian 2026-06-20, in priority order — "update the handoff only, do not code" for these):**
 
-11. **🆕 DISABLE KEYBOARD AUTOFILL — OPEN, the NEXT item. ➡️ DEPLOY IMMEDIATELY AFTER QA (Ian).** Turn off the
-   mobile keyboard's autofill / autocomplete / autocorrect / suggestion strip on the app's text inputs. Prime
-   suspect = the **Mastery keyboard-fallback "type the word" input** (autocorrect / autofill can SUGGEST or
-   auto-replace the spelling, defeating the exercise and cluttering the kid UI). Likely fix: on the relevant
-   `<input>`(s) set `autocomplete="off"`, `autocorrect="off"`, `autocapitalize="off"`, `spellcheck="false"`
-   (iOS can be stubborn — may also need an unusual `name`/`inputmode`, or `autocomplete="one-time-code"`, to
-   fully suppress the suggestion bar). **FIRST find every text input** (grep `createElement('input'` /
-   `type: 'text'` / `contenteditable` across `src/`: mastery type-mode, Settings name field, family password,
-   feedback box). Test-first only where logic changes; otherwise QA by EYE on a real device keyboard, then
-   **deploy immediately.**
+11. ✅ **DISABLE KEYBOARD AUTOFILL (Ian 2026-06-20) — DONE + QA'd + LIVE (csc-v47).** The mobile keyboard's
+   autofill / autocomplete / autocorrect / spellcheck suggestion strip is now OFF on every app text input.
+   **ROOT CAUSE (the real bug):** the Mastery type input already had all four attributes in code, yet
+   suggestions still showed — because the `el()` helper did `node.spellcheck = 'false'`, but `spellcheck` is
+   a BOOLEAN IDL property and the non-empty string `'false'` is TRUTHY, so spellcheck stayed ON. Fix: `el()`
+   now reflects `spellcheck` via the ATTRIBUTE (handles `false` and `'false'`, before the falsy-skip) + a
+   shared **`NO_AUTOFILL`** constant (export in `src/ui.js`: autocomplete/autocorrect/autocapitalize=`off`,
+   spellcheck=`false`) applied to ALL inputs: Mastery type-mode (`modes/mastery.js`), Settings learner name +
+   onboarding name + both family-password fields, Lab "name your crystal" (`modes/lab.js`), feedback textarea
+   (`screens/feedback.js`). Password fields → `autocomplete=off`/`new-password`; parental-gate number →
+   `autocomplete=off`. **QA:** 277 tests; **new `scripts/qa_autofill.mjs`** proves `spellcheck===false` +
+   all-off both on the `el()` helper (incl. the historical `'false'` bug input) AND end-to-end on the
+   mastery / settings-name / feedback / onboarding inputs; smoke, `qa.mjs` (0 console errors), `qa_responsive`,
+   `qa_fold`, `qa_overflow`(Galaxy) green; `qa_phone_audit` confirms iPad-portrait `--play-scale=1` preserved
+   (only the by-design landscape home-menu scroll "fails", pre-existing per §34). Files: `src/ui.js`,
+   `src/modes/{mastery,lab}.js`, `src/screens/{onboarding,settings,feedback}.js`, `src/version.js`, `sw.js`,
+   `scripts/qa_autofill.mjs`. ⚠️ OWED: a real-device keyboard pass (iOS can be stubborn — if the suggestion
+   bar still appears on a physical device, the next lever is an unusual `name`/`inputmode` or
+   `autocomplete="one-time-code"`, but that changes the keyboard so try it only if needed). **➡️ NEXT: #12.**
 
-12. **🆕 LANDSCAPE-PHONE PLAY SIZING — OPEN. ➡️ DEPLOY after QA.** Verbatim (Ian): in horizontal phone view
+12. **🆕 LANDSCAPE-PHONE PLAY SIZING — OPEN, the NEXT item. ➡️ DEPLOY after QA.** Verbatim (Ian): in horizontal phone view
    "the top part with no buttons takes up most of the screen which makes the buttons on the bottom tiny, and
    the letters chosen also super small." I.e. in **landscape phone** the upper PROMPT zone (Hear-it-again +
    sentence) eats most of the vertical band, squeezing the play area so the **TRAY letter buttons + the SLOT
