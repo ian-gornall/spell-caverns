@@ -23,6 +23,8 @@ import { startPuzzle } from './modes/puzzle.js';
 import { startMastery } from './modes/mastery.js';
 import { startLab } from './modes/lab.js';
 import { summary } from './engine/progress.js';
+import { byRank } from './engine/lexicon.js';
+import { fillLearning, recordCraft, knownWords, learningWords } from './engine/categories.js';
 import { registerServiceWorker } from './pwa.js';
 
 const routes = {
@@ -135,6 +137,18 @@ function boot() {
     return;
   }
 
+  // TEST/DEV UNLOCK (§31): "/?dev=mastery" promotes the active profile's working set to KNOWN so
+  // MASTERY unlocks immediately (with a backlog to master → the §31.C nudge fires too) — lets Ian
+  // try the new draw modes without grinding 10 words to known first. Local data only; harmless.
+  // TODO(§31): strip this before the clean merge to main (it's a test affordance, not a feature).
+  if (new URLSearchParams(location.search).get('dev') === 'mastery' && store.profileCount() >= 1) {
+    refreshActive();
+    devUnlockMastery();
+    nav('home');
+    maybeBootSync();
+    return;
+  }
+
   // Route by how many explorers exist:
   //  - none yet → first-run onboarding (creates explorer #1)
   //  - one or more → "Who's playing?" EVERY launch (user 2026-06-19, §28.D): ALWAYS ask
@@ -180,6 +194,25 @@ function maybeBootSync() {
       }
     });
   });
+}
+
+// §31 test affordance (see the "/?dev=mastery" hook in boot): craft the active profile's first
+// `setSize` learning words up to KNOWN so Mastery unlocks with a backlog still to master. Uses the
+// real engine transitions (recordCraft ×2 → known) so the resulting state is exactly what normal
+// play produces. TODO(§31): remove with the boot hook before the clean merge.
+function devUnlockMastery() {
+  const cats = ctx.state && ctx.state.categories;
+  if (!cats) return;
+  const pool = byRank().filter((w) => w.word.length >= 3);
+  fillLearning(cats, pool);
+  for (let i = 0; i < cats.setSize && i < 50; i++) {
+    const lw = learningWords(cats);
+    if (!lw.length || knownWords(cats).length >= cats.setSize) break;
+    recordCraft(cats, lw[0], true, { pool });
+    recordCraft(cats, lw[0], true, { pool });
+  }
+  store.save();
+  toast('🔓 Test unlock: Mastery is open — go draw some words! ✍️');
 }
 
 boot();
