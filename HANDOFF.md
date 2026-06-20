@@ -176,11 +176,15 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    0 console errors), smoke + qa_responsive/overflow/fold green. **NOTE:** the settings voice-picker/speed
    previews stay TTS on purpose (they audition the DEVICE voice). ⚠️ OWED: a real-device pass (iPad/iOS) to
    confirm the gate unlocks iOS audio + the clips sound right on hardware.
-3. **AUDIO TAIL — now the next audio job (interface audio above is DONE, quota was left intact).**
-   **~1081 word TTS clips remain** (1838 word + 35 phrase + 10 ui clips ship as of csc-v42; manifest matches).
-   FREE multi-day path, **time-gated by the daily quota** (resets daily). Each run: `npm i --no-save
-   @breezystack/lamejs playwright` → `npm run gen:audio words` → commit new `audio/` clips → bump
-   `sw.js`/`version.js` → push. (Pre-approved FREE path; honour [[approval-before-consuming-limits]] per run.)
+3. **AUDIO TAIL — IN PROGRESS (multi-day free path). csc-v43 (2026-06-20) added +460 word clips →
+   2298/2919 done; ~621 word clips remain.** (2298 word + 35 phrase + 10 ui ship as of csc-v43; manifest
+   matches.) **Time-gated by the daily quota:** on 2026-06-20 model-1 (gemini-3.1-flash-tts) was already
+   spent by the §32.A interface run, then gemini-2.5-flash gave +460 before all 3 models walled. Resets
+   daily. Each run: `npm i --no-save @breezystack/lamejs` (it gets pruned by other --no-save installs —
+   reinstall right before) → `npm run gen:audio words` (skips done, BATCH_SIZE=40) → commit new `audio/`
+   clips → bump `sw.js`/`version.js` → push → `node scripts/check_deploy.mjs csc-vNN`. Pre-approved FREE
+   path; honour [[approval-before-consuming-limits]] per run. (Minor owed: spot-listen the 2 small-byte
+   new clips `parking`/`bear` on a real device — size matches the proven set so likely fine.)
 4. **§26-B — ASSETS REVIEW of `C:\Users\iango\kidenv` → an ARTIFACT (Ian 2026-06-20, REVISED scope).**
    Ian's revised direction: the free/low-cost assets task is **a review of what already exists in the
    `C:\Users\iango\kidenv` directory** (his other kid-apps workspace — art/audio/icon/library assets

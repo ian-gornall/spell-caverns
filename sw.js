@@ -124,7 +124,11 @@
 //      boss prompts) + the mastery praise now play PRE-RENDERED neural-TTS clips, not the robotic
 //      device voice. New audio/ui/ bucket + manifest.ui; say() resolves UI clips at natural speed;
 //      strings centralized in src/engine/ui_phrases.js (precached) so the runtime + generator agree.
-const VERSION = 'csc-v42';
+// csc-v43: AUDIO TAIL — +460 word clips (1838→2298 of 2919; 621 remain for a future free run). Pure
+//      additive content (audio/ is NOT precached; manifest is no-cache) so this bump is bookkeeping —
+//      it keeps the displayed version in step with the shipped clip count. New batch on gemini-2.5-flash;
+//      size distribution matches the proven prior set.
+const VERSION = 'csc-v43';
 
 const CORE = [
   '/',

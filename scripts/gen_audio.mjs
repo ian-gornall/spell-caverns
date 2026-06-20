@@ -69,6 +69,11 @@ let made = 0;
 export function slug(s) {
   return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
+// Windows reserves these device names (CON, PRN, AUX, NUL, COM0-9, LPT0-9): a file like
+// `con.mp3` can be written by MSYS/Node but native git can't index it and Win32 can't open
+// it. The word "con" hit this. Skip such slugs entirely → they fall back to device TTS.
+const RESERVED_NAME = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i;
+export const isReservedSlug = (s) => RESERVED_NAME.test(s);
 const ensureDir = (d) => fs.mkdirSync(d, { recursive: true });
 const outPath = (kind, s) => path.join(AUDIO_DIR, kind, `${s}.mp3`);
 
@@ -236,7 +241,12 @@ function targets() {
     for (const w of WORDS) {
       if (seen.has(w.word)) continue;
       seen.add(w.word);
-      list.push({ kind: 'words', slug: slug(w.word), text: w.word });
+      const s = slug(w.word);
+      if (isReservedSlug(s)) {
+        console.warn(`  skipping "${w.word}" — "${s}" is a Windows-reserved filename (will use TTS)`);
+        continue;
+      }
+      list.push({ kind: 'words', slug: s, text: w.word });
     }
   }
   return list;
