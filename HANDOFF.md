@@ -175,13 +175,16 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    already shipped dependency-free: owned-crystal glint + prefers-reduced-motion (§29, csc-v30).
 4. ✅ **§26-A #8 (slim child Settings) — DONE (§29, csc-v28).**
 5. ✅ **§30 — LEARNING-MODEL REDESIGN + MASTERY (draw) mode (Ian 2026-06-19d) — SHIPPED + LIVE
-   (2026-06-19e, sw `csc-v34`), verified on prod.** All 6 steps: state machine (`categories.js`),
-   selection + adaptive level (`selection.js`), the free/offline draw recognizer (`handwriting.js`,
-   grid/Dice), the CRAFT (gem-cost hints) + MINING (~5s timer, mastered-gate) + new **MASTERY draw
-   mode** (`modes/mastery.js`) UI, the Craft→Mastery→Mining unlock chain, and the kid-visible
-   Progress category view. **261 tests + smoke + all phone guards green; `qa_prod.mjs` confirmed the
-   live bundle boots + the draw mode works.** ⚠️ Owed: a **real-device pass on the iPad** + tuning
-   the recognizer vs real kid handwriting (right letter in the ≤4 candidates, not always #1). §30 below.
+   (sw `csc-v36`), verified on prod + on Ian's real iPad ("yes that works", 2026-06-19g).** All 6
+   steps + the user's 2026-06-19f follow-ups: the draw recognizer is now a real on-device
+   EMNIST-letters **CNN** (TF.js, ~94% top-1 — fixes the a/q/c/s confusion), draw mode
+   auto-recognises (no button), a **keyboard fallback** (toggle draw↔type), the level picker
+   re-aims the learning set, craft gems trimmed. Full detail in §30 below.
+6. **🆕 §31 — MASTERY UX + DICTATION + MASTERY-FIRST NUDGING (Ian 2026-06-19g) — ⛔ NOT STARTED.**
+   Four asks, recorded only (no code yet): (a) on **tablet/desktop**, write the **whole word at
+   once** — one box per letter, still detected letter-by-letter but without pausing for each;
+   (b) add a **dictation mode** to Mastery; (c) **nudge students into Mastery** once it unlocks;
+   (d) flexibly cycle students **known→mastered (draw) and back→learning (craft)**. Spec in §31 below.
 
 ---
 
@@ -398,6 +401,54 @@ the §29 phone no-horizontal-scroll guards green):**
    mastered-gate), **Progress "Words I'm learning" category display** (kid-visible; tricky
    grown-up-only), **Words-per-dig help-text** updated.
 7. **§26-B assets research** (free/low-cost) can run in parallel (independent). STILL OPEN.
+
+---
+
+## §31 — MASTERY UX + DICTATION + MASTERY-FIRST NUDGING (Ian 2026-06-19g) — ⛔ NOT STARTED (recorded only)
+
+> Captured after Ian confirmed the §30 draw mode works on his real iPad ("yes that works"). Four
+> asks, **recorded only — no code yet**. When building: test-first for any engine/selection change,
+> follow `QA.md`, keep the §29 phone no-horizontal-scroll guards green, bump `sw.js`/`version.js` on
+> deploy. iPad-primary.
+
+**A. Whole-word writing on tablet/desktop (wide screens).** On a screen wider than a phone, show the
+WHOLE word as a ROW OF BOXES — one box per letter — and let the student write each letter into its
+own box WITHOUT waiting for each detection to resolve first. It is still LETTER-BY-LETTER recognition
+(the CNN runs per box), just without the stop-and-wait rhythm of today's single-canvas flow.
+- Responsive: WIDE (tablet/desktop / landscape iPad, e.g. ≳700px or `pointer:fine`) → the multi-box
+  row; PHONE (narrow) → keep the current single-canvas, one-letter-at-a-time flow (no room for a row).
+- Each box = a mini draw canvas behaving like today's: draw → auto-recognise on pen-up debounce →
+  the recognised letter fills THAT box. Per-box correction UX (confirm when building): simplest is
+  auto-fill the top-1 and let a tap on a box re-open it to redraw; or show the up-to-4 candidates
+  under the active box. The student writes box 1, 2, 3… freely without waiting; each box recognises
+  independently; when all are filled → check the word (same `recordDraw` path). The §30 KEYBOARD
+  fallback must keep working here (typing fills the boxes left-to-right).
+- Reuses `cnn_recognizer.recognizeDrawing` per box — mostly a `modes/mastery.js` + CSS change
+  (a responsive grid of per-letter canvases); no engine change.
+
+**B. Dictation mode for Mastery.** Add a dictation variant: the app SPEAKS the word and the student
+spells it from hearing ALONE — no sentence/blank shown (or hidden behind a "peek" button). Pure
+auditory recall, the classic spelling-test format; the student still draws (or types, per §30) the
+answer. (Confirm: a toggle inside Mastery — "📣 Dictation" — vs a separate mode; whether the sentence
+is dropped entirely or peekable.) Likely a `modes/mastery.js` option that hides `sentenceEl` + dictates.
+
+**C. Push students into Mastery once it's unlocked.** Mirror the §B craft-nudging for mastery: once
+`unlocks(state.categories).mastery` is true, ACTIVELY steer toward it — highlight/pulse the Mastery
+card on home, idle-route into Mastery, add CTAs from craft/mining rewards ("You've learned these —
+now MASTER them! ✍️"). Goal: drive KNOWN → MASTERED instead of letting mastery sit ignored. (Touches
+`screens/home.js` idle guard + the reward screens in `modes/*`.)
+
+**D. Flexible known↔learning cycling (the pedagogical loop — the framing for B/C).** Ian's overarching
+goal: flexibly move students toward **mastering all their KNOWN words** (draw mode), then back toward
+**(re)learning them with CRAFT**. The nudging + selection should form a continuous loop — Craft
+(new→learning→known) → Mastery (known→mastered) → cycle mastered/missed words back through Craft for
+retention — adapting to where each student is: a backlog of known-but-unmastered words → push Mastery
+(C); mastered + craft-missed words feed back into Craft. This ties §31.B/C together; refine the §30
+unlock-chain nudging + the `selection.js` pools toward it (e.g. a "what should this student do next?"
+recommender balancing mastering vs re-crafting).
+
+**Open questions to confirm before building:** the wide-screen breakpoint + per-box correction UX (A);
+dictation as a toggle vs separate mode, sentence dropped vs peekable (B).
 
 ---
 
