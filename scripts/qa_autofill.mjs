@@ -67,14 +67,37 @@ try {
   console.log(`  ${unit.strFalse === false ? '✓' : '✗'} el(spellcheck:'false') → property false (was the bug)`);
   console.log(`  ${unit.boolFalse === false ? '✓' : '✗'} el(spellcheck:false)  → property false`);
 
-  // ---- 2. MASTERY type-mode input (the prime suspect) ----
-  console.log('\n2) Mastery keyboard-fallback "type the word" input:');
+  // ---- 2. MASTERY type-mode = APP KEYPAD, NO native input (no OS keyboard → no suggestion strip) ----
+  console.log('\n2) Mastery "type the word" = app keypad (no native input, so no OS suggestion strip):');
   await pickProfile(page);
   await page.locator('.menu-card.mastery').click();
   await page.waitForSelector('.draw-canvas', { timeout: 8000 });
   await page.locator('.draw-controls .btn.ghost', { hasText: 'Type' }).click(); // ⌨️ Type it
-  await page.waitForSelector('.draw-type-input', { state: 'visible', timeout: 4000 });
-  expectOff('mastery type input', await page.locator('.draw-type-input').evaluate(PROPS));
+  await page.waitForSelector('.type-keyboard', { state: 'visible', timeout: 4000 });
+  const kb = await page.evaluate(() => {
+    const keys = [...document.querySelectorAll('.type-keyboard .key')].map((k) => k.textContent);
+    const letters = keys.filter((t) => /^[a-z]$/.test(t));
+    const hasBack = keys.some((t) => (t || '').includes('⌫'));
+    // ANY focusable text surface in the mastery screen would raise the OS keyboard + suggestion strip.
+    const nativeInputs = document.querySelectorAll('.mastery input, .mastery textarea, .mastery [contenteditable]').length;
+    return { letterCount: letters.length, hasBack, nativeInputs };
+  });
+  if (kb.letterCount !== 26) fails.push(`mastery keypad: ${kb.letterCount} letter keys (want 26 a–z)`);
+  if (!kb.hasBack) fails.push('mastery keypad: no ⌫ backspace key');
+  if (kb.nativeInputs !== 0) fails.push(`mastery keypad: ${kb.nativeInputs} native input/textarea/contenteditable present — would raise the OS keyboard + suggestion strip`);
+  console.log(`  ${kb.letterCount === 26 && kb.hasBack && kb.nativeInputs === 0 ? '✓' : '✗'} keypad: ${kb.letterCount} letters, backspace=${kb.hasBack}, native-text-inputs=${kb.nativeInputs}`);
+  // functional: spell the word with the keypad → it should MASTER (proves the keypad drives slots).
+  const word = await page.evaluate(() => window.__masteryCurrent?.word || '');
+  for (const ch of word) {
+    await page.locator('.type-keyboard .key', { hasText: new RegExp(`^${ch}$`) }).first().click();
+    await page.waitForTimeout(60);
+  }
+  const checkVisible = page.locator('.check-btn:visible');
+  if (await checkVisible.count()) await checkVisible.click().catch(() => {});
+  await page.waitForTimeout(500);
+  const verdict = ((await page.locator('.mastery .verdict').textContent().catch(() => '')) || '').trim();
+  if (!/Mastered/i.test(verdict)) fails.push(`mastery keypad: typing "${word}" did not master (verdict="${verdict}")`);
+  console.log(`  ${/Mastered/i.test(verdict) ? '✓' : '✗'} typed "${word}" via keypad → verdict="${verdict}"`);
 
   // ---- 3. SETTINGS learner-name input ----
   console.log('\n3) Settings learner-name input:');

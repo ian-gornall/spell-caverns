@@ -141,9 +141,10 @@ try {
   const gemsBefore = +(await wkb.locator('.gem-count').first().textContent());
   await wkb.locator('.draw-controls button', { hasText: /Type it/ }).click();
   await wkb.waitForTimeout(120);
-  ok(await wkb.locator('.draw-type-input').isVisible(), 'type mode: keyboard input shown');
+  ok(await wkb.locator('.type-keyboard').isVisible(), 'type mode: app keypad shown (no native input)');
+  ok((await wkb.locator('.mastery input, .mastery textarea, .mastery [contenteditable]').count()) === 0, 'type mode: NO native text input (so no OS keyboard / suggestion strip)');
   ok(await wkb.locator('.draw-boxes').isVisible(), 'type mode (wide): boxes stay visible as the word display');
-  await wkb.locator('.draw-type-input').fill(curWord);
+  for (const ch of curWord) await wkb.locator('.type-keyboard .key', { hasText: new RegExp(`^${ch}$`) }).first().click();
   await wkb.waitForTimeout(200);
   ok((await builtBoxes(wkb)) === curWord, `type: boxes filled left-to-right ("${curWord}")`);
   ok(!(await wkb.locator('.check-btn').isDisabled()), 'type: Check enabled once filled');

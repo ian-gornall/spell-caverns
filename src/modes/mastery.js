@@ -21,7 +21,7 @@
 //   one-time GROWN-UP consent (mic → cloud transcription; COPPA — see speech.js / PRIVACY.md).
 //
 // UI module — verified with Playwright.
-import { el, header, burst, toast, createIdleGuard, pulse, parentalGate, fitPlayArea, NO_AUTOFILL } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard, pulse, parentalGate, fitPlayArea } from '../ui.js';
 import { buildMasteryPool } from '../engine/selection.js';
 import { recordDraw, unlocks } from '../engine/categories.js';
 import { recognizeGrid, pointsToGrid, GRID_N } from '../engine/handwriting.js';
@@ -170,19 +170,12 @@ export function startMastery(ctx, params = {}) {
   const boxGuidesEl = el('div', { class: 'box-guides' });
   const boxInk = el('canvas', { class: 'boxes-ink' });
   const boxesEl = el('div', { class: 'draw-boxes' }, boxGuidesEl, boxInk);
-  // keyboard fallback (user request): type the word with the on-screen / physical keyboard.
-  const typeInput = el('input', {
-    class: 'draw-type-input',
-    type: 'text',
-    inputmode: 'text',
-    ...NO_AUTOFILL,
-    'aria-label': 'Type the word',
-    onInput: onTypeInput,
-    onKeydown: (e) => {
-      if (e.key === 'Enter') checkWord();
-    },
-  });
-  const typeWrapEl = el('div', { class: 'draw-type-wrap', style: { display: 'none' } }, typeInput);
+  // KEYBOARD fallback (user request): type the word — but with an APP-DRAWN A–Z keypad, NOT a native
+  // <input>. A real text field raises the OS keyboard, whose word-SUGGESTION strip (iOS QuickType /
+  // Android Gboard) GIVES AWAY THE SPELLING and can't be reliably disabled from the web. Our own
+  // keypad has no OS keyboard → no suggestions, on any device, offline (Ian 2026-06-20, §11). It
+  // drives `slots` directly (typeLetter/backspace); the .slots row (narrow) or boxes (wide) display it.
+  const keyboardEl = el('div', { class: 'type-keyboard', style: { display: 'none' } });
   const hearBtn = el(
     'button',
     { class: 'hear-again', onClick: () => audio.say(session[index]?.word) },
@@ -216,7 +209,7 @@ export function startMastery(ctx, params = {}) {
     'div',
     { class: 'play-body' },
     el('div', { class: 'prompt' }, el('div', { class: 'hear-row' }, hearBtn), sentenceEl, peekRow, verdictEl, verdictChip),
-    el('div', { class: 'answer-zone' }, slotsEl, drawStageEl, boxesEl, typeWrapEl, micEl, voiceDbgEl, hintEl, submitRow, controlsEl),
+    el('div', { class: 'answer-zone' }, slotsEl, drawStageEl, boxesEl, keyboardEl, micEl, voiceDbgEl, hintEl, submitRow, controlsEl),
   );
   const screen = el('div', { class: 'screen mastery' }, hdr, dots, playBody);
   // §33: keep the word slots + draw surface + Clear/Type buttons (and the candidate letters once
@@ -271,8 +264,17 @@ export function startMastery(ctx, params = {}) {
     renderBuilt();
   };
   const onResize = () => { sizeInk(); fit(); };
+  // A PHYSICAL keyboard (iPad + case) still types in type mode — hardware keys have no suggestion
+  // strip, so there's no spelling give-away. Ignored unless we're in type mode.
+  const onPhysicalKey = (e) => {
+    if (inputMode !== 'type' || locked) return;
+    if (e.key === 'Enter') { checkWord(); return; }
+    if (e.key === 'Backspace') { backspace(); e.preventDefault(); return; }
+    if (/^[a-zA-Z]$/.test(e.key)) typeLetter(e.key.toLowerCase());
+  };
   mediaWide.addEventListener?.('change', onMedia);
   window.addEventListener('resize', onResize);
+  window.addEventListener('keydown', onPhysicalKey);
   ctx.onLeave(() => {
     guard.stop();
     clearTimeout(recognizeTimer);
@@ -280,6 +282,7 @@ export function startMastery(ctx, params = {}) {
     stopVoice();
     mediaWide.removeEventListener?.('change', onMedia);
     window.removeEventListener('resize', onResize);
+    window.removeEventListener('keydown', onPhysicalKey);
   });
 
   // --- single-canvas drawing (PHONE) --------------------------------------
@@ -542,7 +545,7 @@ export function startMastery(ctx, params = {}) {
   // clear a mis-heard voice letter so the child can re-say it. (In draw mode the overlay is on top.)
   function onGuideTap(i) {
     if (locked || inputMode === 'draw') return;
-    if (inputMode === 'type') return typeInput.focus();
+    if (inputMode === 'type') { if (slots[i] != null) clearBox(i); return; } // tap a box to fix that letter
     if (inputMode === 'voice' && slots[i] != null) clearBox(i);
   }
 
@@ -563,11 +566,9 @@ export function startMastery(ctx, params = {}) {
     inputMode = m;
     slots = slots.map(() => null);
     cur = 0;
-    typeInput.value = '';
     applyLayout();
     rebuildSurface();
     renderBuilt();
-    if (m === 'type') setTimeout(() => typeInput.focus(), 30); // raise the on-screen keyboard
   }
   // Build / reset whichever DRAW surface is now live (boxes in wide, single canvas in narrow).
   function rebuildSurface() {
@@ -587,7 +588,7 @@ export function startMastery(ctx, params = {}) {
     boxesEl.classList.toggle('display-only', inputMode !== 'draw'); // overlay drawable only in draw mode
     slotsEl.style.display = layoutWide ? 'none' : '';
     drawStageEl.style.display = !layoutWide && inputMode === 'draw' ? '' : 'none';
-    typeWrapEl.style.display = inputMode === 'type' ? '' : 'none';
+    keyboardEl.style.display = inputMode === 'type' ? '' : 'none';
     micEl.style.display = voice ? '' : 'none';
     voiceDbgEl.style.display = voice ? '' : 'none';
     // explicit submit in the wide multi-box layout OR whenever spelling by voice (mis-hears → review first)
@@ -619,16 +620,39 @@ export function startMastery(ctx, params = {}) {
     }
   }
 
-  // Sync the slots from the typed text. In the narrow layout this auto-checks when complete; in
-  // the wide layout the learner taps ✓ Check (consistent with the box flow there).
-  function onTypeInput() {
-    if (locked) return;
-    const v = (typeInput.value || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, target.length);
-    typeInput.value = v;
-    for (let i = 0; i < slots.length; i++) slots[i] = v[i] || null;
-    cur = Math.min(v.length, slots.length - 1);
+  // The app-drawn A–Z keypad (no OS keyboard → no suggestion strip). A letter fills the next empty
+  // slot; ⌫ removes the last filled one; tapping a placed letter clears just that one (the keypad
+  // refills the gap). Narrow auto-checks when full; wide waits for the ✓ Check button — consistent
+  // with the draw flows. Built once (the keys never change).
+  function buildKeyboard() {
+    const rows = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'].map((row, ri) => {
+      const keys = [...row].map((ch) =>
+        el('button', { class: 'key', type: 'button', onClick: () => typeLetter(ch) }, ch),
+      );
+      if (ri === 2) keys.push(el('button', { class: 'key key-back', type: 'button', 'aria-label': 'Delete', onClick: backspace }, '⌫'));
+      return el('div', { class: 'key-row' }, ...keys);
+    });
+    keyboardEl.replaceChildren(...rows);
+  }
+  function typeLetter(letter) {
+    if (locked || inputMode !== 'type') return;
+    const next = slots.findIndex((s) => s == null);
+    if (next === -1) return; // already full
+    slots[next] = letter.toLowerCase();
+    cur = slots.findIndex((s) => s == null);
+    audio.sfx('tap');
     renderBuilt();
-    if (!layoutWide && v.length === target.length) checkWord();
+    if (!layoutWide && slots.every((s) => s != null)) checkWord();
+  }
+  function backspace() {
+    if (locked || inputMode !== 'type') return;
+    let last = -1;
+    for (let i = slots.length - 1; i >= 0; i--) if (slots[i] != null) { last = i; break; }
+    if (last === -1) return;
+    slots[last] = null;
+    cur = last;
+    audio.sfx('tap');
+    renderBuilt();
   }
 
   // --- placing / redoing (single-canvas + type) ---------------------------
@@ -643,7 +667,13 @@ export function startMastery(ctx, params = {}) {
   }
   function redoSlot(i) {
     if (locked) return;
-    if (inputMode === 'type') return typeInput.focus(); // the input is the editor in type mode
+    if (inputMode === 'type') { // tap a letter to fix it — clear it; the keypad refills the gap
+      if (slots[i] == null) return;
+      slots[i] = null;
+      cur = i;
+      renderBuilt();
+      return;
+    }
     if (!slots[i]) return;
     slots[i] = null;
     cur = i;
@@ -838,9 +868,10 @@ export function startMastery(ctx, params = {}) {
       audio.speakPraise(inputMode === 'draw' ? PRAISE.redraw : PRAISE.retype);
       flashVerdict('Almost!', inputMode === 'draw' ? 'Fix the glowing letters' : 'Try again', '#8593A3');
       if (inputMode === 'type') {
-        slots = slots.map(() => null); // a linear input can't show gaps — clear + retype
-        typeInput.value = '';
-        cur = 0;
+        // the keypad fills the first empty slot, so we KEEP the right letters and clear only the
+        // wrong ones (the old linear <input> couldn't show gaps); the kid retypes just those.
+        for (let i = 0; i < slots.length; i++) if (slots[i] !== target[i]) slots[i] = null;
+        cur = slots.findIndex((s) => s == null);
       } else if (layoutWide) {
         for (let i = 0; i < slots.length; i++) if (slots[i] !== target[i]) clearBox(i); // keep correct
       } else {
@@ -849,7 +880,6 @@ export function startMastery(ctx, params = {}) {
       }
       shakeBuilt();
       renderBuilt();
-      if (inputMode === 'type') setTimeout(() => typeInput.focus(), 30);
       ctx.save();
     }
   }
@@ -892,9 +922,6 @@ export function startMastery(ctx, params = {}) {
     target = entry.word.toLowerCase();
     slots = Array.from({ length: target.length }, () => null);
     cur = 0;
-    typeInput.maxLength = target.length;
-    typeInput.value = '';
-    if (inputMode === 'type') setTimeout(() => typeInput.focus(), 30); // keep the keyboard up word-to-word
     verdictEl.textContent = '';
     verdictChip.textContent = '';
     sentenceEl.replaceChildren(...blankedSentence(entry));
@@ -934,6 +961,7 @@ export function startMastery(ctx, params = {}) {
     if (earned > 0) audio.sfx('great');
   }
 
+  buildKeyboard(); // the A–Z keypad is static — build it once
   present();
   return screen;
 }

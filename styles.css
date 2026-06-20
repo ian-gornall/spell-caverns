@@ -1082,30 +1082,46 @@ button.quest {
   justify-content: center;
   flex-wrap: wrap;
 }
-/* §30 keyboard fallback: type the word instead of drawing it (on-screen / physical keyboard). */
-.draw-type-wrap {
+/* §11 (2026-06-20): the type fallback is an APP-DRAWN A–Z keypad — NOT a native <input>, whose OS
+   keyboard would show a word-SUGGESTION strip that gives away the spelling (and can't be reliably
+   disabled). No OS keyboard here → no suggestions, on any device, offline. Keys reuse the crystal-gem
+   look of the draw candidates. All three rows span the container width (10 / 9 / 8 keys) so it reads
+   as a tidy block; dimensions scale with --play-scale so a long word on a short phone still fits. */
+.type-keyboard {
   width: 100%;
+  max-width: 540px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: calc(7px * var(--play-scale, 1));
+}
+.key-row {
   display: flex;
   justify-content: center;
+  gap: calc(6px * var(--play-scale, 1));
 }
-.draw-type-input {
-  width: min(100%, 360px);
-  height: 64px;
-  border-radius: 16px;
-  text-align: center;
-  font-size: clamp(1.6rem, 6vw, 2.2rem);
+.key {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: calc(52px * var(--play-scale, 1));
+  height: calc(clamp(40px, 8vw, 56px) * var(--play-scale, 1));
+  border-radius: 12px;
+  font-size: calc(clamp(1.1rem, 4.6vw, 1.7rem) * var(--play-scale, 1));
   font-weight: 800;
-  letter-spacing: 0.12em;
   text-transform: lowercase;
   color: var(--ink);
-  background: radial-gradient(circle at 50% 35%, rgba(54, 241, 205, 0.08), rgba(0, 0, 0, 0.34) 72%);
+  background: linear-gradient(160deg, #2a3a78, #1b2350);
   border: 2px solid var(--accent, #7cc4ff);
-  box-shadow: inset 0 3px 12px rgba(0, 0, 0, 0.45);
-  outline: none;
+  box-shadow: 0 5px 14px -8px var(--accent, #7cc4ff);
 }
-.draw-type-input:focus {
+.key:active {
+  transform: scale(0.92);
+  background: linear-gradient(160deg, #34469a, #232c66);
+}
+.key-back {
+  max-width: calc(74px * var(--play-scale, 1));
   border-color: var(--gold, #ffd23f);
-  box-shadow: inset 0 3px 12px rgba(0, 0, 0, 0.45), 0 0 14px rgba(255, 210, 63, 0.4);
+  color: var(--gold, #ffd23f);
 }
 
 /* ------- §31.A whole-word writing on WIDE screens: a row of per-letter boxes + ONE ink overlay -------

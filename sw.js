@@ -150,7 +150,11 @@
 //      el() helper set the boolean `spellcheck` PROPERTY to the string 'false' (TRUTHY → spellcheck
 //      stayed ON) despite the attribute being present; el() now reflects it via the attribute + a shared
 //      NO_AUTOFILL constant is applied to all inputs (mastery type, names, family password, feedback).
-const VERSION = 'csc-v47';
+// csc-v48: §11 follow-up — the keyboard's word-SUGGESTION strip (iOS QuickType / Android Gboard) gives
+//      away the spelling and can't be reliably disabled on a native field, so Mastery's "type the word"
+//      fallback now uses an APP-DRAWN A–Z keypad (modes/mastery.js: typeLetter/backspace, no <input>) +
+//      a physical-keyboard listener. No OS keyboard surface → no suggestions, on any device, offline.
+const VERSION = 'csc-v48';
 
 const CORE = [
   '/',
