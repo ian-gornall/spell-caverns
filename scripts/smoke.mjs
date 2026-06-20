@@ -363,8 +363,12 @@ try {
   });
   await idlePage.goto(URL, { waitUntil: 'networkidle' });
   await dismissPicker(idlePage);
-  await idlePage.click('.menu-card.play');
-  await idlePage.waitForSelector('.rhythm .tile', { timeout: 5000 });
+  // §31.C: with everything MASTERED the home recommender nudges (pulses) + may idle-route to
+  // Practice on its own. Force-click past the cosmetic pulse if we're still on home, then just
+  // wait for the rhythm wave (whether we clicked in or the home auto-routed us there).
+  const playCard = idlePage.locator('.menu-card.play');
+  if (await playCard.count()) await playCard.click({ force: true }).catch(() => {});
+  await idlePage.waitForSelector('.rhythm .tile', { timeout: 8000 });
   // deliberately do NOT interact -> the pause overlay must appear on its own
   await idlePage.waitForSelector('.pause-overlay', { timeout: 4000 });
   ok('idle with no interaction -> "Paused" overlay appeared (keeps kids on task)');

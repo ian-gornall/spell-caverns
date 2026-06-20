@@ -11,7 +11,7 @@
 // reward (positive reinforcement, never shaming). UI module — verified with Playwright.
 import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
 import { buildReviewSession } from '../engine/session.js';
-import { buildCraftPool, applyAdaptiveLevel } from '../engine/selection.js';
+import { buildCraftPool, applyAdaptiveLevel, recommendNext } from '../engine/selection.js';
 import { fillLearning, recordCraft } from '../engine/categories.js';
 import { byRank } from '../engine/lexicon.js';
 import { mulberry32 } from '../engine/distractors.js';
@@ -526,17 +526,25 @@ export function startPuzzle(ctx, params = {}) {
     const primary = moreToRepair
       ? el('button', { class: 'btn primary', onClick: () => ctx.nav('puzzle', { review: true }) }, '🔧 Repair more')
       : el('button', { class: 'btn primary', onClick: () => ctx.nav('puzzle') }, '🔨 Craft again');
+    // §31.C: once words are KNOWN and mastery is unlocked, steer toward DRAWING them from
+    // memory ("now MASTER them!") — the next rung of the Craft→Mastery cycle.
+    const rec = recommendNext(state.categories);
+    const masterCta =
+      rec.mode === 'mastery' &&
+      el('button', { class: 'btn primary nudge', onClick: () => ctx.nav('mastery') }, '✍️ Master them!');
     const reward = el(
       'div',
       { class: 'reward' },
       el('div', { class: 'big' }, review && !moreToRepair ? '✨' : grade),
       el('h2', {}, review ? (moreToRepair ? 'Crystals repaired!' : 'All crystals sparkling!') : 'Crafting complete!'),
       el('div', { class: 'earned' }, `+${earned} gems crafted`),
+      masterCta && el('p', { style: { color: 'var(--gold, #ffd23f)' } }, `You’ve learned ${rec.knownBacklog} word${rec.knownBacklog === 1 ? '' : 's'} — now master ${rec.knownBacklog === 1 ? 'it' : 'them'}! ✍️`),
       el('p', { style: { color: 'var(--ink-dim)' } }, `Total: 💎 ${state.gems || 0}  ·  Depth ⛏️ ${ctx.depth()}`),
       el(
         'div',
         { class: 'row' },
         primary,
+        masterCta,
         el('button', { class: 'btn', onClick: () => ctx.nav('rhythm') }, '⛏️ Mine (fast)'),
         el('button', { class: 'btn', onClick: () => ctx.nav('progress') }, '🗺️ Progress'),
         el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),

@@ -11,7 +11,9 @@ await rm(OUT, { recursive: true, force: true }).catch(() => {});
 await mkdir(OUT, { recursive: true });
 
 const browser = await chromium.launch();
-const VIEW = { width: +(process.env.W || 820), height: +(process.env.H || 1180) };
+// default to a PHONE width so this single-canvas probe stays valid: ≥700px now switches to the
+// §31 multi-box layout (see scripts/qa_s31.mjs for that). Override with W=1024 H=820 for wide.
+const VIEW = { width: +(process.env.W || 390), height: +(process.env.H || 780) };
 const page = await browser.newPage({ viewport: VIEW });
 const issues = [];
 page.on('console', (m) => {

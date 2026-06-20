@@ -98,7 +98,12 @@
 //      trained by scripts/train_recognizer.mjs, ~94% top-1) — fixes the a/q/c/s confusion the
 //      old grid/Dice matcher had; fully offline + private (no strokes leave the device).
 //      PLUS a KEYBOARD fallback in Mastery (toggle draw ↔ type with the on-screen/physical kbd).
-const VERSION = 'csc-v36';
+// csc-v37: §31 — whole-word MULTI-BOX writing on wide screens (a mini-canvas per letter,
+//      auto-filling the best guess; tap a box to redo), a DICTATION toggle (spell from hearing,
+//      sentence peekable), and MASTERY-FIRST nudging (recommendNext steers known→mastered: a
+//      pulsing home card + craft/mining reward CTAs). mastery.js/puzzle.js/rhythm.js/home.js/
+//      selection.js + styles.css changed (all already precached).
+const VERSION = 'csc-v37';
 
 const CORE = [
   '/',

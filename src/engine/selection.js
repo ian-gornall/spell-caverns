@@ -14,10 +14,12 @@
 import { shuffle } from './distractors.js';
 import {
   CATEGORIES,
+  PROMOTE_STREAK,
   learningWords,
   knownWords,
   masteredWords,
   trickyWords,
+  unlocks,
   demoteLevel,
   promoteLevel,
 } from './categories.js';
@@ -100,4 +102,33 @@ export function applyAdaptiveLevel(state, pool) {
   if (dir === 'down') demoteLevel(state, pool);
   else if (dir === 'up') promoteLevel(state, pool);
   return dir;
+}
+
+// §31.D — "what should this student do next?" The pedagogical loop Ian wants is a CYCLE:
+//   Craft (new→learning→known) → Mastery (known→mastered) → cycle missed/mastered back to Craft.
+// We lean MASTERY-FIRST once it is unlocked and there is a backlog of known-but-unmastered
+// words (§31.C: actively drive KNOWN→MASTERED instead of letting mastery sit ignored), and
+// otherwise steer Craft to keep growing the known set (which feeds the next mastery round).
+// Pure; never recommends a LOCKED mode. Returns { mode, reason, knownBacklog, masteredCount,
+// learningActive } so the UI can decide both WHICH card to nudge and how hard.
+export function recommendNext(state) {
+  const u = unlocks(state);
+  const knownBacklog = knownWords(state).length; // KNOWN, not yet mastered → the mastery target
+  const masteredCount = masteredWords(state).length;
+  // learning words not yet proven to known (streak < PROMOTE_STREAK) = the live craft work
+  const learningActive = learningWords(state).filter((w) => {
+    const rec = state.words.get(w);
+    return (rec ? rec.craftStreak : 0) < PROMOTE_STREAK;
+  }).length;
+  const signals = { knownBacklog, masteredCount, learningActive };
+
+  // 1) Mastery unlocked + a backlog of known-but-unmastered words → MASTER them (the headline nudge).
+  if (u.mastery && knownBacklog > 0) return { mode: 'mastery', reason: 'master-known', ...signals };
+  // 2) Words still to learn, or mastery not yet open → CRAFT them toward known.
+  if (learningActive > 0 || !u.mastery) {
+    return { mode: 'craft', reason: u.mastery ? 'learn-more' : 'unlock-mastery', ...signals };
+  }
+  // 3) Nothing left to learn or master right now → recognition practice if open, else keep crafting.
+  if (u.mining) return { mode: 'mining', reason: 'practice-recognition', ...signals };
+  return { mode: 'craft', reason: 'keep-going', ...signals };
 }

@@ -404,12 +404,52 @@ the §29 phone no-horizontal-scroll guards green):**
 
 ---
 
-## §31 — MASTERY UX + DICTATION + MASTERY-FIRST NUDGING (Ian 2026-06-19g) — ⛔ NOT STARTED (recorded only)
+## §31 — MASTERY UX + DICTATION + MASTERY-FIRST NUDGING (Ian 2026-06-19g) — ✅ BUILT + QA'd (csc-v37, branch `feat/s31-mastery-ux`, NOT yet deployed — awaiting Ian's OK to merge+push)
+
+> **DONE in code + fully QA'd, on branch `feat/s31-mastery-ux` (off `main`). NOT merged/deployed
+> yet — held for Ian's OK to push (Git-CD deploys on push to `main`).** All four asks built; the two
+> open questions were confirmed with Ian = the RECOMMENDED options:
+> - **A per-box correction = auto-fill the top-1, tap a box to redo** (the fast "write freely" path).
+> - **B = a toggle inside Mastery** (not a separate mode); **sentence = peekable** behind a 👀 button.
+> - Wide-screen breakpoint = **`min-width:700px`** (width-only, NOT `pointer:fine` — keeps every narrow
+>   viewport, incl. narrow desktop windows, on the proven single-canvas flow so the §29 guards can't
+>   regress; the boxes also `flex-wrap` so a long word can't overflow a ~700px tablet). iPad-primary.
+>
+> **What shipped (all in this branch):**
+> - **§31.A whole-word MULTI-BOX writing** (`modes/mastery.js` + `styles.css`): on ≥700px screens the
+>   word is a ROW of per-letter mini-canvases (`.draw-boxes`/`.lbox`); draw in any box → auto-recognise
+>   on pen-up debounce → **auto-fill the best guess**; **tap a box to redo**; all filled → auto-check
+>   (same `recordDraw`). PHONE (<700px) keeps the single-canvas + up-to-4-candidate flow unchanged.
+>   The KEYBOARD fallback fills the boxes left-to-right in wide layout (boxes stay as the word display
+>   while typing). Layout swaps live on rotate (matchMedia). Reuses `cnn_recognizer.recognizeDrawing`
+>   per box — no engine change. (QA: drew "lot" letter-by-letter into the boxes → recognised + mastered.)
+> - **§31.B DICTATION toggle** (`modes/mastery.js`): a `📣 Dictation` button hides the example sentence
+>   (pure auditory recall) with a `👀 Peek` button to reveal the blanked sentence; toggling re-speaks
+>   the word. Resets to hidden each new word.
+> - **§31.C MASTERY-FIRST nudging**: `screens/home.js` pulses the Mastery card + a "✍️ Master these!"
+>   badge and **idle-routes** toward the recommended mode; craft (`modes/puzzle.js`) + mining
+>   (`modes/rhythm.js`) reward screens grow a "✍️ Master them!" CTA when there's a known backlog.
+> - **§31.D `recommendNext(categories)`** — NEW pure recommender in `src/engine/selection.js`
+>   (+`test/recommend.test.js`, 5 tests): returns `{mode, reason, knownBacklog, masteredCount,
+>   learningActive}`, **mastery-first** once unlocked + a known backlog exists, else craft to grow the
+>   known set, else mining — the Craft→Mastery→cycle loop. Never recommends a locked mode.
+> - **Tests/QA:** `npm test` **267 green** (+5); `npm run smoke` green (made the all-mastered home
+>   sub-test robust to the new recommender nudge); **`node scripts/qa_s31.mjs`** (NEW probe) all checks
+>   pass at wide 1024 + phone 390 (boxes, dictation, keyboard-fill master, phone fallback, 0 overflow);
+>   §29 guards green (`qa_overflow`/`qa_responsive`/`qa_fold`); `qa.mjs` 0 console errors. `qa_mastery.mjs`
+>   default viewport moved to phone (its single-canvas path) — use `W=1024 H=820` for the wide path.
+> - sw `csc-v36`→**`csc-v37`** + `src/version.js` bumped (no new precached files — all changed files
+>   were already in the SW CORE list).
+>
+> **➡️ NEXT to finish §31:** (1) get Ian's OK → merge `feat/s31-mastery-ux` to `main` + push (Git-CD
+> builds via `build_deploy.mjs` + `wrangler deploy`); verify with `scripts/check_deploy.mjs` +
+> `scripts/qa_prod.mjs`. (2) **OWED: a real-device iPad pass** on the multi-box + dictation flow (only
+> emulated drawing tested; the §30 single-canvas draw is already real-device-confirmed). (3) Optional
+> polish noted below if Ian wants it. Original spec + the answered open questions retained below.
 
 > Captured after Ian confirmed the §30 draw mode works on his real iPad ("yes that works"). Four
-> asks, **recorded only — no code yet**. When building: test-first for any engine/selection change,
-> follow `QA.md`, keep the §29 phone no-horizontal-scroll guards green, bump `sw.js`/`version.js` on
-> deploy. iPad-primary.
+> asks. When building: test-first for any engine/selection change, follow `QA.md`, keep the §29 phone
+> no-horizontal-scroll guards green, bump `sw.js`/`version.js` on deploy. iPad-primary.
 
 **A. Whole-word writing on tablet/desktop (wide screens).** On a screen wider than a phone, show the
 WHOLE word as a ROW OF BOXES — one box per letter — and let the student write each letter into its
@@ -449,6 +489,9 @@ recommender balancing mastering vs re-crafting).
 
 **Open questions to confirm before building:** the wide-screen breakpoint + per-box correction UX (A);
 dictation as a toggle vs separate mode, sentence dropped vs peekable (B).
+**✅ ANSWERED (2026-06-19g, all = the recommended option):** breakpoint `min-width:700px` (width-only);
+per-box correction = auto-fill top-1 + tap-to-redo; dictation = a toggle inside Mastery; sentence =
+peekable behind a 👀 button. (See the §31 banner above — all built on branch `feat/s31-mastery-ux`.)
 
 ---
 

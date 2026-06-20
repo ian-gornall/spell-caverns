@@ -6,6 +6,7 @@
 import { el, header, toast, createIdleGuard, pulse } from '../ui.js';
 import { lapsedWords } from '../engine/progress.js';
 import { unlocks } from '../engine/categories.js';
+import { recommendNext } from '../engine/selection.js';
 import { streakIsLive, daysSinceLastPlayed } from '../engine/streak.js';
 import { dailyQuests, questProgress } from '../engine/quests.js';
 import { catalogSummary, affordableLocked } from '../engine/catalog.js';
@@ -18,6 +19,10 @@ export function homeScreen(ctx) {
   const canUnlock = affordableLocked(owned, ctx.state.gems || 0).length;
   // §30 unlock chain: Craft (always) → Mastery (after [set size] known) → Mining (gated).
   const gates = unlocks(ctx.state.categories);
+  // §31.C — "what next?" recommender drives the idle nudge + which card to highlight. Leans
+  // MASTERY once it's unlocked and there's a backlog of known-but-unmastered words.
+  const rec = recommendNext(ctx.state.categories);
+  const nudgeMastery = rec.mode === 'mastery';
 
   // Daily streak ("glowing vein") + a tiny daily gem goal — guilt-free momentum.
   const streak = ctx.state.streak || {};
@@ -105,11 +110,17 @@ export function homeScreen(ctx) {
     gates.mastery &&
       el(
         'button',
-        { class: 'menu-card mastery', onClick: () => ctx.nav('mastery') },
-        el('span', { class: 'badge' }, '⭐ Master it'),
+        { class: 'menu-card mastery' + (nudgeMastery ? ' nudge' : ''), onClick: () => ctx.nav('mastery') },
+        el('span', { class: 'badge' }, nudgeMastery ? '✍️ Master these!' : '⭐ Master it'),
         el('span', { class: 'ic' }, '✍️'),
         el('span', { class: 'lbl' }, 'Mastery'),
-        el('span', { class: 'desc' }, 'Draw the letters from memory — no tiles!'),
+        el(
+          'span',
+          { class: 'desc' },
+          nudgeMastery
+            ? `${rec.knownBacklog} word${rec.knownBacklog === 1 ? '' : 's'} ready — draw ${rec.knownBacklog === 1 ? 'it' : 'them'} from memory!`
+            : 'Draw the letters from memory — no tiles!',
+        ),
       ),
     // Mining is RECOGNITION practice — fast, fun, low-stakes warm-up. Kept engaging but
     // clearly secondary to crafting (§B): the calmer, shorter "practice" banner.
@@ -171,24 +182,30 @@ export function homeScreen(ctx) {
     el('div', { class: 'home-grid' }, ...cards),
   );
 
-  // Don't let them stare at the menu: highlight CRAFT (the headline act, §B), then
-  // auto-start a crafting round. iOS unlocks audio only on a tap, so BEFORE the first
-  // tap we can't start the dictated game — we just keep highlighting Craft until they
-  // tap once; after that, an idle menu auto-drops them straight into crafting.
+  // Don't let them stare at the menu: highlight the RECOMMENDED next act (§31.C — Mastery
+  // once words are ready to master, else Craft), then auto-start it. iOS unlocks audio only
+  // on a tap, so BEFORE the first tap we can't start the dictated game — we keep highlighting
+  // until they tap once; after that, an idle menu auto-drops them straight into that mode.
+  const NUDGE = {
+    mastery: { sel: '.menu-card.mastery', nav: 'mastery', toast: '✍️ You’ve learned these — now master them!' },
+    mining: { sel: '.menu-card.play', nav: 'rhythm', toast: '⛏️ Warm up with some mining!' },
+    craft: { sel: '.menu-card.craft', nav: 'puzzle', toast: '✨ Ready to craft some words? Tap Craft!' },
+  };
+  const nudge = NUDGE[rec.mode] || NUDGE.craft;
   const guard = createIdleGuard({
     nudgeMs: 13000,
     pauseMs: 32000,
     onNudge: () => {
-      pulse(node.querySelector('.menu-card.craft'));
-      toast('✨ Ready to craft some words? Tap Craft!');
+      pulse(node.querySelector(nudge.sel) || node.querySelector('.menu-card.craft'));
+      toast(nudge.toast);
     },
     onTimeout: () => {
       if (ctx.audio.isPrimed && ctx.audio.isPrimed()) {
-        toast('🔨 Let’s craft some words!');
-        ctx.nav('puzzle');
+        toast(nudge.toast);
+        ctx.nav(nudge.nav);
       } else {
-        pulse(node.querySelector('.menu-card.craft'));
-        toast('👆 Tap Craft to hear your first word!');
+        pulse(node.querySelector(nudge.sel) || node.querySelector('.menu-card.craft'));
+        toast('👆 Tap to hear your first word!');
         guard.poke(); // keep gently highlighting until they tap (audio needs a gesture)
       }
     },

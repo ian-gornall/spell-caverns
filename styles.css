@@ -574,6 +574,19 @@ button.quest {
   background: linear-gradient(150deg, #8a6a1f55, #2a2350);
   border-color: #ffd23f66;
 }
+/* §31.C: when the recommender says "go master your known words", pulse the Mastery card (and
+   any reward-screen "Master them!" CTA) with a gentle gold glow to pull the eye there. */
+.menu-card.mastery.nudge {
+  border-color: var(--gold, #ffd23f);
+  animation: master-nudge 1.8s ease-in-out infinite;
+}
+.btn.primary.nudge {
+  animation: master-nudge 1.8s ease-in-out infinite;
+}
+@keyframes master-nudge {
+  0%, 100% { box-shadow: 0 8px 22px -10px #000a, 0 0 0 0 rgba(255, 210, 63, 0); }
+  50% { box-shadow: 0 8px 22px -10px #000a, 0 0 22px 2px rgba(255, 210, 63, 0.6); }
+}
 /* §30 a not-yet-unlocked mode (e.g. Practice/mining before [set size] mastered): dimmed so
    it reads as "coming soon", but still tappable so the kid can see how to unlock it. */
 .menu-card.locked {
@@ -1086,6 +1099,91 @@ button.quest {
 .draw-type-input:focus {
   border-color: var(--gold, #ffd23f);
   box-shadow: inset 0 3px 12px rgba(0, 0, 0, 0.45), 0 0 14px rgba(255, 210, 63, 0.4);
+}
+
+/* ------- §31.A whole-word writing on WIDE screens: a row of per-letter mini-canvases ------- */
+.draw-boxes {
+  display: flex;
+  flex-wrap: wrap; /* a long word wraps rather than overflowing a ~700px tablet */
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+}
+.lbox {
+  position: relative;
+  width: clamp(54px, 8.5vw, 96px);
+  height: clamp(68px, 11vw, 120px);
+  border-radius: 16px;
+  /* same glowing crystal-socket look as the empty .slot, so a box reads as "write here" */
+  background: radial-gradient(circle at 50% 32%, rgba(54, 241, 205, 0.12), rgba(0, 0, 0, 0.32) 72%);
+  border: 2px dashed rgba(124, 196, 255, 0.4);
+  box-shadow: inset 0 3px 12px rgba(0, 0, 0, 0.5), inset 0 0 14px rgba(54, 241, 205, 0.07);
+  transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.lbox-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none; /* drawing must not pan/scroll the page */
+  cursor: crosshair;
+  border-radius: 16px;
+}
+.lbox-letter {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1.7rem, 5vw, 2.6rem);
+  font-weight: 800;
+  text-transform: lowercase;
+  color: var(--ink);
+  pointer-events: none;
+}
+.lbox.current {
+  border-color: var(--gold, #ffd23f);
+  border-style: solid;
+  box-shadow: inset 0 3px 12px rgba(0, 0, 0, 0.5), 0 0 14px rgba(255, 210, 63, 0.4);
+}
+.lbox.filled {
+  background: linear-gradient(160deg, #2a3a78, #1b2350);
+  border-style: solid;
+  border-color: var(--accent, #7cc4ff);
+  box-shadow: 0 6px 18px -8px var(--accent, #7cc4ff), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.lbox.filled .lbox-canvas,
+.draw-boxes.display-only .lbox-canvas {
+  pointer-events: none; /* a filled box (or any box while TYPING) is not a draw surface */
+}
+.lbox.filled .lbox-letter {
+  display: flex;
+}
+.lbox.locked {
+  background: linear-gradient(160deg, #1f6f4a, #2bb673);
+  border-color: var(--emerald, #2bb673);
+  border-style: solid;
+  box-shadow: 0 6px 18px -8px var(--emerald, #2bb673), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.draw-boxes.shake {
+  animation: shake 0.4s ease;
+}
+
+/* ------- §31.B dictation: peek button + active-toggle styling ------- */
+.peek-row {
+  display: flex;
+  justify-content: center;
+  padding: 2px 0 4px;
+}
+.peek-btn {
+  min-height: 44px;
+  padding: 8px 18px;
+  font-size: 1rem;
+}
+.btn.ghost.on {
+  color: var(--gold, #ffd23f);
+  border-color: var(--gold, #ffd23f);
+  box-shadow: 0 0 0 2px var(--gold, #ffd23f) inset, 0 0 14px rgba(255, 210, 63, 0.45);
 }
 
 /* §30 Progress: the kid-visible "Words I'm learning" set (2-step pips toward known). */
@@ -2506,6 +2604,7 @@ html.readable .sentence {
 html.readable .tile,
 html.readable .tray-tile,
 html.readable .slot,
+html.readable .lbox-letter,
 html.readable .lab-word,
 html.readable .crystal-name {
   letter-spacing: 0.06em;

@@ -19,7 +19,7 @@
 // with Playwright, not node.
 import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
 import { buildFirstWave, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
-import { buildMiningPool } from '../engine/selection.js';
+import { buildMiningPool, recommendNext } from '../engine/selection.js';
 import { unlocks } from '../engine/categories.js';
 import { buildOptions, mulberry32, recognitionOptionCount } from '../engine/distractors.js';
 import { byRank } from '../engine/lexicon.js';
@@ -438,6 +438,12 @@ export function startRhythm(ctx, params = {}) {
     const buttons = [
       el('button', { class: 'btn primary', onClick: () => ctx.nav('puzzle') }, '🔨 Craft these words — prove it! ✨'),
     ];
+    // §31.C: if there's a backlog of known-but-unmastered words, surface a Mastery CTA too —
+    // recognition warm-up done, now DRAW them from memory (the next rung of the cycle).
+    const rec = recommendNext(state.categories);
+    if (rec.mode === 'mastery') {
+      buttons.push(el('button', { class: 'btn primary nudge', onClick: () => ctx.nav('mastery') }, '✍️ Master them — draw from memory!'));
+    }
     if (nextHarder) {
       buttons.push(
         el('button', { class: 'btn', onClick: goHarder }, `⏫ Go deeper: ${cap(nextHarder)}`),
