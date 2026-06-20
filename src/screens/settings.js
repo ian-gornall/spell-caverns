@@ -928,6 +928,29 @@ export function settingsScreen(ctx) {
         snapshotList,
       );
 
+      // §32: revoke the one-time grown-up consent for the "Spell out loud" mic mode.
+      const voiceBlock =
+        ctx.store.voiceConsent && ctx.store.voiceConsent()
+          ? el(
+              'div',
+              { class: 'cloud-sync' },
+              el('h4', { class: 'cloud-title' }, '🎤 Voice spelling'),
+              el('p', { class: 'field-hint' }, 'Your child can spell out loud (the microphone is on for this mode). The audio is never stored — see PRIVACY.md.'),
+              el(
+                'button',
+                {
+                  class: 'btn',
+                  onClick: () => {
+                    ctx.store.setVoiceConsent(false);
+                    toast('🎤 Voice spelling turned off.');
+                    ctx.nav('settings');
+                  },
+                },
+                '🔇 Turn off voice spelling',
+              ),
+            )
+          : el('span', {});
+
       sensitiveBlock.replaceChildren(
         restoreBtn,
         deleteBtn,
@@ -940,6 +963,7 @@ export function settingsScreen(ctx) {
             'delete any time. See PRIVACY.md for details.',
         ),
         cloudSyncBlock,
+        voiceBlock,
         changeRemovePw || el('span', {}),
         timeMachine,
       );

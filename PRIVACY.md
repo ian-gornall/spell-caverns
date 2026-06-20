@@ -23,9 +23,26 @@ The stored data is:
   child makes), and in-app feedback notes.
 - App settings (difficulty, voice, volume, colour, etc.).
 
-No email, phone number, address, precise location, contacts, photos, microphone, or camera
-data is collected. (Dictation uses the device's built-in text-to-speech to *speak* words; the
-microphone is never used.)
+No email, phone number, address, precise location, contacts, photos, or camera data is
+collected. The **microphone is off by default** and is used only if a grown-up turns on the
+optional **"Spell out loud" voice mode** — see *Voice spelling* below.
+
+## Voice spelling (optional, off by default, grown-up-gated)
+
+In the Mastery game a child can choose to spell a word by **saying the letters out loud** instead
+of writing them. Because this uses the microphone, it is **off until a parent/guardian enables it
+once**: the first time the button is tapped, a **grown-up gate** (a short maths question) and a
+**consent notice** appear, and the mic only turns on after the grown-up approves. A parent can
+revoke it any time in **Settings → Parents & privacy**.
+
+When it's on, the child's spoken letters are transcribed to text by the **device's / browser's
+built-in speech service** (e.g. Apple or Google, the same one used for keyboard dictation). We use
+this **solely to convert the spoken letters into text** to fill in the spelling. **The app never
+records, stores, or transmits the audio itself**, and never uses voice for identification,
+profiling, or any other purpose. This follows the U.S. FTC's COPPA enforcement-policy allowance for
+collecting a child's voice **only as a replacement for typed/written input**, used momentarily and
+not retained. (Separately, *text-to-speech* — the app *speaking* words to the child — does not use
+the microphone at all.)
 
 ## How a parent controls the data
 

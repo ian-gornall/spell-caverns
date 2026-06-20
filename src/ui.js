@@ -170,6 +170,57 @@ export function pauseOverlay({ onResume } = {}) {
   return overlay;
 }
 
+// §32 PARENTAL GATE — a blocking modal a GROWN-UP must clear (a small arithmetic challenge: the
+// standard kids-app gate, hard for a young child to tap through) before a sensitive action like
+// turning on the microphone. `body` is an array of explanation nodes/strings shown above the
+// challenge; `agree` (optional) is a consent line a grown-up confirms. onPass fires on a correct
+// answer (+ ticked consent, if any); onCancel on dismiss. Returns the overlay node.
+export function parentalGate({ title = 'Grown-ups only 🔒', body = [], agree = '', confirmLabel = 'Allow', onPass, onCancel } = {}) {
+  const a = 2 + Math.floor(Math.random() * 8); // 2..9
+  const b = 2 + Math.floor(Math.random() * 8);
+  const close = (fn) => { overlay.remove(); if (fn) fn(); };
+  const answerInput = el('input', {
+    type: 'number', inputmode: 'numeric', class: 'gate-answer', 'aria-label': 'Answer the question',
+    onKeydown: (e) => { if (e.key === 'Enter') submit(); },
+  });
+  let consented = !agree; // no consent line ⇒ already satisfied
+  const consentRow = agree
+    ? el('label', { class: 'gate-consent' },
+        el('input', { type: 'checkbox', onChange: (e) => { consented = e.target.checked; } }),
+        el('span', {}, agree))
+    : null;
+  const errEl = el('div', { class: 'gate-err' }, '');
+  function submit() {
+    if (!consented) { errEl.textContent = 'Please tick the box to agree first.'; return; }
+    if (parseInt(answerInput.value, 10) === a + b) { close(onPass); return; }
+    errEl.textContent = 'Not quite — ask a grown-up. Try again.';
+    answerInput.value = '';
+    answerInput.focus();
+  }
+  const overlay = el(
+    'div',
+    { class: 'gate-overlay', onPointerdown: (e) => { if (e.target === overlay) close(onCancel); } },
+    el(
+      'div',
+      { class: 'gate-box' },
+      el('h2', {}, title),
+      el('div', { class: 'gate-body' }, ...body.map((n) => (typeof n === 'string' ? el('p', {}, n) : n))),
+      consentRow,
+      el('div', { class: 'gate-q' }, el('span', {}, `Grown-up check: what is ${a} + ${b}?`), answerInput),
+      errEl,
+      el(
+        'div',
+        { class: 'gate-actions' },
+        el('button', { class: 'btn', onClick: () => close(onCancel) }, 'Cancel'),
+        el('button', { class: 'btn primary', onClick: submit }, confirmLabel),
+      ),
+    ),
+  );
+  document.body.appendChild(overlay);
+  setTimeout(() => answerInput.focus(), 30);
+  return overlay;
+}
+
 // A gentle "do something" pulse on a node (used by idle nudges to highlight a card
 // or the primary button). No-op for a missing node.
 export function pulse(node) {

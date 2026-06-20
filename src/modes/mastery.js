@@ -16,14 +16,18 @@
 //   auto-recognises its strokes and shows its best guess, but NOTHING is graded until the learner
 //   taps ✓ Check — so a misread letter can be fixed first (tap a box to redo it). PHONE (<700px)
 //   keeps the single-canvas, one-letter-at-a-time + tap-a-candidate flow.
-// §31.B — DICTATION toggle: spell from HEARING ALONE — the sentence is hidden with a 👀 Peek.
+// §31.B/§32 — DICTATION = SPELL OUT LOUD: the child says the letters and the app listens (Web
+//   Speech), filling them in. The sentence is hidden (dictation) with a 👀 Peek. Gated behind a
+//   one-time GROWN-UP consent (mic → cloud transcription; COPPA — see speech.js / PRIVACY.md).
 //
 // UI module — verified with Playwright.
-import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard, pulse, parentalGate } from '../ui.js';
 import { buildMasteryPool } from '../engine/selection.js';
 import { recordDraw, unlocks } from '../engine/categories.js';
 import { recognizeGrid, pointsToGrid, GRID_N } from '../engine/handwriting.js';
 import { ensureRecognizer, recognizeDrawing } from '../cnn_recognizer.js';
+import { speechSupported, createLetterRecognizer } from '../speech.js';
+import { voiceConsent, setVoiceConsent } from '../state.js';
 import { byRank } from '../engine/lexicon.js';
 import { mulberry32 } from '../engine/distractors.js';
 
@@ -181,7 +185,7 @@ export function startMastery(ctx, params = {}) {
     'Hear it again',
   );
   // §31.B dictation: a Peek button reveals the (otherwise hidden) example sentence.
-  const peekBtn = el('button', { class: 'btn ghost peek-btn', onClick: () => { peeked = !peeked; applyDictation(); } }, '👀 Peek');
+  const peekBtn = el('button', { class: 'btn ghost peek-btn', onClick: () => { peeked = !peeked; applyLayout(); } }, '👀 Peek');
   const peekRow = el('div', { class: 'peek-row', style: { display: 'none' } }, peekBtn);
 
   // §31 (2026-06-19g): an explicit Check/submit so a misread letter can be FIXED before grading
@@ -189,8 +193,11 @@ export function startMastery(ctx, params = {}) {
   const checkBtn = el('button', { class: 'btn primary check-btn', onClick: () => checkWord() }, '✓ Check it');
   const submitRow = el('div', { class: 'draw-submit', style: { display: 'none' } }, checkBtn);
 
+  // §32: a "listening" indicator while the child spells out loud (voice mode).
+  const micEl = el('div', { class: 'mic-indicator', style: { display: 'none' } }, '🎤 Listening… say the letters!');
+
   const clearBtn = el('button', { class: 'btn ghost', onClick: clearCurrent }, '↺ Clear');
-  const dictBtn = el('button', { class: 'btn ghost', onClick: () => setDictation(!dictation) }, '📣 Dictation');
+  const dictBtn = el('button', { class: 'btn ghost', onClick: () => toggleVoice() }, '🎤 Spell out loud');
   const toggleBtn = el('button', { class: 'btn ghost', onClick: () => setMode(inputMode === 'draw' ? 'type' : 'draw') }, '⌨️ Type it');
   const controlsEl = el('div', { class: 'draw-controls' }, clearBtn, dictBtn, toggleBtn);
   const hintEl = el('div', { class: 'draw-hint' }, '');
@@ -207,7 +214,7 @@ export function startMastery(ctx, params = {}) {
       'div',
       { class: 'play-body' },
       el('div', { class: 'prompt' }, el('div', { class: 'hear-row' }, hearBtn), sentenceEl, peekRow, verdictEl, verdictChip),
-      el('div', { class: 'answer-zone' }, slotsEl, drawStageEl, boxesEl, typeWrapEl, hintEl, submitRow, controlsEl),
+      el('div', { class: 'answer-zone' }, slotsEl, drawStageEl, boxesEl, typeWrapEl, micEl, hintEl, submitRow, controlsEl),
     ),
   );
 
@@ -220,9 +227,9 @@ export function startMastery(ctx, params = {}) {
   let locked = false; // true during the success/advance animation
   let strokes = []; // single-canvas: the current letter's pen strokes
   let drawing = false;
-  let inputMode = 'draw'; // 'draw' (handwriting) | 'type' (keyboard fallback)
-  let dictation = false; // §31.B: spell from hearing alone (sentence hidden unless peeked)
-  let peeked = false;
+  let inputMode = 'draw'; // 'draw' (handwriting) | 'type' (keyboard) | 'voice' (§32 spell aloud)
+  let peeked = false; // §31.B/§32 dictation: the sentence is hidden unless the kid peeks
+  let voiceRec = null; // §32: the active Web Speech recogniser (or null)
   let recognizeTimer = 0; // single-canvas debounce: auto-recognise shortly after the pen lifts
   // §31.A multi-box (ONE ink overlay over a row of box guides):
   let boxGuides = []; // [{ guide, letterSpan }] per letter box
@@ -265,6 +272,7 @@ export function startMastery(ctx, params = {}) {
     guard.stop();
     clearTimeout(recognizeTimer);
     clearBoxTimers();
+    stopVoice();
     mediaWide.removeEventListener?.('change', onMedia);
     window.removeEventListener('resize', onResize);
   });
@@ -470,9 +478,11 @@ export function startMastery(ctx, params = {}) {
     clearBoxTimers();
     boxStrokes = slots.map(() => []);
     boxTimers = slots.map(() => 0);
-    boxGuides = slots.map(() => {
+    boxGuides = slots.map((_, i) => {
       const letterSpan = el('span', { class: 'lbox-letter' });
-      const guide = el('div', { class: 'lbox' }, letterSpan);
+      // In draw mode the ink overlay (on top) owns taps; in type/voice it's pass-through, so a
+      // tap on a box re-opens it: focus the keyboard (type) or clear a mis-heard letter (voice).
+      const guide = el('div', { class: 'lbox', onClick: () => onGuideTap(i) }, letterSpan);
       return { guide, letterSpan };
     });
     boxGuidesEl.replaceChildren(...boxGuides.map((g) => g.guide));
@@ -521,6 +531,13 @@ export function startMastery(ctx, params = {}) {
     const next = slots.findIndex((s) => s == null);
     boxGuides.forEach((g, i) => g.guide.classList.toggle('current', i === next));
   }
+  // A tap on a box when the overlay isn't capturing (type/voice modes): focus the keyboard, or
+  // clear a mis-heard voice letter so the child can re-say it. (In draw mode the overlay is on top.)
+  function onGuideTap(i) {
+    if (locked || inputMode === 'draw') return;
+    if (inputMode === 'type') return typeInput.focus();
+    if (inputMode === 'voice' && slots[i] != null) clearBox(i);
+  }
 
   // --- submit / check ------------------------------------------------------
   // Enable the Check button only once every box is filled (it's shown in the wide layout, where
@@ -533,7 +550,8 @@ export function startMastery(ctx, params = {}) {
 
   // --- keyboard fallback ---------------------------------------------------
   // Toggle between handwriting (draw) and typing (on-screen / physical keyboard). Switching
-  // resets the current word's letters so there's no draw↔type alignment confusion.
+  // resets the current word's letters so there's no draw↔type alignment confusion. (Hidden
+  // during voice mode; switching modes always lands back on draw vs type, never voice.)
   function setMode(m) {
     inputMode = m;
     slots = slots.map(() => null);
@@ -553,19 +571,31 @@ export function startMastery(ctx, params = {}) {
     }
   }
   // Show/hide the input surfaces + adjust labels & hint text for the current layout/mode.
-  //   WIDE  → boxes are the word display (interactive in draw, a typed mirror in type) + Check.
-  //   NARROW→ the .slots row is the display + (single canvas | keyboard), auto-checks on complete.
+  //   WIDE  → boxes are the word display (interactive in draw, a typed/voice mirror otherwise) + Check.
+  //   NARROW→ the .slots row is the display + (single canvas | keyboard | voice), auto-checks (draw/type).
+  //   VOICE (§32) → boxes/slots are a display only; a mic indicator + ✓ Check; sentence hidden (peek).
   function applyLayout() {
+    const voice = inputMode === 'voice';
     boxesEl.style.display = layoutWide ? '' : 'none';
-    boxesEl.classList.toggle('display-only', inputMode === 'type'); // overlay not drawable while typing
+    boxesEl.classList.toggle('display-only', inputMode !== 'draw'); // overlay drawable only in draw mode
     slotsEl.style.display = layoutWide ? 'none' : '';
     drawStageEl.style.display = !layoutWide && inputMode === 'draw' ? '' : 'none';
     typeWrapEl.style.display = inputMode === 'type' ? '' : 'none';
-    submitRow.style.display = layoutWide ? '' : 'none'; // explicit submit only in the multi-box layout
+    micEl.style.display = voice ? '' : 'none';
+    // explicit submit in the wide multi-box layout OR whenever spelling by voice (mis-hears → review first)
+    submitRow.style.display = layoutWide || voice ? '' : 'none';
     clearBtn.style.display = inputMode === 'type' ? 'none' : '';
+    toggleBtn.style.display = voice ? 'none' : ''; // the draw/type toggle is irrelevant during voice
     toggleBtn.textContent = inputMode === 'draw' ? '⌨️ Type it' : '✍️ Draw it';
-    hintEl.textContent =
-      inputMode === 'type'
+    dictBtn.textContent = voice ? '✍️ Back to writing' : '🎤 Spell out loud';
+    dictBtn.classList.toggle('on', voice);
+    // §31.B/§32 dictation: voice mode hides the sentence (pure recall) behind a 👀 Peek.
+    peekRow.style.display = voice ? '' : 'none';
+    peekBtn.textContent = peeked ? '🙈 Hide' : '👀 Peek';
+    sentenceEl.style.display = !voice || peeked ? '' : 'none';
+    hintEl.textContent = voice
+      ? '🎤 Say the letters out loud, then tap ✓ Check.'
+      : inputMode === 'type'
         ? layoutWide
           ? 'Type the word, then tap ✓ Check.'
           : 'Type the word you hear.'
@@ -573,6 +603,11 @@ export function startMastery(ctx, params = {}) {
           ? 'Write each letter in its box, then tap ✓ Check. Tap a box to redo it.'
           : 'Draw a letter — I’ll guess it, then tap the one you meant.';
     updateCheck();
+    try {
+      if (window.__masteryCurrent) window.__masteryCurrent.mode = inputMode; // keep the QA hook fresh on mode change
+    } catch {
+      /* ignore */
+    }
   }
 
   // Sync the slots from the typed text. In the narrow layout this auto-checks when complete; in
@@ -638,19 +673,105 @@ export function startMastery(ctx, params = {}) {
     node.classList.add('shake');
   }
 
-  // --- §31.B dictation -----------------------------------------------------
-  function applyDictation() {
-    dictBtn.textContent = dictation ? '📖 Show sentence' : '📣 Dictation';
-    dictBtn.classList.toggle('on', dictation);
-    peekRow.style.display = dictation ? '' : 'none';
-    peekBtn.textContent = peeked ? '🙈 Hide' : '👀 Peek';
-    sentenceEl.style.display = !dictation || peeked ? '' : 'none';
+  // --- §32 dictation = SPELL OUT LOUD (voice input) -----------------------
+  // The dictation button enters/leaves voice mode. Entering needs a one-time GROWN-UP consent
+  // (mic → cloud transcription, COPPA) cleared via a parental gate; then we start listening.
+  function toggleVoice() {
+    if (inputMode === 'voice') return exitVoice();
+    if (!voiceConsent()) return showVoiceConsent();
+    enterVoice();
   }
-  function setDictation(on) {
-    dictation = on;
+  function showVoiceConsent() {
+    parentalGate({
+      title: '🎤 Spell out loud — grown-up OK',
+      body: [
+        'Your child can spell by SAYING the letters out loud instead of writing them.',
+        'This turns on the microphone. Their voice is sent to your device’s speech service to turn the spoken letters into text — the app never saves the audio. See PRIVACY.md.',
+      ],
+      agree: 'I’m this child’s parent/guardian and I allow the microphone for voice spelling.',
+      confirmLabel: '🎤 Allow microphone',
+      onPass: () => {
+        setVoiceConsent(true);
+        enterVoice();
+      },
+    });
+  }
+  function enterVoice() {
+    if (!speechSupported()) {
+      toast('🎤 Voice spelling isn’t available on this device — try drawing or typing!');
+      return;
+    }
+    inputMode = 'voice';
     peeked = false;
-    applyDictation();
-    if (!locked) audio.say(target); // hearing is now the only cue — say it
+    slots = slots.map(() => null);
+    cur = 0;
+    applyLayout();
+    rebuildSurface();
+    renderBuilt();
+    startVoice();
+    if (!locked) audio.say(target); // dictation: hear the word, then spell it aloud
+  }
+  function exitVoice() {
+    stopVoice();
+    inputMode = 'draw';
+    peeked = false;
+    slots = slots.map(() => null);
+    cur = 0;
+    applyLayout();
+    rebuildSurface();
+    renderBuilt();
+  }
+  function startVoice() {
+    stopVoice();
+    voiceRec = createLetterRecognizer({
+      onLetters: (arr) => voiceLetters(arr),
+      onState: (s) => setMic(s),
+      onError: (err) => {
+        if (err === 'not-allowed' || err === 'service-not-allowed') {
+          toast('🎤 Microphone blocked — allow it in your browser, or draw/type instead.');
+          exitVoice();
+        } else {
+          setMic('listening'); // transient (no-speech / network) — the recogniser auto-restarts
+        }
+      },
+    });
+    if (!voiceRec) {
+      toast('🎤 Voice spelling isn’t available here.');
+      exitVoice();
+      return;
+    }
+    voiceRec.start();
+    setMic('listening');
+  }
+  function stopVoice() {
+    if (voiceRec) {
+      try {
+        voiceRec.stop();
+      } catch {
+        /* ignore */
+      }
+      voiceRec = null;
+    }
+  }
+  function setMic(stateStr) {
+    micEl.classList.toggle('listening', stateStr === 'listening');
+    micEl.textContent = stateStr === 'listening' ? '🎤 Listening… say the letters!' : '🎤 Paused — tap the button to resume';
+  }
+  // Fill the next empty slot(s) from the letters the recogniser heard (no auto-grade — the kid
+  // taps ✓ Check, since voice can mis-hear). Tap a filled box/slot to clear+re-say a wrong letter.
+  function voiceLetters(arr) {
+    if (locked || inputMode !== 'voice') return;
+    let changed = false;
+    for (const L of arr) {
+      const next = slots.findIndex((s) => s == null);
+      if (next === -1) break;
+      slots[next] = L;
+      changed = true;
+    }
+    if (changed) {
+      audio.sfx('tap');
+      renderBuilt();
+    }
   }
 
   // --- grading -------------------------------------------------------------
@@ -754,17 +875,16 @@ export function startMastery(ctx, params = {}) {
     verdictEl.textContent = '';
     verdictChip.textContent = '';
     sentenceEl.replaceChildren(...blankedSentence(entry));
-    applyLayout();
+    applyLayout(); // also applies the dictation sentence-hide/peek for voice mode
     rebuildSurface();
     renderBuilt();
-    applyDictation();
     renderDots();
     try {
-      window.__masteryCurrent = { word: target, index, total: session.length, wide: layoutWide, dictation };
+      window.__masteryCurrent = { word: target, index, total: session.length, wide: layoutWide, mode: inputMode };
     } catch {
       /* ignore */
     }
-    audio.say(target);
+    audio.say(target); // the recogniser ignores the whole word, so listening can keep running
   }
 
   function finish() {

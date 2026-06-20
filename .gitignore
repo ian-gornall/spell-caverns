@@ -6,6 +6,7 @@ words_alpha_tmp.txt
 # Exploratory QA screenshots (scratch artifacts from scripts/qa.mjs — regenerable).
 scripts/qa/
 scripts/qa_s31/
+scripts/qa_s32/
 # Generated TTS audio (Gemini "Kore", scripts/gen_audio.mjs). NOW COMMITTED so the
 # Git-CD build ships the clips — Cloudflare builds from the repo, so git-ignoring these
 # made prod fall back to the robotic device voice (manifest 404). Only the parked

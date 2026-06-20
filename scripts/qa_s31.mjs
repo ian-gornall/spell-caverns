@@ -98,18 +98,7 @@ try {
   ok(await wide.locator('.check-btn').isDisabled(), 'Check button starts DISABLED (nothing written yet)');
   await wide.screenshot({ path: `${OUT}/w02-boxes.png` });
   await noOverflow(wide, 'wide mastery');
-
-  // §31.B dictation toggle
-  await wide.locator('.draw-controls button', { hasText: /Dictation/ }).click();
-  await wide.waitForTimeout(150);
-  ok(!(await wide.locator('.mastery .sentence').isVisible()), 'dictation ON → sentence hidden');
-  ok(await wide.locator('.peek-row').isVisible(), 'dictation ON → Peek button shown');
-  await wide.locator('.peek-btn').click();
-  await wide.waitForTimeout(150);
-  ok(await wide.locator('.mastery .sentence').isVisible(), 'Peek → sentence revealed');
-  await wide.screenshot({ path: `${OUT}/w03-dictation.png` });
-  await wide.locator('.draw-controls button', { hasText: /Show sentence/ }).click(); // dictation OFF
-  await wide.waitForTimeout(150);
+  // (§31.B dictation is now the §32 VOICE mode — covered by scripts/qa_s32.mjs.)
 
   // §31.A write each letter → boxes auto-fill (display only); NOTHING graded until Check.
   const word1 = w1.word;

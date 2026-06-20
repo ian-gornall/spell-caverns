@@ -495,7 +495,27 @@ peekable behind a 👀 button. (See the §31 banner above — all built on branc
 
 ---
 
-## §32 — INTERFACE-VOICE QUALITY + AUDIO-START GATING (Ian 2026-06-19g) — ⛔ NOT STARTED (recorded only)
+## §32 — VOICE SPELLING (spell out loud) ✅ BUILT + QA'd (branch, undeployed) · INTERFACE-VOICE QUALITY + AUDIO-START GATING ⛔ recorded (Ian 2026-06-19g)
+
+> **➡️ VOICE SPELLING is BUILT + QA'd on `feat/s31-mastery-ux` (csc-v37, NOT deployed).** Ian
+> clarified that "dictation" = the child SPEAKS the letters aloud and the app listens (not the app
+> dictating). Built: a 🎤 **Spell out loud** mode in Mastery — `src/speech.js` wraps the browser Web
+> Speech API (`webkitSpeechRecognition`) + a PURE `lettersFromTranscript` (homophone map: see→c,
+> are→r, you→u, double-u→w… ; +`test/speech.test.js`, 6 tests). The child says letters → boxes/slots
+> fill → tap ✓ Check (voice mis-hears, so no auto-grade; tap a box to re-say). Gated behind a ONE-TIME
+> **grown-up consent** at first use: `ui.parentalGate` (a maths challenge — the standard kids-app gate
+> — + a consent line), then `state.voiceConsent`/`setVoiceConsent` remembers it; revocable in Settings →
+> Parents. **COPPA:** uses the FTC "voice as a replacement for written input" exception — audio is
+> never stored, used only to transcribe; disclosed in **PRIVACY.md** (new *Voice spelling* section).
+> Falls back to draw/type where speech is unsupported. **QA:** `node scripts/qa_s32.mjs` (stubs
+> SpeechRecognition to drive spoken letters) all green — consent gate, wrong-answer block, voice fill,
+> tap-redo, Check→Mastered, consent remembered, revoke; 273 tests; smoke + qa_s31 + §29 guards green.
+> **⚠️ OWED: a real-device iPad pass on actual speech recognition** (only the stubbed flow is
+> automated — single-letter speech recognition is genuinely hard; the homophone map will likely need
+> on-device tuning). sw `csc-v37` (added `/src/speech.js` to precache). **PRIVACY caveat Ian chose:**
+> grown-up pop-up at point of use (not hidden in Settings, not always-on).
+>
+> **The TWO ITEMS BELOW (interface-voice quality + audio-start gating) are STILL recorded-only — no code.**
 
 > Captured during §31 real-device testing. **Recorded only — no code yet.** Two related audio asks;
 > these are the FIRST things a new user hears, so they set the quality bar. Build test-first where it

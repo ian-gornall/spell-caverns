@@ -237,6 +237,19 @@ export function setParentPassword(pw) {
     save();
   }
 }
+// §32: one-time GROWN-UP consent to use the microphone for voice spelling (the child speaks
+// letters; the browser/OS speech service transcribes them and the audio is NOT stored — the
+// COPPA "voice as a replacement for written input" exception, gated behind a parental OK).
+// Family-level so a grown-up enables it once per device. Revocable in Settings.
+export function voiceConsent() {
+  return !!container?.voiceConsent;
+}
+export function setVoiceConsent(on) {
+  if (container) {
+    container.voiceConsent = !!on;
+    save();
+  }
+}
 
 // --- snapshots (parent rollback) ---------------------------------------------
 // Capture the active profile's current state as a dated, restorable snapshot.

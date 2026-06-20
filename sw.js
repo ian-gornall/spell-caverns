@@ -99,10 +99,11 @@
 //      old grid/Dice matcher had; fully offline + private (no strokes leave the device).
 //      PLUS a KEYBOARD fallback in Mastery (toggle draw ↔ type with the on-screen/physical kbd).
 // csc-v37: §31 — whole-word MULTI-BOX writing on wide screens (a mini-canvas per letter,
-//      auto-filling the best guess; tap a box to redo), a DICTATION toggle (spell from hearing,
-//      sentence peekable), and MASTERY-FIRST nudging (recommendNext steers known→mastered: a
-//      pulsing home card + craft/mining reward CTAs). mastery.js/puzzle.js/rhythm.js/home.js/
-//      selection.js + styles.css changed (all already precached).
+//      auto-filling the best guess; tap a box to redo), MASTERY-FIRST nudging (recommendNext
+//      steers known→mastered), + the real-device fixes (one ink overlay, ✓ Check submit,
+//      speech that doesn't talk over praise, cross-box stroke capture). PLUS §32 — DICTATION =
+//      SPELL OUT LOUD: the child says the letters and the app listens (src/speech.js, Web Speech),
+//      behind a one-time GROWN-UP consent (parentalGate in ui.js; voiceConsent in state.js).
 const VERSION = 'csc-v37';
 
 const CORE = [
@@ -125,6 +126,7 @@ const CORE = [
   '/src/pwa.js',
   '/src/version.js',
   '/src/cnn_recognizer.js',
+  '/src/speech.js',
   '/src/vendor/tf.min.js',
   '/src/models/letters/model.json',
   '/src/models/letters/weights.bin',
