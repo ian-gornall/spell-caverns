@@ -1223,6 +1223,16 @@ button.quest {
 @keyframes mic-pulse {
   50% { box-shadow: 0 0 0 3px rgba(43, 182, 115, 0.35), 0 0 18px rgba(43, 182, 115, 0.55); }
 }
+/* live "heard:" readout — shows the recogniser is working + what it understood (also aids tuning). */
+.voice-heard {
+  align-self: center;
+  min-height: 20px;
+  margin-top: 4px;
+  font-size: 0.95rem;
+  color: var(--ink-dim);
+  text-align: center;
+  max-width: 90%;
+}
 
 /* ------- §32 parental gate (grown-up math challenge before the mic) ------- */
 .gate-overlay {

@@ -104,7 +104,10 @@
 //      speech that doesn't talk over praise, cross-box stroke capture). PLUS §32 — DICTATION =
 //      SPELL OUT LOUD: the child says the letters and the app listens (src/speech.js, Web Speech),
 //      behind a one-time GROWN-UP consent (parentalGate in ui.js; voiceConsent in state.js).
-const VERSION = 'csc-v37';
+// csc-v38: §32 voice — iOS-friendly recogniser rework (single-shot + restart, interimResults,
+//      emit-each-new-letter) + a live on-screen "heard:" readout to diagnose/tune recognition,
+//      and the confusing Peek/Hide toggle removed from voice mode (sentence just shows).
+const VERSION = 'csc-v38';
 
 const CORE = [
   '/',

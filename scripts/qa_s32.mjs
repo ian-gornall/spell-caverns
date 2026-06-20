@@ -38,11 +38,15 @@ const FAKE_SPEECH = () => {
   }
   window.webkitSpeechRecognition = FakeRec;
   window.SpeechRecognition = FakeRec;
+  // emit one spoken PHRASE: a final result, then onend (single-shot recogniser ends → restarts).
   window.__emit = (transcript) => {
     const r = window.__fakeSpeech.last;
-    if (!r || !r.onresult) return;
-    const result = { 0: { transcript, confidence: 0.9 }, length: 1, isFinal: true };
-    r.onresult({ resultIndex: 0, results: { 0: result, length: 1 } });
+    if (!r) return;
+    if (r.onresult) {
+      const result = { 0: { transcript, confidence: 0.9 }, length: 1, isFinal: true };
+      r.onresult({ resultIndex: 0, results: { 0: result, length: 1 } });
+    }
+    if (r.onend) r.onend();
   };
 };
 
@@ -97,7 +101,7 @@ try {
   ok(mode === 'voice', `voice mode active (mode=${mode})`);
   ok(await page.locator('.mic-indicator').isVisible(), 'mic "Listening…" indicator shown');
   ok(!(await page.locator('.draw-controls button', { hasText: /Type it|Draw it/ }).isVisible()), 'draw/type toggle hidden during voice');
-  ok(!(await page.locator('.mastery .sentence').isVisible()), 'dictation: sentence hidden (peek available)');
+  ok(await page.locator('.mastery .sentence').isVisible(), 'voice: blanked sentence shown (no confusing peek/hide)');
   await page.screenshot({ path: `${OUT}/v02-listening.png` });
 
   // "speak" the letters → slots fill; nothing grades until Check
@@ -105,6 +109,7 @@ try {
   await page.waitForTimeout(200);
   const built = (await page.locator('.lbox-letter').allTextContents()).join('');
   ok(built === word, `spoken letters filled the boxes ("${built}" == "${word}")`);
+  ok(/heard/i.test((await page.locator('.voice-heard').textContent()) || ''), 'live "heard:" readout shows what the mic understood');
   ok((await page.locator('.mastery .verdict').textContent())?.trim() === '', 'no grading before Check');
   ok(!(await page.locator('.check-btn').isDisabled()), 'Check enabled once all letters are in');
   await page.screenshot({ path: `${OUT}/v03-spoken.png` });

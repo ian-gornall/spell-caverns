@@ -193,8 +193,9 @@ export function startMastery(ctx, params = {}) {
   const checkBtn = el('button', { class: 'btn primary check-btn', onClick: () => checkWord() }, '✓ Check it');
   const submitRow = el('div', { class: 'draw-submit', style: { display: 'none' } }, checkBtn);
 
-  // §32: a "listening" indicator while the child spells out loud (voice mode).
+  // §32: a "listening" indicator + a live "heard:" readout while the child spells out loud.
   const micEl = el('div', { class: 'mic-indicator', style: { display: 'none' } }, '🎤 Listening… say the letters!');
+  const voiceDbgEl = el('div', { class: 'voice-heard', style: { display: 'none' } }, '');
 
   const clearBtn = el('button', { class: 'btn ghost', onClick: clearCurrent }, '↺ Clear');
   const dictBtn = el('button', { class: 'btn ghost', onClick: () => toggleVoice() }, '🎤 Spell out loud');
@@ -214,7 +215,7 @@ export function startMastery(ctx, params = {}) {
       'div',
       { class: 'play-body' },
       el('div', { class: 'prompt' }, el('div', { class: 'hear-row' }, hearBtn), sentenceEl, peekRow, verdictEl, verdictChip),
-      el('div', { class: 'answer-zone' }, slotsEl, drawStageEl, boxesEl, typeWrapEl, micEl, hintEl, submitRow, controlsEl),
+      el('div', { class: 'answer-zone' }, slotsEl, drawStageEl, boxesEl, typeWrapEl, micEl, voiceDbgEl, hintEl, submitRow, controlsEl),
     ),
   );
 
@@ -582,6 +583,7 @@ export function startMastery(ctx, params = {}) {
     drawStageEl.style.display = !layoutWide && inputMode === 'draw' ? '' : 'none';
     typeWrapEl.style.display = inputMode === 'type' ? '' : 'none';
     micEl.style.display = voice ? '' : 'none';
+    voiceDbgEl.style.display = voice ? '' : 'none';
     // explicit submit in the wide multi-box layout OR whenever spelling by voice (mis-hears → review first)
     submitRow.style.display = layoutWide || voice ? '' : 'none';
     clearBtn.style.display = inputMode === 'type' ? 'none' : '';
@@ -589,10 +591,10 @@ export function startMastery(ctx, params = {}) {
     toggleBtn.textContent = inputMode === 'draw' ? '⌨️ Type it' : '✍️ Draw it';
     dictBtn.textContent = voice ? '✍️ Back to writing' : '🎤 Spell out loud';
     dictBtn.classList.toggle('on', voice);
-    // §31.B/§32 dictation: voice mode hides the sentence (pure recall) behind a 👀 Peek.
-    peekRow.style.display = voice ? '' : 'none';
-    peekBtn.textContent = peeked ? '🙈 Hide' : '👀 Peek';
-    sentenceEl.style.display = !voice || peeked ? '' : 'none';
+    // §32: voice mode shows the blanked sentence like the other modes (the confusing 👀 Peek/Hide
+    // toggle from the earlier draft is gone — the sentence context is just always visible).
+    peekRow.style.display = 'none';
+    sentenceEl.style.display = '';
     hintEl.textContent = voice
       ? '🎤 Say the letters out loud, then tap ✓ Check.'
       : inputMode === 'type'
@@ -723,15 +725,23 @@ export function startMastery(ctx, params = {}) {
   }
   function startVoice() {
     stopVoice();
+    voiceDbgEl.textContent = '';
     voiceRec = createLetterRecognizer({
       onLetters: (arr) => voiceLetters(arr),
+      onTranscript: (text) => {
+        // a live readout so it's clear the mic is working + what it heard (also helps tuning).
+        voiceDbgEl.textContent = text ? `🗣️ heard: “${text}”` : '';
+      },
       onState: (s) => setMic(s),
       onError: (err) => {
         if (err === 'not-allowed' || err === 'service-not-allowed') {
-          toast('🎤 Microphone blocked — allow it in your browser, or draw/type instead.');
+          toast('🎤 Microphone blocked — allow it in Settings, or draw/type instead.');
           exitVoice();
+        } else if (err === 'no-speech' || err === 'aborted') {
+          setMic('listening'); // normal silence/restart — keep going quietly
         } else {
-          setMic('listening'); // transient (no-speech / network) — the recogniser auto-restarts
+          setMic('listening');
+          voiceDbgEl.textContent = `⚠️ speech: ${err} (still trying — or tap Draw/Type)`;
         }
       },
     });
@@ -754,8 +764,14 @@ export function startMastery(ctx, params = {}) {
     }
   }
   function setMic(stateStr) {
-    micEl.classList.toggle('listening', stateStr === 'listening');
-    micEl.textContent = stateStr === 'listening' ? '🎤 Listening… say the letters!' : '🎤 Paused — tap the button to resume';
+    const listening = stateStr === 'listening' || stateStr === 'hearing' || stateStr === 'speech';
+    micEl.classList.toggle('listening', listening);
+    micEl.textContent =
+      stateStr === 'hearing' || stateStr === 'speech'
+        ? '🎤 I can hear you — say the letters!'
+        : listening
+          ? '🎤 Listening… say the letters!'
+          : '🎤 Paused — tap the button to resume';
   }
   // Fill the next empty slot(s) from the letters the recogniser heard (no auto-grade — the kid
   // taps ✓ Check, since voice can mis-hear). Tap a filled box/slot to clear+re-say a wrong letter.

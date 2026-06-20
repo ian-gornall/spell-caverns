@@ -59,40 +59,57 @@ export function speechSupported() {
   return typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 
-// Start a continuous recogniser that emits detected LETTERS (via onLetters) as the child spells.
-// Returns { start, stop } or null if unsupported. The recogniser auto-restarts after silence while
-// active. start() triggers the OS mic-permission prompt; a denial surfaces via onError('not-allowed').
-export function createLetterRecognizer({ onLetters, onState, onError } = {}) {
+// Start a recogniser that emits detected LETTERS (via onLetters) as the child spells. Returns
+// { start, stop } or null if unsupported. Tuned for iOS Safari, which is fussy: `continuous`
+// is unreliable, so we run SINGLE-SHOT and RESTART after each phrase; `interimResults` is on so
+// partial guesses surface immediately; and we emit only the NEW letters of the growing transcript
+// (so "see" → c, then "see ay" → a, without re-placing c). Restarts only fire while `running`.
+//   onLetters(fresh[])     — newly recognised letters since the last event in this phrase
+//   onTranscript(text, fin)— the raw transcript so far (for the on-screen "heard:" readout)
+//   onState(s)             — 'listening' | 'hearing' (audio detected) | 'speech' | 'stopped'
+//   onError(code)          — the recogniser error code (e.g. not-allowed / network / no-speech)
+// start() must be called inside a user gesture (iOS mic-permission rule); a denial → onError('not-allowed').
+export function createLetterRecognizer({ onLetters, onTranscript, onState, onError } = {}) {
   const Ctor = typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
   if (!Ctor) return null;
   const rec = new Ctor();
   rec.lang = 'en-US';
-  rec.continuous = true;
-  rec.interimResults = false;
+  rec.continuous = false; // iOS ignores/!supports continuous reliably — restart instead
+  rec.interimResults = true;
   rec.maxAlternatives = 3;
   let running = false;
+  let emitted = 0; // letters already emitted for the CURRENT phrase (reset each restart)
+
   rec.onresult = (e) => {
-    for (let i = e.resultIndex; i < e.results.length; i++) {
+    // Build the full transcript so far across results (best alternative that yields letters).
+    let full = '';
+    for (let i = 0; i < e.results.length; i++) {
       const r = e.results[i];
-      if (!r.isFinal) continue;
-      let letters = [];
+      let alt = r[0] ? r[0].transcript : '';
       for (let a = 0; a < r.length; a++) {
-        const ls = lettersFromTranscript(r[a].transcript); // first alternative that yields letters wins
-        if (ls.length) {
-          letters = ls;
-          break;
-        }
+        if (lettersFromTranscript(r[a].transcript).length) { alt = r[a].transcript; break; }
       }
-      if (letters.length && onLetters) onLetters(letters);
+      full += ' ' + alt;
     }
+    full = full.trim();
+    const letters = lettersFromTranscript(full);
+    if (letters.length > emitted) {
+      const fresh = letters.slice(emitted);
+      emitted = letters.length;
+      if (onLetters) onLetters(fresh);
+    }
+    if (onTranscript) onTranscript(full, !!(e.results[e.results.length - 1] || {}).isFinal);
   };
+  rec.onaudiostart = () => onState && onState('hearing');
+  rec.onspeechstart = () => onState && onState('speech');
   rec.onerror = (e) => onError && onError((e && e.error) || 'error');
   rec.onend = () => {
+    emitted = 0; // the next phrase starts fresh
     if (running) {
       try {
-        rec.start(); // keep listening across the recogniser's natural silence timeouts
+        rec.start(); // keep listening (single-shot ended) — same session, no new gesture needed on most builds
       } catch {
-        /* already started / transient */
+        /* a restart can throw transiently; the next onend retries */
       }
     } else if (onState) {
       onState('stopped');
@@ -101,11 +118,12 @@ export function createLetterRecognizer({ onLetters, onState, onError } = {}) {
   return {
     start() {
       running = true;
+      emitted = 0;
       try {
         rec.start();
         onState && onState('listening');
-      } catch {
-        onError && onError('start-failed');
+      } catch (err) {
+        onError && onError((err && err.name) || 'start-failed');
       }
     },
     stop() {
