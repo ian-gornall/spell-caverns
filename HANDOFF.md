@@ -495,25 +495,38 @@ peekable behind a 👀 button. (See the §31 banner above — all built on branc
 
 ---
 
-## §32 — VOICE SPELLING (spell out loud) ✅ BUILT + QA'd (branch, undeployed) · INTERFACE-VOICE QUALITY + AUDIO-START GATING ⛔ recorded (Ian 2026-06-19g)
+## §32 — VOICE SPELLING ⏸️ SHELVED after real-device testing (parked behind a flag) · INTERFACE-VOICE QUALITY + AUDIO-START GATING ⛔ recorded (Ian 2026-06-19g→20)
 
-> **➡️ VOICE SPELLING is BUILT + QA'd on `feat/s31-mastery-ux` (csc-v37, NOT deployed).** Ian
-> clarified that "dictation" = the child SPEAKS the letters aloud and the app listens (not the app
-> dictating). Built: a 🎤 **Spell out loud** mode in Mastery — `src/speech.js` wraps the browser Web
-> Speech API (`webkitSpeechRecognition`) + a PURE `lettersFromTranscript` (homophone map: see→c,
-> are→r, you→u, double-u→w… ; +`test/speech.test.js`, 6 tests). The child says letters → boxes/slots
-> fill → tap ✓ Check (voice mis-hears, so no auto-grade; tap a box to re-say). Gated behind a ONE-TIME
-> **grown-up consent** at first use: `ui.parentalGate` (a maths challenge — the standard kids-app gate
-> — + a consent line), then `state.voiceConsent`/`setVoiceConsent` remembers it; revocable in Settings →
-> Parents. **COPPA:** uses the FTC "voice as a replacement for written input" exception — audio is
-> never stored, used only to transcribe; disclosed in **PRIVACY.md** (new *Voice spelling* section).
-> Falls back to draw/type where speech is unsupported. **QA:** `node scripts/qa_s32.mjs` (stubs
-> SpeechRecognition to drive spoken letters) all green — consent gate, wrong-answer block, voice fill,
-> tap-redo, Check→Mastered, consent remembered, revoke; 273 tests; smoke + qa_s31 + §29 guards green.
-> **⚠️ OWED: a real-device iPad pass on actual speech recognition** (only the stubbed flow is
-> automated — single-letter speech recognition is genuinely hard; the homophone map will likely need
-> on-device tuning). sw `csc-v37` (added `/src/speech.js` to precache). **PRIVACY caveat Ian chose:**
-> grown-up pop-up at point of use (not hidden in Settings, not always-on).
+> **⏸️ VOICE SPELLING is SHELVED (Ian's call after iPad testing) — LIVE prod (csc-v39) has the 🎤
+> button REMOVED; draw + type are the spelling methods.** It was built + deployed (v37→v38) but the
+> approach didn't work on a real iPad and Ian chose to park it (not remove) for a proper rebuild.
+> **WHY it failed:** the browser **Web Speech API is the wrong tool** — it transcribes CONNECTED
+> speech into WORDS, not isolated letters (saying "N-O-T" came back as the word "not"; "in" instead
+> of the letter N), and the **open mic echoed the app's own TTS** dictating the word. A live on-screen
+> "🗣️ heard:" readout (added v38) confirmed all this on-device.
+>
+> **➡️ THE RESEARCHED REBUILD PLAN (do this when revisiting — Ian wants the handwriting-CNN
+> equivalent, not cloud):**
+> 1. **PUSH-TO-TALK** — a "hold to say a letter" button: mic on only while held → no echo, ONE letter
+>    per capture (kills the word-fusing + the delay). Ian's idea; adopt it.
+> 2. **ON-DEVICE spoken-letter model** (mirrors `cnn_recognizer.js`): **TF.js Speech Commands**
+>    (`BROWSER_FFT`) supports in-browser **transfer learning** to custom classes = the 26 letters;
+>    train offline (like `scripts/train_recognizer.mjs`) on an **ISOLET**-style spoken-letter dataset
+>    (7.8k utterances; CNNs hit ~95% on *adult/native/clean*). Offline + private → **drops the cloud +
+>    the COPPA consent gate entirely**.
+> 3. **USE THE KNOWN TARGET WORD AS A PRIOR** — the kid is spelling a KNOWN word, so it's a "did they
+>    say the EXPECTED next letter?" 1-vs-rest check, NOT open 26-way recognition. This sidesteps most
+>    of the **"E-set"** problem (B/D, P/T, V/Z, F/S, M/N sound alike — the core difficulty; children's
+>    voices are harder still and aren't in ISOLET). This prior is the real accuracy unlock.
+> 4. Don't fill from a whole-word transcript (Ian); push-to-talk + the prior handle this naturally.
+> - Sources: tfjs Speech Commands + transfer-learning tutorial; ISOLET database. **Honest expectation:**
+>   even on-device, kids' E-set letters are hard — the known-word prior is what makes it viable.
+>
+> **WHAT'S PARKED (not deleted) for the rebuild:** `src/speech.js` (`lettersFromTranscript` +6 tests
+> still pass; the Web Speech wrapper), the voice mode in `modes/mastery.js` behind
+> **`VOICE_SPELLING_ENABLED=false`** (flip to re-enable the parked Web Speech path), `ui.parentalGate`,
+> `state.voiceConsent`/`setVoiceConsent` + the Settings revoke, and `scripts/qa_s32.mjs` (PARKED —
+> fails until the flag is on). **PRIVACY.md reverted** (mic not used in shipped app). sw `csc-v39`.
 >
 > **The TWO ITEMS BELOW (interface-voice quality + audio-start gating) are STILL recorded-only — no code.**
 

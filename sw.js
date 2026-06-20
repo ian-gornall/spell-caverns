@@ -107,7 +107,12 @@
 // csc-v38: §32 voice — iOS-friendly recogniser rework (single-shot + restart, interimResults,
 //      emit-each-new-letter) + a live on-screen "heard:" readout to diagnose/tune recognition,
 //      and the confusing Peek/Hide toggle removed from voice mode (sentence just shows).
-const VERSION = 'csc-v38';
+// csc-v39: §32 voice SHELVED (Ian) — cloud Web Speech can't reliably read isolated letters from a
+//      child (it transcribes connected speech into words + the open mic echoed the app's TTS). The
+//      🎤 button is removed (VOICE_SPELLING_ENABLED=false in modes/mastery.js); the recogniser/
+//      consent/UI are parked for a future PUSH-TO-TALK + on-device-letter-model rebuild (HANDOFF §32).
+//      PRIVACY.md reverted (mic not used). Draw + type remain the spelling methods.
+const VERSION = 'csc-v39';
 
 const CORE = [
   '/',

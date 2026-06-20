@@ -33,6 +33,13 @@ import { mulberry32 } from '../engine/distractors.js';
 
 const MASTERY_GEMS = 25; // flat reward for mastering a word (drawing is slow; speed is irrelevant)
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
+// §32 SHELVED (Ian 2026-06-19g): the "spell out loud" voice mode is parked. The cloud Web Speech
+// API transcribes connected speech into WORDS (and the open mic echoed the app's own dictation),
+// so it couldn't reliably read isolated letters from a child. The right rebuild (recorded in
+// HANDOFF §32) is PUSH-TO-TALK + an ON-DEVICE spoken-letter model (TF.js, ISOLET-style, like the
+// handwriting CNN) + using the known target word as a prior. Flip this flag to re-enable the
+// (parked) Web Speech path for experimentation; the recogniser + consent + UI are all still here.
+const VOICE_SPELLING_ENABLED = false;
 // §31.A: at/above this width the multi-box "write the whole word" layout fits; below it we keep
 // the single-canvas flow (a phone has no room for a row of per-letter boxes — and this keeps the
 // §29 narrow-viewport no-horizontal-scroll guards green, which only exercise phone widths).
@@ -200,7 +207,8 @@ export function startMastery(ctx, params = {}) {
   const clearBtn = el('button', { class: 'btn ghost', onClick: clearCurrent }, '↺ Clear');
   const dictBtn = el('button', { class: 'btn ghost', onClick: () => toggleVoice() }, '🎤 Spell out loud');
   const toggleBtn = el('button', { class: 'btn ghost', onClick: () => setMode(inputMode === 'draw' ? 'type' : 'draw') }, '⌨️ Type it');
-  const controlsEl = el('div', { class: 'draw-controls' }, clearBtn, dictBtn, toggleBtn);
+  // §32 shelved: omit the voice button (the rest of the voice code is parked behind VOICE_SPELLING_ENABLED).
+  const controlsEl = el('div', { class: 'draw-controls' }, clearBtn, ...(VOICE_SPELLING_ENABLED ? [dictBtn] : []), toggleBtn);
   const hintEl = el('div', { class: 'draw-hint' }, '');
 
   const hdr = header(ctx, { title: 'Mastery', onBack: () => ctx.nav('home') });

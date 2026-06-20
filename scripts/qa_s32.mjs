@@ -1,4 +1,7 @@
 // scripts/qa_s32.mjs — visual-QA probe for §32 voice spelling (spell out loud).
+// ⚠️ PARKED: voice is SHELVED (VOICE_SPELLING_ENABLED=false in modes/mastery.js), so the 🎤 button
+// no longer renders and this probe will fail until the flag is flipped back on. Kept for the
+// eventual push-to-talk + on-device-letter-model rebuild (HANDOFF §32).
 // Stubs window.webkitSpeechRecognition so spoken letters can be driven deterministically (a real
 // mic can't be simulated headlessly — Ian verifies actual recognition on-device). Checks:
 //   - first tap → GROWN-UP consent gate (math + consent box); wrong answer blocked, right passes
