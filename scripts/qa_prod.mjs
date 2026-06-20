@@ -5,7 +5,10 @@ import { chromium } from 'playwright';
 const URL = 'https://spell.pryzmio.com';
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 820, height: 1180 } });
+// PHONE width on purpose: ≥700px now uses the §31 multi-box layout (no .draw-canvas); this probe
+// exercises the single-canvas + CNN-candidate path. (The multi-box/voice flows are covered by
+// scripts/qa_s31.mjs + qa_s32.mjs locally; iPad-real-device passes are owed for those.)
+const page = await browser.newPage({ viewport: { width: 390, height: 780 } });
 const issues = [];
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource.*\b404\b/.test(m.text())) issues.push('console.error: ' + m.text()); });
 page.on('pageerror', (e) => issues.push('pageerror: ' + e.message));
