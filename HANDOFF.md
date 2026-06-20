@@ -2,7 +2,7 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-20 • current live sw **csc-v48** (§11 autofill fix + Mastery app-keypad).
+> `C:\Users\iango\spell`  •  Last updated 2026-06-20 • current live sw **csc-v49** (§11 autofill + Mastery app-keypad; §12 phone/landscape proportions).
 > **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
@@ -282,17 +282,30 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    (polished, on-theme). ⚠️ OWED: a real-device pass on the keypad (iPad + phone) — verified via emulation
    + screenshots only. **➡️ NEXT: #12.**
 
-12. **🆕 LANDSCAPE-PHONE PLAY SIZING — OPEN, the NEXT item. ➡️ DEPLOY after QA.** Verbatim (Ian): in horizontal phone view
-   "the top part with no buttons takes up most of the screen which makes the buttons on the bottom tiny, and
-   the letters chosen also super small." I.e. in **landscape phone** the upper PROMPT zone (Hear-it-again +
-   sentence) eats most of the vertical band, squeezing the play area so the **TRAY letter buttons + the SLOT
-   (chosen) letters render tiny**. Fix: rebalance the landscape proportions (the phone `@media (max-height:520px)`
-   band) — cap/shrink the top prompt, give the play area (slots + tray) the MAJORITY of the height, and stop
-   `fitPlayArea`/`--play-scale` from driving the tiles so small (raise the effective floor by shrinking the
-   prompt, not the tiles). iPad landscape already looks good — keep it; keep the §29/§33 guards green. Needs
-   interactive visual QA at real landscape-phone sizes (e.g. 740×360, 844×390). Then **deploy.**
+12. ✅ **LANDSCAPE-PHONE PLAY SIZING + MASTERY PHONE PROPORTIONS (Ian 2026-06-20) — DONE + QA'd + LIVE (csc-v49).**
+   Triggered by Ian's report on the new app-keypad: "works, but very cramped on phone — some letters overlap
+   their borders in portrait, and in landscape it's tiny because the top bar is still very large vs the little
+   letters." Diagnosed objectively with `scripts/qa_phone_audit.mjs` + height instrumentation:
+   - **Portrait**: the Mastery word-display tiles were iPad-sized, so a long word (`international`, 13) wrapped
+     to **3 big rows** that crowded the keypad. FIX (`@media max-width:480`): smaller `.mastery .draw-slots .slot`
+     + tighter `.draw-slots` gap → fits ~2 rows, balanced with the keypad. (Phone DRAW mode draws on the
+     separate canvas, so smaller display tiles don't hurt it.)
+   - **Landscape**: ROOT CAUSE measured — the **PROMPT is inside `.play-body` and does NOT scale with
+     `--play-scale`**, and the full-size header + stacked hear-button/3-line-sentence made it the dominant
+     FIXED cost (prompt ≈128px of a ~290px play-body), so `fitPlayArea` floored at `--play-scale 0.35` →
+     a tiny keypad. FIX (`@media max-height:520`): thin header (smaller `.header-title` + `.stat`), lay
+     **hear button + sentence on ONE row** (`.prompt{flex-direction:row}`), drop the sentence's `max-width:30ch`
+     wrap cap (landscape has the WIDTH), and collapse the empty `.verdict`/`.verdict-chip` reserve. Prompt
+     128→52px; **landscape `--play-scale` rose 0.35 → 0.65 (740) / 0.80 (844)** = a usable keypad. Plus a
+     compact landscape keypad (`.key` short) + box (`.lbox`) sizing.
+   - **All phone-scoped** (`max-width:480` / `max-height:520`); **iPad portrait + landscape UNCHANGED** (both
+     escape those media queries — audit re-confirms iPad craft/mastery/mining `--play-scale=1`). QA: 277 tests;
+     `qa_phone_audit` (iPad scale=1, only the by-design landscape home-menu scroll "fails"), `qa_s31`,
+     `qa_mastery`, `qa_autofill`, `qa_overflow`(Galaxy), `qa_responsive` all green; before/after screenshots at
+     360/390 portrait + 740/844 landscape reviewed. Files: `styles.css`, `sw.js`, `src/version.js`. ⚠️ OWED: a
+     real-device pass on an actual phone (portrait + landscape) — judged via emulation + screenshots only.
 
-13. **🆕 ONE-SCREEN-AT-A-TIME EXPERIMENT — OPEN, TEST-ONLY (separate BRANCH + TEST URL).** On a NEW branch
+13. **🆕 ONE-SCREEN-AT-A-TIME EXPERIMENT — OPEN, the NEXT item, TEST-ONLY (separate BRANCH + TEST URL).** On a NEW branch
    (do NOT merge to main), build an experimental variant that shows exactly ONE screen at a time with **NO
    vertical OR horizontal scroll anywhere** — every screen must fit the viewport (likely aggressive
    fit-to-viewport scaling + paginating any long content, e.g. Settings / Progress / Catalog, into stepped
