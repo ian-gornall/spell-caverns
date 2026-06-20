@@ -21,7 +21,7 @@
 //   one-time GROWN-UP consent (mic → cloud transcription; COPPA — see speech.js / PRIVACY.md).
 //
 // UI module — verified with Playwright.
-import { el, header, burst, toast, createIdleGuard, pulse, parentalGate } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard, pulse, parentalGate, fitPlayArea } from '../ui.js';
 import { buildMasteryPool } from '../engine/selection.js';
 import { recordDraw, unlocks } from '../engine/categories.js';
 import { recognizeGrid, pointsToGrid, GRID_N } from '../engine/handwriting.js';
@@ -214,18 +214,16 @@ export function startMastery(ctx, params = {}) {
   const hdr = header(ctx, { title: 'Mastery', onBack: () => ctx.nav('home') });
   const gemCountEl = hdr.querySelector('.gem-count');
 
-  const screen = el(
+  const playBody = el(
     'div',
-    { class: 'screen mastery' },
-    hdr,
-    dots,
-    el(
-      'div',
-      { class: 'play-body' },
-      el('div', { class: 'prompt' }, el('div', { class: 'hear-row' }, hearBtn), sentenceEl, peekRow, verdictEl, verdictChip),
-      el('div', { class: 'answer-zone' }, slotsEl, drawStageEl, boxesEl, typeWrapEl, micEl, voiceDbgEl, hintEl, submitRow, controlsEl),
-    ),
+    { class: 'play-body' },
+    el('div', { class: 'prompt' }, el('div', { class: 'hear-row' }, hearBtn), sentenceEl, peekRow, verdictEl, verdictChip),
+    el('div', { class: 'answer-zone' }, slotsEl, drawStageEl, boxesEl, typeWrapEl, micEl, voiceDbgEl, hintEl, submitRow, controlsEl),
   );
+  const screen = el('div', { class: 'screen mastery' }, hdr, dots, playBody);
+  // §33: keep the word slots + draw surface + Clear/Type buttons (and the candidate letters once
+  // drawn) co-visible for ANY word length on a phone — shrink the tiles/canvas to fit (no-op on iPad).
+  const fit = () => requestAnimationFrame(() => fitPlayArea(playBody));
 
   // --- per-session / per-word state ---------------------------------------
   let index = 0;
@@ -274,7 +272,7 @@ export function startMastery(ctx, params = {}) {
     rebuildSurface();
     renderBuilt();
   };
-  const onResize = () => sizeInk();
+  const onResize = () => { sizeInk(); fit(); };
   mediaWide.addEventListener?.('change', onMedia);
   window.addEventListener('resize', onResize);
   ctx.onLeave(() => {
@@ -302,6 +300,7 @@ export function startMastery(ctx, params = {}) {
     strokes = [];
     ctx2d.clearRect(0, 0, canvas.width, canvas.height);
     candidatesEl.replaceChildren();
+    fit(); // candidates removed → the canvas can grow back to fit
   }
   canvas.addEventListener('pointerdown', (e) => {
     if (locked) return;
@@ -360,6 +359,7 @@ export function startMastery(ctx, params = {}) {
         ),
       ),
     );
+    fit(); // the candidate row adds height → keep it (and the controls) on-screen
   }
 
   // --- §31.A multi-box drawing (WIDE): one ink overlay, strokes routed to the nearest box ----
@@ -613,6 +613,7 @@ export function startMastery(ctx, params = {}) {
           ? 'Write each letter in its box, then tap ✓ Check. Tap a box to redo it.'
           : 'Draw a letter — I’ll guess it, then tap the one you meant.';
     updateCheck();
+    fit(); // §33: re-fit whenever the layout/mode (and thus which surfaces show) changes
     try {
       if (window.__masteryCurrent) window.__masteryCurrent.mode = inputMode; // keep the QA hook fresh on mode change
     } catch {

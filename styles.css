@@ -630,6 +630,11 @@ button.quest {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  /* §33 fit-to-viewport: a single multiplier the mode JS shrinks (fitPlayArea in ui.js) so the
+     word being filled, the interaction surface, AND the action buttons stay co-visible for ANY
+     word length on ANY phone. Defaults to 1 → iPad/tablet render is unchanged (it only bites when
+     the content would otherwise overflow + push the tray/controls below the fold). */
+  --play-scale: 1;
   gap: clamp(26px, 6vh, 56px);
   /* `safe center` centers the prompt+answer pair on tall screens but, when space is
      tight, aligns to the START edge so content packs from the top and scrolls — instead
@@ -822,13 +827,14 @@ button.quest {
 .tiles {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: calc(16px * var(--play-scale, 1));
   padding-top: 6px;
 }
 .tile {
   /* scale with viewport height so two rows of tiles still fit (and stay off the
-     bottom edge) on short screens — landscape / pre-install Safari chrome (QA I1) */
-  min-height: clamp(84px, 11vh, 116px);
+     bottom edge) on short screens — landscape / pre-install Safari chrome (QA I1).
+     The --play-scale multiplier lets fitPlayArea shrink them further when needed. */
+  min-height: calc(clamp(74px, 11vh, 116px) * var(--play-scale, 1));
   /* center the spelling option in the tile (a wrapped long word stays centered as a
      block, not top-aligned) — shared centering token (§17.B) */
   display: flex;
@@ -838,9 +844,9 @@ button.quest {
   border-radius: var(--radius);
   /* smaller max + wrap-anywhere so a long word (e.g. "communications", 14ch) shrinks
      and breaks instead of clipping at the tile edge — there's no space to wrap on */
-  font-size: clamp(1.2rem, 5vw, 2.05rem);
+  font-size: calc(clamp(1.15rem, 5vw, 2.05rem) * var(--play-scale, 1));
   line-height: 1.1;
-  padding: 8px 12px;
+  padding: calc(8px * var(--play-scale, 1)) 12px;
   overflow-wrap: anywhere;
   font-weight: 800;
   letter-spacing: 0.5px;
@@ -884,15 +890,15 @@ button.quest {
 .slots {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: calc(10px * var(--play-scale, 1));
   justify-content: center;
   padding: 4px 6px;
 }
 .slot {
-  width: clamp(46px, 13vw, 72px);
-  height: clamp(54px, min(15vw, 12vh), 84px);
+  width: calc(clamp(44px, 13vw, 72px) * var(--play-scale, 1));
+  height: calc(clamp(50px, min(15vw, 12vh), 84px) * var(--play-scale, 1));
   border-radius: 16px;
-  font-size: clamp(1.6rem, 6vw, 2.4rem);
+  font-size: calc(clamp(1.5rem, 6vw, 2.4rem) * var(--play-scale, 1));
   font-weight: 800;
   text-transform: lowercase;
   /* Empty slots read as glowing CRYSTAL SOCKETS waiting to be filled — an inset well
@@ -941,19 +947,19 @@ button.quest {
 .tray {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: calc(12px * var(--play-scale, 1));
   justify-content: center;
   padding: 10px 6px 4px;
 }
 .tray-tile {
-  width: clamp(50px, min(14vw, 11vh), 76px);
-  height: clamp(50px, min(14vw, 11vh), 76px);
+  width: calc(clamp(48px, min(14vw, 11vh), 76px) * var(--play-scale, 1));
+  height: calc(clamp(48px, min(14vw, 11vh), 76px) * var(--play-scale, 1));
   /* center the letter in the square (matches .slot, which already centers) */
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 16px;
-  font-size: clamp(1.6rem, 6vw, 2.4rem);
+  font-size: calc(clamp(1.5rem, 6vw, 2.4rem) * var(--play-scale, 1));
   font-weight: 800;
   line-height: 1;
   text-transform: lowercase;
@@ -1017,8 +1023,9 @@ button.quest {
 .draw-canvas {
   width: min(100%, 360px);
   /* height tracks the viewport but is capped both ways: generous on iPad, yet short enough
-     on a small phone that "Read my letter" stays above the fold (no scroll to submit). */
-  height: clamp(150px, 24vh, 230px);
+     on a small phone that "Read my letter" stays above the fold (no scroll to submit). The
+     --play-scale multiplier lets fitPlayArea shrink it further for a long word on a short phone. */
+  height: calc(clamp(132px, 24vh, 230px) * var(--play-scale, 1));
   border-radius: 18px;
   background: radial-gradient(circle at 50% 35%, rgba(54, 241, 205, 0.08), rgba(0, 0, 0, 0.34) 72%);
   border: 2px dashed rgba(124, 196, 255, 0.45);
@@ -1050,10 +1057,10 @@ button.quest {
   justify-content: center;
 }
 .cand-letter {
-  width: clamp(52px, 14vw, 72px);
-  height: clamp(52px, 14vw, 72px);
+  width: calc(clamp(48px, 14vw, 72px) * var(--play-scale, 1));
+  height: calc(clamp(48px, 14vw, 72px) * var(--play-scale, 1));
   border-radius: 14px;
-  font-size: clamp(1.7rem, 7vw, 2.4rem);
+  font-size: calc(clamp(1.6rem, 7vw, 2.4rem) * var(--play-scale, 1));
   font-weight: 800;
   text-transform: lowercase;
   color: var(--ink);
@@ -1108,8 +1115,9 @@ button.quest {
   position: relative;
   width: 100%;
   /* generous padding gives drawing room ABOVE/BELOW/beside the boxes — the overlay covers it,
-     so "mostly in the box, a bit outside" is still captured (Ian 2026-06-19g). */
-  padding: 18px 14px;
+     so "mostly in the box, a bit outside" is still captured (Ian 2026-06-19g). Scales with
+     --play-scale so a short landscape phone reclaims it rather than scrolling the controls off. */
+  padding: calc(18px * var(--play-scale, 1)) 14px;
 }
 .box-guides {
   display: flex;
@@ -1122,7 +1130,7 @@ button.quest {
   flex: 1 1 0; /* equal columns that shrink to fit a long word on one line */
   min-width: 0;
   max-width: 96px;
-  height: clamp(68px, 11vw, 120px);
+  height: calc(clamp(60px, 11vw, 120px) * var(--play-scale, 1));
   border-radius: 16px;
   /* same glowing crystal-socket look as the empty .slot, so a box reads as "write here" */
   background: radial-gradient(circle at 50% 32%, rgba(54, 241, 205, 0.12), rgba(0, 0, 0, 0.32) 72%);
@@ -2929,6 +2937,54 @@ html.readable .crystal-name {
     align-items: flex-start;
     gap: 6px;
   }
+
+  /* §33 PLAY SCREENS (Craft / Mastery / Mining) on phones: the iPad-tuned vertical gaps + full-
+     size prompt ate the height a long word needs, so the tray (Craft) and the Clear/Type controls
+     + candidates (Mastery) dropped below the fold. Tighten the framing so the word being filled,
+     the tiles/canvas, AND the action buttons are co-visible; fitPlayArea() (ui.js) then shrinks the
+     tiles via --play-scale for the very longest words so nothing ever has to scroll off-screen. */
+  .play-body {
+    gap: 10px;
+    padding: 6px 0 max(8px, env(safe-area-inset-bottom));
+  }
+  .prompt {
+    gap: 6px;
+  }
+  .hear-again {
+    font-size: 1.05rem;
+    padding: 10px 18px;
+  }
+  .hear-again .spk {
+    font-size: 1.3rem;
+  }
+  .sentence {
+    font-size: clamp(1.05rem, 4.4vw, 1.45rem);
+    line-height: 1.35;
+  }
+  .verdict {
+    min-height: 2rem;
+    font-size: clamp(1.6rem, 7vw, 2.6rem);
+  }
+  .answer-zone {
+    gap: 9px;
+  }
+  .puzzle-controls,
+  .draw-controls {
+    gap: 10px;
+    padding: 0 6px;
+  }
+  .puzzle-controls .btn.ghost,
+  .draw-controls .btn.ghost {
+    min-height: 44px;
+    padding: 8px 15px;
+    font-size: 0.98rem;
+  }
+  .draw-candidates {
+    gap: 4px;
+  }
+  .draw-hint {
+    font-size: 0.82rem;
+  }
 }
 
 /* ============================================================================
@@ -3001,6 +3057,91 @@ html.readable .crystal-name {
   }
   .menu-card.play.practice {
     min-height: 0;
+  }
+
+  /* §33 PLAY SCREENS in LANDSCAPE / very short viewports: collapse the dictation prompt hard so
+     the slots + tiles/canvas + buttons fit a ~390px-tall band (fitPlayArea then shrinks tiles). */
+  .play-body {
+    gap: 6px;
+    padding: 4px 0 max(6px, env(safe-area-inset-bottom));
+  }
+  .prompt {
+    gap: 4px;
+  }
+  .hear-again {
+    font-size: 0.92rem;
+    padding: 6px 13px;
+  }
+  .sentence {
+    /* a long sentence can wrap to 3 lines in landscape — keep them tight + capped so the
+       densest mastery word (11 boxes) + its sentence still leaves room for the controls. */
+    font-size: clamp(0.92rem, 3vw, 1.2rem);
+    line-height: 1.18;
+    max-width: 30ch;
+  }
+  .verdict {
+    min-height: 1.3rem;
+    font-size: clamp(1.3rem, 5.5vw, 2rem);
+  }
+  .answer-zone {
+    gap: 6px;
+  }
+  /* landscape has horizontal room but almost none vertical — shrink the Hint/Clear + Clear/Type
+     control row hard so the tray's last row (Craft) / the candidates (Mastery) clear the fold. */
+  .puzzle-controls,
+  .draw-controls {
+    gap: 8px;
+    padding: 0;
+  }
+  .puzzle-controls .btn.ghost,
+  .draw-controls .btn.ghost {
+    min-height: 38px;
+    padding: 5px 14px;
+    font-size: 0.9rem;
+  }
+  .combo-wrap {
+    margin: 1px 6px 3px;
+  }
+  .combo-label {
+    min-height: 0;
+    font-size: 0.95rem;
+  }
+  .dots {
+    margin: 1px 0 3px;
+  }
+  /* compact the big primary Check button + speedmeter so Mastery's controls and Mining's tiles
+     clear a 390px-tall landscape fold (the ~70px button + 49px meter were the last few px over). */
+  .play-body .btn.primary {
+    min-height: 40px;
+    padding: 7px 18px;
+    font-size: 1rem;
+  }
+  .draw-submit {
+    padding: 0;
+  }
+  .speedmeter {
+    gap: 10px;
+    padding: 0 6px 4px;
+  }
+  .speed-pot {
+    font-size: 1.25rem;
+  }
+  .speed-bar {
+    height: 14px;
+  }
+  /* In a 390px-tall landscape band, drop the (non-essential) progress dots + the empty combo
+     bar so the word + interaction surface + action buttons are fully co-visible. The combo
+     LABEL (streak text) stays. The Mastery draw-hint text is redundant with the ✓ Check button
+     (and wraps to 2 lines on the dense 11-box wide layout), so it's dropped here too. */
+  .dots,
+  .combo-wrap {
+    display: none;
+  }
+  .draw-hint {
+    display: none;
+  }
+  .tiles {
+    padding-top: 2px;
   }
 }
 

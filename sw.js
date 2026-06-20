@@ -114,7 +114,13 @@
 //      PRIVACY.md reverted (mic not used). Draw + type remain the spelling methods.
 // csc-v40: the /?dev=mastery TEST unlock is COMMENTED OUT in app.js (Ian) — disabled so the
 //      backdoor isn't live on prod, but KEPT (not removed) for future testing. No feature change.
-const VERSION = 'csc-v40';
+// csc-v41: §33 PHONE LAYOUT — truly fix co-visibility (user 2026-06-20). The word being filled in,
+//      the interaction surface (tray / draw canvas / answer tiles) AND the action buttons now stay
+//      on-screen together for ANY word length on a phone. A --play-scale custom property (fitPlayArea
+//      in ui.js) shrinks the tiles/canvas to fit the play-body height; CSS compacts the iPad-tuned
+//      gaps/prompt on phone (max-width:480) + landscape (max-height:520). iPad PORTRAIT is unchanged
+//      (scale stays 1 — the §31-approved layout); iPad landscape + all phones now fully co-visible.
+const VERSION = 'csc-v41';
 
 const CORE = [
   '/',

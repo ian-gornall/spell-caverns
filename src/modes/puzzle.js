@@ -9,7 +9,7 @@
 // (recall ≠ recognition, the §12 pedagogy concern). A clean build earns full
 // speed/combo gems; a build that needed help still earns a small "you crafted it"
 // reward (positive reinforcement, never shaming). UI module — verified with Playwright.
-import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard, pulse, fitPlayArea } from '../ui.js';
 import { buildReviewSession } from '../engine/session.js';
 import { buildCraftPool, applyAdaptiveLevel, recommendNext } from '../engine/selection.js';
 import { fillLearning, recordCraft } from '../engine/categories.js';
@@ -93,6 +93,12 @@ export function startPuzzle(ctx, params = {}) {
   const hdr = header(ctx, { title: review ? 'Repair Crystals' : 'Crafting', onBack: () => ctx.nav('home') });
   const gemCountEl = hdr.querySelector('.gem-count');
 
+  const playBody = el(
+    'div',
+    { class: 'play-body' },
+    el('div', { class: 'prompt' }, hearRow, sentenceEl, verdictEl, verdictChip),
+    el('div', { class: 'answer-zone' }, slotsEl, controlsEl, trayEl),
+  );
   const screen = el(
     'div',
     { class: 'screen puzzle' },
@@ -100,13 +106,14 @@ export function startPuzzle(ctx, params = {}) {
     dots,
     el('div', { class: 'combo-wrap' }, comboFill),
     comboLabel,
-    el(
-      'div',
-      { class: 'play-body' },
-      el('div', { class: 'prompt' }, hearRow, sentenceEl, verdictEl, verdictChip),
-      el('div', { class: 'answer-zone' }, slotsEl, controlsEl, trayEl),
-    ),
+    playBody,
   );
+
+  // §33: after a word renders (and on rotate/resize), shrink the tiles to fit so the word slots,
+  // the letter tray, and the Hint/Clear buttons stay co-visible for ANY word length on a phone.
+  const fit = () => requestAnimationFrame(() => fitPlayArea(playBody));
+  window.addEventListener('resize', fit);
+  ctx.onLeave(() => window.removeEventListener('resize', fit));
 
   // --- per-session state ----------------------------------------------------
   let index = 0;
@@ -489,6 +496,7 @@ export function startPuzzle(ctx, params = {}) {
     verdictChip.textContent = '';
     sentenceEl.replaceChildren(...blankedSentence(entry));
     render();
+    fit(); // §33: size the slots + tray to fit this word's length on this screen
 
     // off-DOM test hook (Playwright) — current target + position, like rhythm's
     try {

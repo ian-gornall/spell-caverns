@@ -185,6 +185,47 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    once** — one box per letter, still detected letter-by-letter but without pausing for each;
    (b) add a **dictation mode** to Mastery; (c) **nudge students into Mastery** once it unlocks;
    (d) flexibly cycle students **known→mastered (draw) and back→learning (craft)**. Spec in §31 below.
+7. ✅ **§33 — PHONE LAYOUT, truly fixed (Ian 2026-06-20) — DONE + QA'd (csc-v41).** See §33 below.
+
+---
+
+## §33 — PHONE LAYOUT: word + buttons co-visible for ANY word length (Ian 2026-06-20) — ✅ DONE + QA'd (csc-v41)
+
+> **The user's ask:** "truly fix the phone version once and for all — buttons viewable at the same
+> time as the word being filled in regardless of word length, nothing overlaps, is crammed, etc.
+> throughout the app." (The alternative offered — a Phaser rebuild — was declined: the complaint is a
+> DOM/CSS responsive-layout problem; Phaser is a canvas engine that would make co-visibility on varied
+> screen sizes HARDER, not easier, and would discard the whole tested engine. So path A: fix the real thing.)
+>
+> **Root cause (found via `scripts/qa_phone_audit.mjs`, a new objective probe):** on a long word the
+> word-slots WRAP to 2–3 rows, and that plus the iPad-tuned ~44px vertical gaps pushed the interaction
+> surface below the fold — the **letter TRAY (Craft)** and the **Clear/Type buttons + candidates
+> (Mastery)** fell off-screen, so you had to scroll and couldn't see the word AND the buttons together.
+> Objectively reproduced: 360×740, 390×844, and 844×390 all clipped for words like "international"/"information".
+>
+> **The fix (no engine change):**
+> - **`--play-scale` fit-to-viewport.** A CSS custom property multiplies into every slot / tray-tile /
+>   candidate / draw-canvas / mastery-box / mining-tile dimension. `fitPlayArea(playBody)` (new, in
+>   `src/ui.js`) shrinks it (1 → floor 0.35, in 0.05 steps) until `.play-body` no longer overflows its
+>   own height — so the word, the interaction surface, AND the action buttons stay co-visible for ANY
+>   word length. Wired into all four play modes (`puzzle`/`mastery`/`rhythm`, called per word + on
+>   renderCandidates/clear + on resize/rotate). **Defaults to 1 → tablets are untouched when nothing
+>   overflows.**
+> - **Phone CSS compaction** (`styles.css`): a `@media (max-width:480px)` block tightens the play-body
+>   gap/padding, the dictation prompt (hear button, sentence, verdict), the control rows; a
+>   `@media (max-height:520px)` block collapses harder for LANDSCAPE (compact Check button + speedmeter,
+>   drop the non-essential progress dots / empty combo bar / redundant draw-hint) so a 390px-tall band fits.
+> - The clamp MAXes were all kept identical, so iPad (which always hits the max) renders pixel-for-pixel
+>   as before. **iPad PORTRAIT verified scale=1 (the §31 user-approved layout, unchanged); iPad LANDSCAPE
+>   now also shrinks a hair to keep its controls co-visible (looks great).**
+>
+> **QA (all green):** `npm test` 273; **`node scripts/qa_phone_audit.mjs`** = every PLAY screen co-visible
+> at 360/390 portrait + 844 landscape + iPad portrait/landscape, for the longest words, FRESH + mid-draw
+> candidate states (3/3 landscape sample runs clean; only the home MENU scrolls, which is by-design);
+> `qa_responsive`/`qa_overflow`(Galaxy)/`qa_fold` green; `qa_mastery`(phone)/`qa_s31`(wide+narrow) green;
+> `npm run smoke` green; `qa.mjs` 0 console errors. sw `csc-v40`→**`csc-v41`** + `src/version.js` bumped
+> (no new precached files). Files: `styles.css`, `src/ui.js`, `src/modes/{puzzle,mastery,rhythm}.js`,
+> `sw.js`, `src/version.js`; new probe `scripts/qa_phone_audit.mjs`.
 
 ---
 

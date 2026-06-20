@@ -17,7 +17,7 @@
 // The session's words come from session.buildSession (the two-axis level builder).
 // Distractor similarity adapts per word from predicted success. UI module — verified
 // with Playwright, not node.
-import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard, pulse, fitPlayArea } from '../ui.js';
 import { buildFirstWave, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { buildMiningPool, recommendNext } from '../engine/selection.js';
 import { unlocks } from '../engine/categories.js';
@@ -108,6 +108,12 @@ export function startRhythm(ctx, params = {}) {
   const hdr = header(ctx, { title: 'Mining', onBack: () => ctx.nav('home') });
   const gemCountEl = hdr.querySelector('.gem-count');
 
+  const playBody = el(
+    'div',
+    { class: 'play-body' },
+    el('div', { class: 'prompt' }, hearRow, sentenceEl, verdictEl, verdictChip),
+    el('div', { class: 'answer-zone' }, speedMeter, tilesEl),
+  );
   const screen = el(
     'div',
     { class: 'screen rhythm' },
@@ -115,13 +121,13 @@ export function startRhythm(ctx, params = {}) {
     dots,
     el('div', { class: 'combo-wrap' }, comboFill),
     comboLabel,
-    el(
-      'div',
-      { class: 'play-body' },
-      el('div', { class: 'prompt' }, hearRow, sentenceEl, verdictEl, verdictChip),
-      el('div', { class: 'answer-zone' }, speedMeter, tilesEl),
-    ),
+    playBody,
   );
+  // §33: shrink the answer tiles to fit so the sentence + tiles stay co-visible on short
+  // (e.g. landscape) phones for any word length — no-op on iPad where it already fits.
+  const fit = () => requestAnimationFrame(() => fitPlayArea(playBody));
+  window.addEventListener('resize', fit);
+  ctx.onLeave(() => window.removeEventListener('resize', fit));
 
   // --- per-session state -----------------------------------------------------
   let index = 0;
@@ -292,6 +298,7 @@ export function startRhythm(ctx, params = {}) {
         el('button', { class: 'tile', onClick: (e) => choose(o, entry, e.currentTarget) }, o.text),
       ),
     );
+    fit(); // §33: size the tiles to fit alongside the sentence on this screen
 
     // Test hook (Playwright): expose the current target off-DOM so a smoke test can
     // drive a deterministic correct/wrong tap. Not rendered, not used by gameplay.

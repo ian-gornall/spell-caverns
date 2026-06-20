@@ -231,6 +231,30 @@ export function pulse(node) {
   setTimeout(() => node.classList.remove('pulse'), 1600);
 }
 
+// §33 fit-to-viewport: shrink a play screen's tiles (via the --play-scale custom property the
+// CSS multiplies into every slot / tray-tile / candidate / canvas dimension) until its `.play-body`
+// no longer overflows its own visible height. This is what guarantees the GOAL — the word being
+// filled in, the interaction surface, AND the action buttons stay co-visible REGARDLESS of word
+// length, on any phone — without ever pushing the tray/controls below the fold. Defaults to 1, so
+// tablets/iPad (where nothing overflows) are untouched; it only bites when content would clip.
+// Call after each word renders and on resize. `playBody` = the mode's `.play-body` element.
+export function fitPlayArea(playBody) {
+  if (!playBody || !playBody.clientHeight) return;
+  // Floor: below this letters get too small to read, so we stop (the body may then scroll as a last
+  // resort). The loop only REACHES the floor when even the smallest tiles can't fit — e.g. a long
+  // word on a ~390px-tall landscape phone — so lowering it only ever helps the most cramped cases;
+  // any screen that fits at a larger scale keeps that larger scale.
+  const MIN = 0.35;
+  const STEP = 0.05;
+  let scale = 1;
+  playBody.style.setProperty('--play-scale', '1');
+  // Each pass forces a reflow read of scrollHeight; shrink until the content fits (max ~9 passes).
+  while (scale > MIN && playBody.scrollHeight - playBody.clientHeight > 1) {
+    scale = Math.round((scale - STEP) * 100) / 100;
+    playBody.style.setProperty('--play-scale', String(scale));
+  }
+}
+
 // Keep a child ENGAGED. Watches document-wide pointer/key activity; after `nudgeMs`
 // of NO activity it fires `onNudge` (a gentle prompt / re-dictate). Then at `pauseMs`:
 //   - if `onTimeout` is given, it calls that instead (e.g. a MENU auto-starts the game
