@@ -112,7 +112,9 @@
 //      🎤 button is removed (VOICE_SPELLING_ENABLED=false in modes/mastery.js); the recogniser/
 //      consent/UI are parked for a future PUSH-TO-TALK + on-device-letter-model rebuild (HANDOFF §32).
 //      PRIVACY.md reverted (mic not used). Draw + type remain the spelling methods.
-const VERSION = 'csc-v39';
+// csc-v40: the /?dev=mastery TEST unlock is COMMENTED OUT in app.js (Ian) — disabled so the
+//      backdoor isn't live on prod, but KEPT (not removed) for future testing. No feature change.
+const VERSION = 'csc-v40';
 
 const CORE = [
   '/',

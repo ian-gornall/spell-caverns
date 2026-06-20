@@ -404,11 +404,11 @@ the §29 phone no-horizontal-scroll guards green):**
 
 ---
 
-## §31 — MASTERY UX + DICTATION + MASTERY-FIRST NUDGING (Ian 2026-06-19g) — ✅ BUILT + QA'd (csc-v37, branch `feat/s31-mastery-ux`, NOT yet deployed — awaiting Ian's OK to merge+push)
+## §31 — MASTERY UX + MASTERY-FIRST NUDGING (Ian 2026-06-19g→20) — ✅ SHIPPED + LIVE on prod (csc-v40); writing APPROVED on iPad
 
-> **DONE in code + fully QA'd, on branch `feat/s31-mastery-ux` (off `main`). NOT merged/deployed
-> yet — held for Ian's OK to push (Git-CD deploys on push to `main`).** All four asks built; the two
-> open questions were confirmed with Ian = the RECOMMENDED options:
+> **✅ SHIPPED + LIVE on prod (csc-v40), merged to `main`, writing APPROVED by Ian on his iPad
+> ("good on the writing").** (NB: §31.B "dictation" became the §32 VOICE mode, now SHELVED — see
+> §32.) The two open questions were confirmed with Ian = the RECOMMENDED options:
 > - **A per-box correction = auto-fill the top-1, tap a box to redo** (the fast "write freely" path).
 > - **B = a toggle inside Mastery** (not a separate mode); **sentence = peekable** behind a 👀 button.
 > - Wide-screen breakpoint = **`min-width:700px`** (width-only, NOT `pointer:fine` — keeps every narrow
@@ -441,11 +441,12 @@ the §29 phone no-horizontal-scroll guards green):**
 > - sw `csc-v36`→**`csc-v37`** + `src/version.js` bumped (no new precached files — all changed files
 >   were already in the SW CORE list).
 >
-> **➡️ NEXT to finish §31:** (1) get Ian's OK → merge `feat/s31-mastery-ux` to `main` + push (Git-CD
-> builds via `build_deploy.mjs` + `wrangler deploy`); verify with `scripts/check_deploy.mjs` +
-> `scripts/qa_prod.mjs`. (2) **OWED: a real-device iPad pass** on the multi-box + dictation flow (only
-> emulated drawing tested; the §30 single-canvas draw is already real-device-confirmed). (3) Optional
-> polish noted below if Ian wants it. Original spec + the answered open questions retained below.
+> **STATUS:** merged + deployed (csc-v37→v40, all LIVE + prod-verified via `qa_prod.mjs`); the
+> multi-box writing + ✓ Check + tap-to-redo got the real-device fixes (one ink overlay, centroid
+> box routing, advance-waits-on-praise) and Ian APPROVED the writing on iPad.
+> **➡️ The `/?dev=mastery` test unlock is now COMMENTED OUT in `app.js` (csc-v40, Ian 2026-06-20)** —
+> disabled so it isn't live on prod, but KEPT (not removed): uncomment the boot block + `devUnlockMastery`
+> + its two imports to re-enable. Original spec + answered open questions retained below.
 
 > Captured after Ian confirmed the §30 draw mode works on his real iPad ("yes that works"). Four
 > asks. When building: test-first for any engine/selection change, follow `QA.md`, keep the §29 phone
