@@ -3035,6 +3035,18 @@ html.readable .crystal-name {
   .draw-hint {
     font-size: 0.82rem;
   }
+  /* §11/§34-fix: Mastery word-display tiles are SMALLER on phones so a long word (e.g.
+     "international", 13 letters) wraps to ~2 rows instead of 3 big ones — that 3-row block
+     dominated the screen and crowded the keypad ("cramped, letters overlap their borders").
+     Phone DRAW mode draws on the separate canvas, so smaller display tiles don't hurt it. */
+  .mastery .draw-slots .slot {
+    width: calc(clamp(30px, 7.6vw, 44px) * var(--play-scale, 1));
+    height: calc(clamp(34px, 8vw, 48px) * var(--play-scale, 1));
+    font-size: calc(clamp(1.1rem, 4.4vw, 1.6rem) * var(--play-scale, 1));
+  }
+  .draw-slots {
+    gap: calc(7px * var(--play-scale, 1));
+  }
 }
 
 /* ============================================================================
@@ -3115,23 +3127,46 @@ html.readable .crystal-name {
     gap: 6px;
     padding: 4px 0 max(6px, env(safe-area-inset-bottom));
   }
+  /* §12-fix: the prompt is the DOMINANT fixed cost in the play-body (it doesn't scale with
+     --play-scale), so stacking the hear button ABOVE a 3-line sentence starved the play area and
+     forced the keypad/tiles to the --play-scale floor (tiny keys). Landscape has plenty of WIDTH:
+     lay the hear button + sentence side-by-side on ONE row, drop the sentence wrap cap, and collapse
+     the empty verdict reserve — freeing the vertical room for a usable-size keypad. */
   .prompt {
-    gap: 4px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    column-gap: 14px;
+    row-gap: 2px;
+  }
+  .hear-row {
+    flex: 0 0 auto;
   }
   .hear-again {
-    font-size: 0.92rem;
-    padding: 6px 13px;
+    font-size: 0.9rem;
+    padding: 5px 12px;
   }
   .sentence {
-    /* a long sentence can wrap to 3 lines in landscape — keep them tight + capped so the
-       densest mastery word (11 boxes) + its sentence still leaves room for the controls. */
-    font-size: clamp(0.92rem, 3vw, 1.2rem);
-    line-height: 1.18;
-    max-width: 30ch;
+    font-size: clamp(0.8rem, 2.2vw, 1.02rem);
+    line-height: 1.12;
+    max-width: none;
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
   }
   .verdict {
     min-height: 1.3rem;
     font-size: clamp(1.3rem, 5.5vw, 2rem);
+    flex-basis: 100%;
+  }
+  .verdict-chip {
+    flex-basis: 100%;
+  }
+  .verdict:empty,
+  .verdict-chip:empty {
+    min-height: 0;
+    margin: 0;
   }
   .answer-zone {
     gap: 6px;
@@ -3192,6 +3227,39 @@ html.readable .crystal-name {
   }
   .tiles {
     padding-top: 2px;
+  }
+  /* §11/§12-fix LANDSCAPE: the title bar + prompt were full-size while the play area floored
+     at the --play-scale minimum, so the keypad rendered tiny ("top bar very large vs the little
+     letters"). Make the HEADER a thin band and the KEYPAD compact so fitPlayArea keeps the keys
+     usable (less to shrink), and trim the word boxes a touch (in type mode they're just display). */
+  .header-title {
+    font-size: 1.02rem;
+  }
+  .app-header .stat {
+    padding: 3px 9px;
+    font-size: 0.82rem;
+  }
+  .type-keyboard {
+    gap: calc(4px * var(--play-scale, 1));
+    max-width: 470px;
+  }
+  .key-row {
+    gap: calc(4px * var(--play-scale, 1));
+  }
+  .key {
+    height: calc(clamp(24px, 7vh, 40px) * var(--play-scale, 1));
+    max-width: calc(46px * var(--play-scale, 1));
+    font-size: calc(clamp(0.9rem, 3.4vh, 1.3rem) * var(--play-scale, 1));
+    border-radius: 9px;
+  }
+  .lbox {
+    height: calc(clamp(44px, 12vh, 72px) * var(--play-scale, 1));
+  }
+  /* a sub-700px landscape phone keeps the single-canvas/.slots flow — shrink that display too */
+  .mastery .draw-slots .slot {
+    width: calc(clamp(32px, 7vh, 50px) * var(--play-scale, 1));
+    height: calc(clamp(36px, 9vh, 56px) * var(--play-scale, 1));
+    font-size: calc(clamp(1.05rem, 5vh, 1.7rem) * var(--play-scale, 1));
   }
 }
 

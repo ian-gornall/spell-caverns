@@ -154,7 +154,13 @@
 //      away the spelling and can't be reliably disabled on a native field, so Mastery's "type the word"
 //      fallback now uses an APP-DRAWN A–Z keypad (modes/mastery.js: typeLetter/backspace, no <input>) +
 //      a physical-keyboard listener. No OS keyboard surface → no suggestions, on any device, offline.
-const VERSION = 'csc-v48';
+// csc-v49: §12 — MASTERY phone proportions. Portrait: word-display tiles were too big so a long word
+//      wrapped to 3 rows + crowded the keypad → smaller phone tiles (fit ~2 rows). Landscape: the
+//      full-size header + stacked hear-button/sentence were the dominant FIXED cost in .play-body, so
+//      fitPlayArea floored --play-scale at 0.35 (tiny keypad) → thin header + hear+sentence on ONE row
+//      + collapsed empty verdict reserve, lifting landscape scale to ~0.65–0.8 (usable keys). Phone-
+//      scoped media queries only (max-width:480 / max-height:520); iPad portrait+landscape unchanged.
+const VERSION = 'csc-v49';
 
 const CORE = [
   '/',
