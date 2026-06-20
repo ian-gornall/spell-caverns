@@ -128,7 +128,12 @@
 //      additive content (audio/ is NOT precached; manifest is no-cache) so this bump is bookkeeping —
 //      it keeps the displayed version in step with the shipped clip count. New batch on gemini-2.5-flash;
 //      size distribution matches the proven prior set.
-const VERSION = 'csc-v43';
+// csc-v44: §34 PHONE PROPORTIONS — phone-only (max-width:480) CSS tuning so the play area no longer
+//      looks cramped under iPad-sized chrome. Collapse the ~100px dead strip above the play area on a
+//      fresh word (empty combo-label + combo bar + dots) and the empty verdict/verdict-chip reserves,
+//      so fitPlayArea keeps FULL-SIZE tiles (scale ~1, was 0.9) — the "play area too small" fix; plus a
+//      lighter home title + tighter hero spacing. styles.css only; iPad portrait stays pixel-identical.
+const VERSION = 'csc-v44';
 
 const CORE = [
   '/',

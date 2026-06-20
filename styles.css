@@ -2819,19 +2819,22 @@ html.readable .crystal-name {
   /* Home: the hero (title + welcome + streak/goal) ate ~40% of a phone screen, pushing 4
      of 7 menu cards below the fold. Compact the hero + cards so the whole menu fits. */
   .home-hero {
-    padding: 4px 0 2px;
+    padding: 2px 0 2px;
   }
+  /* §34: step the brand title + welcome down a notch on phones (the iPad-sized hero made the
+     title feel oversized relative to the play content) and tighten the hero→streak→grid spacing
+     so the menu cards start higher and the title no longer dominates the first screen. */
   .home-title {
-    font-size: clamp(1.5rem, 6.5vw, 2rem);
+    font-size: clamp(1.4rem, 6vw, 1.85rem);
     letter-spacing: 0;
   }
   .home-sub {
-    font-size: 0.95rem;
-    margin-top: 4px;
+    font-size: 0.9rem;
+    margin-top: 3px;
   }
   .home-streak {
-    margin-top: 9px;
-    gap: 7px;
+    margin-top: 7px;
+    gap: 6px;
   }
   .streak-chip {
     padding: 5px 12px;
@@ -2946,6 +2949,37 @@ html.readable .crystal-name {
   .play-body {
     gap: 10px;
     padding: 6px 0 max(8px, env(safe-area-inset-bottom));
+  }
+  /* §34 phone proportions: the strip BETWEEN the header and the play area — session dots +
+     combo bar + combo label — is iPad-tuned, and with the label EMPTY on a fresh word it reserved
+     ~100px of dead vertical space. That pushed the play area down and forced fitPlayArea to shrink
+     the tiles (the "titles too big, play area too small" feel). Compact the strip and collapse the
+     reserves that are empty on a fresh word so the play area keeps FULL-SIZE tiles (scale ~1). The
+     small expand when a combo / verdict lands is at a positive moment, so the shift reads as reward. */
+  .dots {
+    margin: 1px 0 3px;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+  }
+  .combo-wrap {
+    height: 10px;
+    margin: 1px 6px 3px;
+  }
+  .combo-label {
+    font-size: 0.95rem;
+    min-height: 1.1rem;
+  }
+  .combo-label:empty {
+    min-height: 0;
+    margin: 0;
+  }
+  .verdict:empty {
+    min-height: 0;
+  }
+  .verdict-chip:empty {
+    min-height: 0;
   }
   .prompt {
     gap: 6px;
