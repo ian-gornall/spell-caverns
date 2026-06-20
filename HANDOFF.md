@@ -383,7 +383,18 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 > `qa_overflow`(Galaxy) ✅ no inner-scroll/bleed · `qa_fold` PASS · `qa_responsive` all viewports `horiz=0` ·
 > the dedicated reward repro across 6 viewports. Files: `styles.css`, `manifest.webmanifest`,
 > `src/modes/puzzle.js` (label), `sw.js`, `src/version.js`. sw `csc-v44`→**`csc-v45`**.
-> ⚠️ OWED: a real-device pass — confirm rotation works on Ian's actual iPad/phone + the reward reads well there.
+>
+> **⚠️ FOLLOW-UP (csc-v46): rotation still didn't work for Ian after csc-v45.** Root cause is NOT the app
+> (verified: nothing in code locks orientation — no `screen.orientation.lock`, no rotate-overlay, no
+> landscape-blocking CSS; the live manifest serves `orientation:any`; landscape RENDERS cleanly on home/
+> craft/reward at phone-landscape + iPad-landscape, 0 horizontal overflow). It's the **installed-PWA
+> orientation BAKE**: iOS (and Android via the generated WebAPK) read `orientation` at ADD-TO-HOME-SCREEN
+> time and do NOT re-read it when the manifest changes — so an app installed under the old `portrait` stays
+> portrait until it's REMOVED + RE-ADDED. csc-v46 adds `Cache-Control: no-cache` for `manifest.webmanifest`
+> in `_headers` so the reinstall fetches the fresh manifest (not a stale HTTP copy). **USER ACTION REQUIRED:**
+> delete the home-screen icon → reopen spell.pryzmio.com in the browser → Add to Home Screen → relaunch; and
+> make sure the device ROTATION LOCK (iOS Control Center) is off. In a plain browser tab the manifest doesn't
+> apply at all, so there it rotates with the device (gated only by the OS rotation lock).
 
 ---
 

@@ -140,7 +140,11 @@
 //      nothing overlaps at any size (verified 360/390 portrait + landscape phone + iPad land). iPad
 //      PORTRAIT reward unchanged. "Mine (fast)"→"Mine" so the nav row fits narrow. (2) manifest
 //      orientation portrait→any so the installed PWA can rotate to landscape (CSS already supports it).
-const VERSION = 'csc-v45';
+// csc-v46: orientation follow-up — `_headers` now sends Cache-Control:no-cache for manifest.webmanifest
+//      so a reinstall fetches the fresh orientation instead of a stale HTTP-cached copy. NOTE: an
+//      already-installed PWA bakes orientation at INSTALL time (iOS/Android WebAPK), so the manifest
+//      change alone won't rotate it — the home-screen app must be REMOVED + RE-ADDED to pick up "any".
+const VERSION = 'csc-v46';
 
 const CORE = [
   '/',

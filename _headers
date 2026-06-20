@@ -6,3 +6,9 @@
   Cache-Control: no-cache
 /index.html
   Cache-Control: no-cache
+# Always revalidate the manifest too, so a change like orientation portrait->any reaches a
+# device promptly: a re-add-to-home-screen / WebAPK refresh then fetches the fresh manifest
+# instead of a stale HTTP-cached copy. (Installed PWAs bake orientation at INSTALL time, so a
+# reinstall is still required — but this guarantees that reinstall reads the current manifest.)
+/manifest.webmanifest
+  Cache-Control: no-cache
