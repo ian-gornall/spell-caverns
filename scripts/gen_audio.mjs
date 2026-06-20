@@ -16,7 +16,11 @@
 //
 // Usage:
 //   GEMINI_API_KEY=... node scripts/gen_audio.mjs [what] [maxNewClips]
-//     what        = phrases | words | all   (default: all)
+//     what        = phrases | words | ui | all   (default: all)
+//                   ui  = the FIXED interface narration (src/engine/ui_phrases.js) →
+//                         audio/ui/. The praise/gentle phrases set now ALSO includes
+//                         the mastery-mode UI_PHRASES. Long narration lines split
+//                         poorly when batched, so run UI with BATCH_SIZE=1.
 //     maxNewClips = stop after this many NEW clips this run (default: 100000)
 //   Env: GEMINI_VOICE (Kore), GEMINI_TTS_MODELS (csv, tried in order),
 //        BATCH_SIZE (40), AUDIO_KBPS (64), GEN_DELAY_MS (4000), AUDIO_DIR (./audio)
@@ -25,6 +29,7 @@ import path from 'node:path';
 import * as lame from '@breezystack/lamejs';
 import { WORDS } from '../data/words.js';
 import { SPEED_TIERS, COMBO_PHRASES, GENTLE_PHRASES } from '../src/engine/praise.js';
+import { UI_LINES, UI_PHRASES } from '../src/engine/ui_phrases.js';
 import { normalizePcm } from './audio_dsp.mjs';
 
 // Load GEMINI_API_KEY from the git-ignored .env if it isn't already in the env.
@@ -219,7 +224,12 @@ function targets() {
     for (const t of SPEED_TIERS) for (const p of t.phrases) phrases.add(p);
     for (const p of GENTLE_PHRASES) phrases.add(p);
     for (const p of COMBO_PHRASES) if (!p.includes('{')) phrases.add(p);
+    for (const p of UI_PHRASES) phrases.add(p); // mastery-mode praise (§32.A)
     for (const text of phrases) list.push({ kind: 'phrases', slug: slug(text), text });
+  }
+  if (what === 'ui' || what === 'all') {
+    // The fixed interface narration (Geo's onboarding lines, geode prompts) — §32.A.
+    for (const text of UI_LINES) list.push({ kind: 'ui', slug: slug(text), text });
   }
   if (what === 'words' || what === 'all') {
     const seen = new Set();
@@ -233,9 +243,19 @@ function targets() {
 }
 
 function saveManifest() {
-  const listSlugs = (sub) =>
-    fs.readdirSync(path.join(AUDIO_DIR, sub)).filter((f) => f.endsWith('.mp3')).map((f) => f.replace(/\.mp3$/, '')).sort();
-  const m = { format: 'mp3', voice: VOICE, models: MODELS, words: listSlugs('words'), phrases: listSlugs('phrases') };
+  const listSlugs = (sub) => {
+    const dir = path.join(AUDIO_DIR, sub);
+    if (!fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir).filter((f) => f.endsWith('.mp3')).map((f) => f.replace(/\.mp3$/, '')).sort();
+  };
+  const m = {
+    format: 'mp3',
+    voice: VOICE,
+    models: MODELS,
+    words: listSlugs('words'),
+    phrases: listSlugs('phrases'),
+    ui: listSlugs('ui'),
+  };
   fs.writeFileSync(path.join(AUDIO_DIR, 'manifest.json'), JSON.stringify(m, null, 0));
   return m;
 }
@@ -243,6 +263,7 @@ function saveManifest() {
 async function main() {
   ensureDir(path.join(AUDIO_DIR, 'words'));
   ensureDir(path.join(AUDIO_DIR, 'phrases'));
+  ensureDir(path.join(AUDIO_DIR, 'ui'));
   const all = targets();
   const pending = all.filter((t) => !fs.existsSync(outPath(t.kind, t.slug)));
   console.log(
@@ -298,7 +319,9 @@ async function main() {
   }
 
   const m = saveManifest();
-  console.log(`done: ${made} new clip(s). manifest: ${m.words.length} words + ${m.phrases.length} phrases.`);
+  console.log(
+    `done: ${made} new clip(s). manifest: ${m.words.length} words + ${m.phrases.length} phrases + ${m.ui.length} ui.`,
+  );
 }
 
 main().catch((e) => {

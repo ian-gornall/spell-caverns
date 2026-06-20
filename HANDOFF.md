@@ -161,20 +161,26 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 
 1. ✅ **Free-first SERVICES AUDIT — DONE (§29)** → `SERVICES_AUDIT.md`. (Owed follow-up still: confirm
    Gemini free-tier TTS *commercial-use licensing* — a legal, not cost, check.)
-2. **🆕 INTERFACE AUDIO (§32.A) — DO THIS *FIRST*, BEFORE the audio tail (Ian 2026-06-20).** Today the
-   interface/UI speech (onboarding narration, hints, toasts — every `audio.say(...)` string that ISN'T
-   a dictated word or a praise phrase) has no Gemini clip, so it falls back to the robotic device TTS —
-   "the first things the user hears," so it sets the quality bar. Generate Gemini clips for the FIXED
-   interface strings (a new `audio/ui/` bucket or fold into `phrases`) so `say()` resolves them to clips.
-   **Ian's priority call (2026-06-20): the interface audio runs BEFORE the word-tail audio.** Full spec
-   in §32.A below. (Free Gemini TTS, same rate-limited daily quota as the tail — so doing this first
-   spends part of today's quota here; honour [[approval-before-consuming-limits]] — get Ian's go before a run.)
-3. **AUDIO TAIL — *after* the interface audio (Ian 2026-06-20 reordered).** **~1081 word TTS clips remain**
-   (1838 word + 32 phrase clips ship as of §29, csc-v31; manifest matches). FREE multi-day path,
-   **time-gated by the daily quota** (a §29 run added +160 then walled across all 3 preview models;
-   resets daily). Each run: `npm i --no-save @breezystack/lamejs playwright` → `npm run gen:audio` →
-   commit new `audio/` clips → bump `sw.js`/`version.js` → push. (Pre-approved FREE path, but it shares
-   the daily quota with the interface audio above, which now goes first — so sequence them across days.)
+2. ✅ **INTERFACE AUDIO (§32.A) + AUDIO-START GATE (§32.B) — DONE + QA'd (csc-v42, 2026-06-20).** The
+   fixed interface narration (Geo's onboarding lines, the geode/boss prompts) + the mastery praise now
+   play PRE-RENDERED neural-TTS Gemini clips, not the robotic device voice. Built: a centralized catalog
+   `src/engine/ui_phrases.js` (`UI` lines → new `audio/ui/` bucket; `PRAISE` → folded into the `phrases`
+   bucket) so the runtime `say()` string and the generator agree (no slug drift); `gen_audio.mjs` grew a
+   `ui` kind + `manifest.ui`; `say()` resolves UI clips at NATURAL speed (rate 1, not the slowed dictation
+   rate). **Generated 13 clips** (10 ui + 3 praise) — all on the first model, so the daily Gemini quota is
+   **untouched, left for the word tail** (#3). **§32.B shipped too:** first-run onboarding opens with a
+   **"Tap to start 🔊" gate** (`onboarding.js tapToStart()` + `audio.whenReady()`) — one tap primes audio
+   + awaits the manifest so the FIRST line (welcome) plays a clip, fixing the "first line is a different/
+   robotic voice" bug (gate is first-run only; the picker/home don't auto-narrate). QA: `test/ui_phrases.test.js`
+   (+4 → 277 tests), `scripts/qa_uiaudio.mjs` (NEW — every onboarding line incl. welcome resolves to a clip,
+   0 console errors), smoke + qa_responsive/overflow/fold green. **NOTE:** the settings voice-picker/speed
+   previews stay TTS on purpose (they audition the DEVICE voice). ⚠️ OWED: a real-device pass (iPad/iOS) to
+   confirm the gate unlocks iOS audio + the clips sound right on hardware.
+3. **AUDIO TAIL — now the next audio job (interface audio above is DONE, quota was left intact).**
+   **~1081 word TTS clips remain** (1838 word + 35 phrase + 10 ui clips ship as of csc-v42; manifest matches).
+   FREE multi-day path, **time-gated by the daily quota** (resets daily). Each run: `npm i --no-save
+   @breezystack/lamejs playwright` → `npm run gen:audio words` → commit new `audio/` clips → bump
+   `sw.js`/`version.js` → push. (Pre-approved FREE path; honour [[approval-before-consuming-limits]] per run.)
 4. **§26-B — ASSETS REVIEW of `C:\Users\iango\kidenv` → an ARTIFACT (Ian 2026-06-20, REVISED scope).**
    Ian's revised direction: the free/low-cost assets task is **a review of what already exists in the
    `C:\Users\iango\kidenv` directory** (his other kid-apps workspace — art/audio/icon/library assets
@@ -551,7 +557,18 @@ peekable behind a 👀 button. (See the §31 banner above — all built on branc
 
 ---
 
-## §32 — VOICE SPELLING ⏸️ SHELVED after real-device testing (parked behind a flag) · INTERFACE-VOICE QUALITY + AUDIO-START GATING ⛔ recorded (Ian 2026-06-19g→20)
+## §32 — VOICE SPELLING ⏸️ SHELVED (parked behind a flag) · INTERFACE-VOICE QUALITY (§32.A) + AUDIO-START GATING (§32.B) ✅ DONE (csc-v42) (Ian 2026-06-19g→20)
+
+> **✅ §32.A INTERFACE AUDIO + §32.B AUDIO-START GATE — DONE + QA'd (csc-v42, 2026-06-20).** See OPEN
+> BACKLOG #2 above for the full summary. In short: the fixed interface narration + mastery praise now
+> play pre-rendered Gemini clips (centralized in `src/engine/ui_phrases.js` → `audio/ui/` bucket +
+> folded `phrases`; `say()` resolves them at natural speed); first-run onboarding opens with a "Tap to
+> start 🔊" gate (`onboarding.js` + `audio.whenReady()`) so the very first line plays a clip, killing
+> the "two different voices on first run" bug. 13 clips generated on the first model (quota left for the
+> word tail). QA: `test/ui_phrases.test.js`, `scripts/qa_uiaudio.mjs`, smoke + overflow/fold guards green.
+> Settings voice-picker/speed previews intentionally STAY on TTS (they audition the device voice). ⚠️
+> OWED: a real-device iPad/iOS pass to confirm the gate unlocks audio + the clips sound right on hardware.
+> The §32.A/§32.B notes BELOW are the original spec, kept for reference.
 
 > **⏸️ VOICE SPELLING is SHELVED (Ian's call after iPad testing) — LIVE prod (csc-v39) has the 🎤
 > button REMOVED; draw + type are the spelling methods.** It was built + deployed (v37→v38) but the

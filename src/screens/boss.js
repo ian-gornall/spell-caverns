@@ -12,6 +12,7 @@
 import { el, header, burst, toast, mascot, createIdleGuard, pulse } from '../ui.js';
 import { zoneForDepth, bossAnnounce } from '../engine/narrative.js';
 import { crystalSvg } from '../engine/catalog.js';
+import { UI } from '../engine/ui_phrases.js';
 
 const TAPS_TO_CRACK = 6;
 
@@ -82,7 +83,7 @@ export function bossScreen(ctx, params = {}) {
       el('div', { class: 'crack-meter' }, crackFill),
       el('p', { class: 'boss-hint' }, '⛏️ Tap the geode to crack it!'),
     );
-    audio.say('A great geode! Tap to crack it open!');
+    audio.say(UI.greatGeode);
 
     guard = createIdleGuard({
       nudgeMs: 12000,

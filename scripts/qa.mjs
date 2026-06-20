@@ -82,6 +82,12 @@ try {
 
   section('ONBOARDING (first run)');
   await page.waitForSelector('.onboarding .onboard-go');
+  // §32.B: dismiss the "Tap to start" audio gate that opens first-run onboarding.
+  if (await page.locator('.tap-to-start').count()) {
+    await shot('onboard-tap-to-start');
+    await page.click('.tap-to-start');
+    await page.waitForSelector('.onboarding .onboard-go:not(.tap-to-start)');
+  }
   await wait(300);
   await shot('onboard-welcome');
   await page.click('.onboard-go'); // -> name

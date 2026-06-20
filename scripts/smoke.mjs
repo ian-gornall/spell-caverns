@@ -71,6 +71,11 @@ try {
   // smoke starts from a normal home.
   await page.goto(URL, { waitUntil: 'networkidle' });
   await page.waitForSelector('.onboarding .onboard-go', { timeout: 5000 });
+  // §32.B: first run opens with a "Tap to start" audio gate — dismiss it to reach welcome.
+  if (await page.locator('.tap-to-start').count()) {
+    await page.click('.tap-to-start');
+    await page.waitForSelector('.onboarding .onboard-go:not(.tap-to-start)', { timeout: 4000 });
+  }
   ok('first run shows the onboarding welcome (Geo the mascot)');
   await page.click('.onboard-go'); // -> name
   await page.waitForSelector('.onboard-name', { timeout: 4000 });

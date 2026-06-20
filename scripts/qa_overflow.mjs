@@ -137,6 +137,7 @@ for (const scale of [1, 1.3]) {
     await page.evaluate(() => localStorage.clear());
     await page.goto(URL, { waitUntil: 'networkidle' });
     if (scale !== 1) await page.evaluate((s) => (document.documentElement.style.fontSize = 18 * s + 'px'), scale);
+    await page.click('.tap-to-start').catch(() => {}); // §32.B: dismiss the first-run audio gate
     await page.click('.onboard-go').catch(() => {});
     await page.fill('.onboard-name', 'Sam').catch(() => {});
     await page.click('.onboard-go').catch(() => {});

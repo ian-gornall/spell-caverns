@@ -30,6 +30,7 @@ import { speechSupported, createLetterRecognizer } from '../speech.js';
 import { voiceConsent, setVoiceConsent } from '../state.js';
 import { byRank } from '../engine/lexicon.js';
 import { mulberry32 } from '../engine/distractors.js';
+import { PRAISE } from '../engine/ui_phrases.js';
 
 const MASTERY_GEMS = 25; // flat reward for mastering a word (drawing is slow; speed is irrelevant)
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
@@ -830,14 +831,14 @@ export function startMastery(ctx, params = {}) {
         index += 1;
         present();
       };
-      audio.speakPraise('Mastered!', { onDone: () => setTimeout(advance, 350) });
+      audio.speakPraise(PRAISE.mastered, { onDone: () => setTimeout(advance, 350) });
       setTimeout(advance, 2600);
     } else {
       // a wrong finish is a gentle MISS (recordDraw(false): a mastered word drops to known,
       // a merely-known word stays known). Keep the correct letters, clear the wrong ones to redo.
       recordDraw(state.categories, target, false);
       audio.sfx('miss');
-      audio.speakPraise(inputMode === 'draw' ? 'Almost — try those letters again!' : 'Almost — try typing it again!');
+      audio.speakPraise(inputMode === 'draw' ? PRAISE.redraw : PRAISE.retype);
       flashVerdict('Almost!', inputMode === 'draw' ? 'Fix the glowing letters' : 'Try again', '#8593A3');
       if (inputMode === 'type') {
         slots = slots.map(() => null); // a linear input can't show gaps — clear + retype

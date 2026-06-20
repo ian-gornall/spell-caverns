@@ -10,6 +10,7 @@
 import { el, header, burst, toast, mascot, createIdleGuard, pulse } from '../ui.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { dailyQuests, openGeode } from '../engine/quests.js';
+import { UI } from '../engine/ui_phrases.js';
 
 const TAPS_TO_CRACK = 5;
 
@@ -79,7 +80,7 @@ export function geodeScreen(ctx) {
       el('div', { class: 'crack-meter' }, crackFill),
       el('p', { class: 'boss-hint' }, '⛏️ Tap the geode to crack it!'),
     );
-    audio.say('Your daily geode! Tap to crack it open!');
+    audio.say(UI.dailyGeode);
 
     guard = createIdleGuard({
       nudgeMs: 11000,
@@ -140,7 +141,7 @@ export function geodeScreen(ctx) {
         el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
       ),
     );
-    audio.say(reward.rare ? 'A rare geode! Amazing!' : 'Geode cracked! New goals unlocked.');
+    audio.say(reward.rare ? UI.rareGeode : UI.geodeCracked);
 
     guard = createIdleGuard({
       nudgeMs: 14000,

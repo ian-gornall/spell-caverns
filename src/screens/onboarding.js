@@ -9,6 +9,7 @@ import { el, mascot, applyTheme, toast } from '../ui.js';
 import { wordsByTier } from '../engine/lexicon.js';
 import * as sync from '../cloud_sync_backend.js';
 import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
+import { UI } from '../engine/ui_phrases.js';
 
 // Crystal colours (sets settings.themeColor → --accent). Reused by Settings.
 export const COLOURS = [
@@ -86,6 +87,32 @@ export function onboardingScreen(ctx) {
   let chosenLevel = active?.startLevel || 1;
   applyTheme(chosenColour);
 
+  // --- step 0 (first run only): "Tap to start" audio gate (§32.B) -----------
+  // iOS unlocks audio only inside a user GESTURE, and the neural-TTS clip manifest may
+  // not have loaded on the first paint — so auto-speaking the welcome here would fall
+  // back to the robotic device voice, and a LATER clip would then sound like a different
+  // voice (the "two voices on first run" bug). One tap primes audio + awaits the manifest,
+  // so every line from welcome on plays the same clip voice. (Skipped for "add explorer":
+  // audio is already primed by the taps that got there.)
+  function tapToStart() {
+    body.replaceChildren(
+      mascot('Ready for a crystal adventure?', { mood: 'wink' }),
+      el(
+        'button',
+        {
+          class: 'btn primary onboard-go big tap-to-start',
+          onClick: async (e) => {
+            try { e.currentTarget.disabled = true; } catch { /* ignore */ }
+            audio.prime(); // this click is the gesture that unlocks iOS audio
+            await audio.whenReady(); // ...and wait for the clip manifest before speaking
+            welcome();
+          },
+        },
+        'Tap to start 🔊',
+      ),
+    );
+  }
+
   // --- step 1: welcome ------------------------------------------------------
   function welcome() {
     const line = "Hi! I'm Geo, your crystal guide. Ready to dig for sparkly gems with me?";
@@ -93,12 +120,12 @@ export function onboardingScreen(ctx) {
       mascot(line, { mood: 'wink' }),
       el('button', { class: 'btn primary onboard-go', onClick: askName }, "Let's go! ✨"),
     );
-    audio.say("Hi! I'm Geo, your crystal guide. Ready to dig for gems with me?");
+    audio.say(UI.welcome);
   }
 
   // --- step 2: name ---------------------------------------------------------
   function askName() {
-    const line = 'What should I call you, explorer?';
+    const line = UI.askName;
     const input = el('input', { type: 'text', class: 'onboard-name', placeholder: 'Type your name', maxLength: 20, value: chosenName });
     const next = () => {
       chosenName = (input.value || '').trim().slice(0, 20);
@@ -136,12 +163,12 @@ export function onboardingScreen(ctx) {
       ),
     );
     body.replaceChildren(mascot(line), swatches, el('button', { class: 'btn primary onboard-go', onClick: chooseLevel }, 'Perfect! →'));
-    audio.say('Pick your crystal colour!');
+    audio.say(UI.pickColour);
   }
 
   // --- step 4: where to start (level select) -------------------------------
   function chooseLevel() {
-    const line = "Where should we start digging? Pick the words that look about right — I'll figure out the rest from there.";
+    const line = UI.chooseLevel;
     const cards = levelGrid(chosenLevel, (tier) => {
       chosenLevel = tier;
     });
@@ -162,7 +189,7 @@ export function onboardingScreen(ctx) {
   // already uses JOINS the family — its existing explorers appear in "Who's playing?"
   // (we don't make a duplicate). A brand-new password starts a fresh family.
   function syncStep() {
-    const line = 'Do you play on more than one tablet?';
+    const line = UI.syncAsk;
     body.replaceChildren(
       mascot(line),
       el('button', { class: 'btn primary onboard-go', onClick: ready }, '📱 Just this one!'),
@@ -239,9 +266,12 @@ export function onboardingScreen(ctx) {
       mascot(lineTxt),
       el('button', { class: 'btn primary onboard-go big', onClick: () => ctx.nav('rhythm', { firstRun: true }) }, '⛏️ Start digging!'),
     );
-    audio.say(`Let's dig, ${name}! You've got this!`);
+    audio.say(UI.letsDig); // name dropped from speech so it's a fixed clip; bubble keeps it
   }
 
-  welcome();
+  // First run: gate behind a tap so audio is primed + the manifest is loaded before any
+  // narration (§32.B). "Add explorer": audio is already live, go straight to welcome.
+  if (firstRun) tapToStart();
+  else welcome();
   return screen;
 }

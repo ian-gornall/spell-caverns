@@ -120,7 +120,11 @@
 //      in ui.js) shrinks the tiles/canvas to fit the play-body height; CSS compacts the iPad-tuned
 //      gaps/prompt on phone (max-width:480) + landscape (max-height:520). iPad PORTRAIT is unchanged
 //      (scale stays 1 — the §31-approved layout); iPad landscape + all phones now fully co-visible.
-const VERSION = 'csc-v41';
+// csc-v42: §32.A INTERFACE AUDIO — the fixed interface narration (Geo's onboarding lines, the geode/
+//      boss prompts) + the mastery praise now play PRE-RENDERED neural-TTS clips, not the robotic
+//      device voice. New audio/ui/ bucket + manifest.ui; say() resolves UI clips at natural speed;
+//      strings centralized in src/engine/ui_phrases.js (precached) so the runtime + generator agree.
+const VERSION = 'csc-v42';
 
 const CORE = [
   '/',
@@ -150,6 +154,7 @@ const CORE = [
   '/src/engine/lexicon.js',
   '/src/engine/distractors.js',
   '/src/engine/praise.js',
+  '/src/engine/ui_phrases.js',
   '/src/engine/assessment.js',
   '/src/engine/progress.js',
   '/src/engine/session.js',

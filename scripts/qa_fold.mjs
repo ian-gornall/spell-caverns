@@ -31,6 +31,8 @@ const onboard = async (page) => {
   await page.evaluate(() => localStorage.clear());
   await page.goto(URL, { waitUntil: 'networkidle' });
   await page.waitForSelector('.onboard-body');
+  // §32.B: first-run onboarding opens with a "Tap to start" audio gate — dismiss it.
+  if (await page.locator('.tap-to-start').count()) { await page.click('.tap-to-start'); await page.waitForSelector('.onboard-go:not(.tap-to-start)'); }
   await clickText(page, /let.?s go/); await page.waitForSelector('.onboard-name');
   await page.fill('.onboard-name', 'Ada');
   await clickText(page, /that.?s me/); await page.waitForSelector('.colour-grid');

@@ -44,7 +44,11 @@ function ensureManifest() {
       const res = await fetch('/audio/manifest.json', { cache: 'no-cache' });
       if (res.ok) {
         const m = await res.json();
-        manifest = { words: new Set(m.words || []), phrases: new Set(m.phrases || []) };
+        manifest = {
+          words: new Set(m.words || []),
+          phrases: new Set(m.phrases || []),
+          ui: new Set(m.ui || []), // fixed interface narration (§32.A)
+        };
       } else {
         manifestPromise = null; // non-OK (e.g. a stale 404) — allow a retry next call
       }
@@ -58,6 +62,18 @@ ensureManifest(); // kick off early (harmless if it 404s — it'll retry on the 
 
 export function configure(s) {
   settings = { ...settings, ...s };
+}
+
+// Resolve once the clip manifest has loaded (or definitively failed). The onboarding
+// "Tap to start" gate (§32.B) awaits this AFTER prime() so the very FIRST spoken line
+// goes through the clip path — without it, the first utterance can race the manifest
+// load and fall back to device TTS (a different voice than the clips that follow).
+export async function whenReady() {
+  try {
+    await ensureManifest();
+  } catch {
+    /* manifest optional — say() still works via the TTS fallback */
+  }
 }
 
 export function isPrimed() {
@@ -251,7 +267,16 @@ export function say(word, { onDone } = {}) {
   }
   const s = slug(text);
   const rate = settings.voiceRate ?? 0.85; // dictation speed (configurable; default a bit slow)
-  if (manifest && manifest.words.has(s)) {
+  // A fixed interface line (§32.A) — Geo's narration, the geode prompts. These are
+  // sentences (no slug-collision with a single dictation word) and should speak at a
+  // NATURAL pace, NOT the slowed dictation rate. Checked first; words next.
+  if (manifest && manifest.ui && manifest.ui.has(s)) {
+    clipEl = playClip(clipEl, `/audio/ui/${s}.mp3`, {
+      rate: 1,
+      onDone: done,
+      onFail: () => speakTTS(text, { rate: 1, pitch: 1.02, onDone: done }),
+    });
+  } else if (manifest && manifest.words.has(s)) {
     clipEl = playClip(clipEl, `/audio/words/${s}.mp3`, {
       rate,
       onDone: done,
