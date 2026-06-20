@@ -161,31 +161,43 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 
 1. ✅ **Free-first SERVICES AUDIT — DONE (§29)** → `SERVICES_AUDIT.md`. (Owed follow-up still: confirm
    Gemini free-tier TTS *commercial-use licensing* — a legal, not cost, check.)
-2. **AUDIO TAIL** — **~1081 TTS clips remain** (1838 word + 32 phrase clips ship as of §29, csc-v31;
-   manifest matches). FREE multi-day path, **time-gated by the daily quota** (a §29 run added +160
-   then walled across all 3 preview models — quota now spent; resets daily, **next run 2026-06-20+**).
-   Each run: `npm i --no-save @breezystack/lamejs playwright` → `npm run gen:audio` → commit new
-   `audio/` clips → bump `sw.js`/`version.js` → push. (Pre-approved free path; no re-asking needed.)
-3. **§26-B — ASSETS: RESEARCH FIRST (free/low-cost focus).** Ian's direction (2026-06-19d): do a
-   **research pass on art/library/audio asset options focused on FREE / LOW-COST** before any
-   integration — produce a sourced shortlist (CC0/Kenney/OpenGameArt/free-tier libs; licence +
-   size + fit + cost) with recommendations, THEN integrate on existing vanilla surfaces WITHOUT
-   touching `src/engine/**`. Still respect [[prefer-free-services]] (flag any cliff) +
-   [[approval-before-consuming-limits]] (any paid pack needs per-purchase OK). Partial §26-B
-   already shipped dependency-free: owned-crystal glint + prefers-reduced-motion (§29, csc-v30).
-4. ✅ **§26-A #8 (slim child Settings) — DONE (§29, csc-v28).**
-5. ✅ **§30 — LEARNING-MODEL REDESIGN + MASTERY (draw) mode (Ian 2026-06-19d) — SHIPPED + LIVE
+2. **🆕 INTERFACE AUDIO (§32.A) — DO THIS *FIRST*, BEFORE the audio tail (Ian 2026-06-20).** Today the
+   interface/UI speech (onboarding narration, hints, toasts — every `audio.say(...)` string that ISN'T
+   a dictated word or a praise phrase) has no Gemini clip, so it falls back to the robotic device TTS —
+   "the first things the user hears," so it sets the quality bar. Generate Gemini clips for the FIXED
+   interface strings (a new `audio/ui/` bucket or fold into `phrases`) so `say()` resolves them to clips.
+   **Ian's priority call (2026-06-20): the interface audio runs BEFORE the word-tail audio.** Full spec
+   in §32.A below. (Free Gemini TTS, same rate-limited daily quota as the tail — so doing this first
+   spends part of today's quota here; honour [[approval-before-consuming-limits]] — get Ian's go before a run.)
+3. **AUDIO TAIL — *after* the interface audio (Ian 2026-06-20 reordered).** **~1081 word TTS clips remain**
+   (1838 word + 32 phrase clips ship as of §29, csc-v31; manifest matches). FREE multi-day path,
+   **time-gated by the daily quota** (a §29 run added +160 then walled across all 3 preview models;
+   resets daily). Each run: `npm i --no-save @breezystack/lamejs playwright` → `npm run gen:audio` →
+   commit new `audio/` clips → bump `sw.js`/`version.js` → push. (Pre-approved FREE path, but it shares
+   the daily quota with the interface audio above, which now goes first — so sequence them across days.)
+4. **§26-B — ASSETS REVIEW of `C:\Users\iango\kidenv` → an ARTIFACT (Ian 2026-06-20, REVISED scope).**
+   Ian's revised direction: the free/low-cost assets task is **a review of what already exists in the
+   `C:\Users\iango\kidenv` directory** (his other kid-apps workspace — art/audio/icon/library assets
+   already gathered there) to **see what's available + reusable here**, and **generate an ARTIFACT
+   documenting the findings** (an inventory: what's there, licence/source, size, fit for Crystal Spell
+   Caverns, a reuse recommendation per asset). ⚠️ READ-ONLY w.r.t. kidenv — per the global rule, NEVER
+   modify files outside the active `spell` repo; only inspect kidenv and write the artifact INTO the
+   `spell` repo. Supersedes the earlier "research CC0/Kenney/OpenGameArt shortlist" framing (that was a
+   web-research pass; the new ask is an inventory of the in-hand kidenv assets first). Then any
+   integration stays on existing vanilla surfaces WITHOUT touching `src/engine/**`; respect
+   [[prefer-free-services]] + [[approval-before-consuming-limits]]. Partial §26-B already shipped
+   dependency-free: owned-crystal glint + prefers-reduced-motion (§29, csc-v30).
+5. ✅ **§26-A #8 (slim child Settings) — DONE (§29, csc-v28).**
+6. ✅ **§30 — LEARNING-MODEL REDESIGN + MASTERY (draw) mode (Ian 2026-06-19d) — SHIPPED + LIVE
    (sw `csc-v36`), verified on prod + on Ian's real iPad ("yes that works", 2026-06-19g).** All 6
    steps + the user's 2026-06-19f follow-ups: the draw recognizer is now a real on-device
    EMNIST-letters **CNN** (TF.js, ~94% top-1 — fixes the a/q/c/s confusion), draw mode
    auto-recognises (no button), a **keyboard fallback** (toggle draw↔type), the level picker
    re-aims the learning set, craft gems trimmed. Full detail in §30 below.
-6. **🆕 §31 — MASTERY UX + DICTATION + MASTERY-FIRST NUDGING (Ian 2026-06-19g) — ⛔ NOT STARTED.**
-   Four asks, recorded only (no code yet): (a) on **tablet/desktop**, write the **whole word at
-   once** — one box per letter, still detected letter-by-letter but without pausing for each;
-   (b) add a **dictation mode** to Mastery; (c) **nudge students into Mastery** once it unlocks;
-   (d) flexibly cycle students **known→mastered (draw) and back→learning (craft)**. Spec in §31 below.
-7. ✅ **§33 — PHONE LAYOUT, truly fixed (Ian 2026-06-20) — DONE + QA'd (csc-v41).** See §33 below.
+7. ✅ **§31 — MASTERY UX + MASTERY-FIRST NUDGING (Ian 2026-06-19g) — SHIPPED + LIVE (csc-v40), writing
+   APPROVED on iPad.** Whole-word multi-box writing on wide screens, dictation→§32 voice (shelved),
+   mastery-first nudging + `recommendNext`. Full detail in §31 below.
+8. ✅ **§33 — PHONE LAYOUT, truly fixed (Ian 2026-06-20) — DONE + QA'd + LIVE (csc-v41).** See §33 below.
 
 ---
 
@@ -441,7 +453,9 @@ the §29 phone no-horizontal-scroll guards green):**
    gated Mastery card; Practice card dimmed/🔒 until mining unlocks; rhythm.js gates on the
    mastered-gate), **Progress "Words I'm learning" category display** (kid-visible; tricky
    grown-up-only), **Words-per-dig help-text** updated.
-7. **§26-B assets research** (free/low-cost) can run in parallel (independent). STILL OPEN.
+7. **§26-B assets** — REVISED (Ian 2026-06-20): now an **inventory/review of `C:\Users\iango\kidenv`**
+   for reusable assets → a documented **artifact** (read-only on kidenv; artifact written into this repo).
+   Can run in parallel (independent). STILL OPEN. See §0 OPEN BACKLOG #4.
 
 ---
 
@@ -577,7 +591,9 @@ peekable behind a 👀 button. (See the §31 banner above — all built on branc
 > touches engine, follow `QA.md`, bump `sw.js`/`version.js` on deploy. Relates to [[prefer-free-services]]
 > (Gemini free-tier TTS, ~3 req/min — see the §25 AUDIO-TAIL RESUME LOG + the lamejs reinstall GOTCHA).
 
-**A. The INTERFACE speech is still the robotic device voice — run it through Gemini too.** Today
+**A. The INTERFACE speech is still the robotic device voice — run it through Gemini too. ⭐ PRIORITY:
+Ian (2026-06-20) wants this done BEFORE the §0 #3 word-tail audio — both draw from the same rate-limited
+daily Gemini quota, so the interface clips go FIRST, then the tail on later days.** Today
 `scripts/gen_audio.mjs` only pre-generates Gemini clips for **dictated words** (`audio/words/`) and the
 fixed **praise/gentle phrases** (`audio/phrases/`, sourced from `praise.js` `SPEED_TIERS` /
 `GENTLE_PHRASES` / `COMBO_PHRASES`). **Every other spoken UI string** — the onboarding narration
