@@ -2,7 +2,7 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-20 • current live sw **csc-v47** (§11 autofill fix).
+> `C:\Users\iango\spell`  •  Last updated 2026-06-20 • current live sw **csc-v48** (§11 autofill fix + Mastery app-keypad).
 > **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
@@ -263,9 +263,24 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    `qa_fold`, `qa_overflow`(Galaxy) green; `qa_phone_audit` confirms iPad-portrait `--play-scale=1` preserved
    (only the by-design landscape home-menu scroll "fails", pre-existing per §34). Files: `src/ui.js`,
    `src/modes/{mastery,lab}.js`, `src/screens/{onboarding,settings,feedback}.js`, `src/version.js`, `sw.js`,
-   `scripts/qa_autofill.mjs`. ⚠️ OWED: a real-device keyboard pass (iOS can be stubborn — if the suggestion
-   bar still appears on a physical device, the next lever is an unusual `name`/`inputmode` or
-   `autocomplete="one-time-code"`, but that changes the keyboard so try it only if needed). **➡️ NEXT: #12.**
+   `scripts/qa_autofill.mjs`.
+   **➡️ FOLLOW-UP (csc-v48) — Ian clarified the REAL problem: not autofill, the keyboard's predictive
+   word-SUGGESTION strip (iOS QuickType / Android Gboard) showing candidate words that GIVE AWAY THE
+   SPELLING.** That strip is OS-drawn, not page-controlled, and can't be reliably disabled on a native
+   field (Android ignores the HTML attributes). FIX (Ian chose "in-app letter keyboard"): Mastery's "type
+   the word" fallback no longer uses a native `<input>` at all — it renders an **APP-DRAWN A–Z keypad**
+   (`modes/mastery.js`: `buildKeyboard`/`typeLetter`/`backspace`; QWERTY rows, gold ⌫; new crystal-gem CSS
+   `.type-keyboard`/`.key`). Letter keys fill the next empty slot, ⌫ removes the last, tapping a placed
+   letter clears just that one; the miss flow keeps correct letters (the old linear input couldn't show
+   gaps). A `window keydown` listener keeps a PHYSICAL keyboard working (no suggestion strip on hardware
+   keys). **No OS keyboard surface exists → no suggestion strip, on ANY device, offline.** Both layouts:
+   narrow `.slots` + auto-check; wide boxes + ✓ Check. The old `.draw-type-input`/`.draw-type-wrap` rules
+   were removed. **QA:** 277 tests; `qa_autofill.mjs` now asserts the keypad has 26 letters + ⌫ and **ZERO
+   native text inputs** in the mastery screen (so no OS keyboard can appear) + typing a word masters it;
+   `qa_s31.mjs` updated for the keypad (wide); draw mode (`qa_mastery`) unaffected; `qa_phone_audit`
+   iPad-portrait `--play-scale=1` preserved; smoke green; phone + wide keypad screenshots reviewed
+   (polished, on-theme). ⚠️ OWED: a real-device pass on the keypad (iPad + phone) — verified via emulation
+   + screenshots only. **➡️ NEXT: #12.**
 
 12. **🆕 LANDSCAPE-PHONE PLAY SIZING — OPEN, the NEXT item. ➡️ DEPLOY after QA.** Verbatim (Ian): in horizontal phone view
    "the top part with no buttons takes up most of the screen which makes the buttons on the bottom tiny, and
