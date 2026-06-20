@@ -188,22 +188,26 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    push → `node scripts/check_deploy.mjs csc-vNN`. Pre-approved FREE path; honour
    [[approval-before-consuming-limits]] per run. (Minor owed: spot-listen the 2 small-byte new clips
    `parking`/`bear` on a real device — size matches the proven set so likely fine.)
-4. **§26-B — ASSETS REVIEW of `C:\Users\iango\kidenv` → an ARTIFACT — ⏳ STILL OPEN, NOT STARTED (status
-   as of 2026-06-20; no artifact exists in the repo yet).** (Ian 2026-06-20, REVISED scope.)
-   Ian's revised direction: the free/low-cost assets task is **a review of what already exists in the
-   `C:\Users\iango\kidenv` directory** (his other kid-apps workspace — art/audio/icon/library assets
-   already gathered there) to **see what's available + reusable here**, and **generate an ARTIFACT
-   documenting the findings** (an inventory: what's there, licence/source, size, fit for Crystal Spell
-   Caverns, a reuse recommendation per asset). ⚠️ READ-ONLY w.r.t. kidenv — per the global rule, NEVER
-   modify files outside the active `spell` repo; only inspect kidenv and write the artifact INTO the
-   `spell` repo. Supersedes the earlier "research CC0/Kenney/OpenGameArt shortlist" framing (that was a
-   web-research pass; the new ask is an inventory of the in-hand kidenv assets first). Then any
-   integration stays on existing vanilla surfaces WITHOUT touching `src/engine/**`; respect
-   [[prefer-free-services]] + [[approval-before-consuming-limits]]. Partial §26-B already shipped
-   dependency-free: owned-crystal glint + prefers-reduced-motion (§29, csc-v30).
-   **➡️ SUGGESTED PAIRING with §34 (phone polish):** do this review with §34 in mind — the kidenv
-   inventory may surface reusable phone-friendly assets (art, icons, and especially **spacing/type-scale
-   tokens** from the other kid-apps) that the §34 proportions tuning can adopt, so the two land together.
+4. ✅ **§26-B — ASSETS REVIEW of `C:\Users\iango\kidenv` → ARTIFACT — DONE (2026-06-20). Artifact:
+   `KIDENV_ASSET_REVIEW.md` (repo root).** A read-only inventory of the kidenv workspace (6 apps + a
+   `template/` skeleton + a shared `guides/phaser/` CC0 library). Findings: the single most valuable
+   reusable thing is **`kidenv/template/styles.css` — a complete, battle-tested DESIGN-TOKEN system**
+   (fluid `--gap`/`--pad` clamps, a type scale, a `max-height:480px` LANDSCAPE override, `--tap-primary`,
+   a `max(pad, safe-area-inset)` body-padding idiom, `.app` width that widens in landscape). Also: 7 OFL
+   kid fonts (**Fredoka** = top heading pick, 159 KB), `gemgrid`'s on-theme **pure-CSS gem shapes +
+   star-field + glow/float keyframes** (the only thematically-fitting art — everything else is space/alien
+   Kenney sprites = wrong theme), and Kenney **CC0 UI SFX** (click/confirm/coin/levelup). The artifact
+   gives a per-asset licence/fit/reuse recommendation + a prioritized "next actions" list. ⚠️ READ-ONLY
+   w.r.t. kidenv was honoured (only inspected; the artifact was written into the `spell` repo). Corrected
+   one agent misread (CSC already defines `--tap-min:64px`; no raise needed).
+   **➡️ §34 PAIRING OUTCOME:** §34 shipped WITHOUT adopting these tokens this round — the surgical
+   phone-scoped fix (see #9) met the goal at zero risk to the pixel-identical iPad, whereas a token
+   refactor (replace hardcoded spacing with `--gap`/`--pad` clamps, add the `max-height:480px` landscape
+   block + `--tap-primary` + Fredoka headings) is a bigger, separable follow-up. The artifact's "Recommended
+   Next Actions" is the ready-made backlog for that future pass. Partial §26-B already shipped dependency-
+   free earlier: owned-crystal glint + prefers-reduced-motion (§29, csc-v30). Any future integration stays
+   on vanilla surfaces WITHOUT touching `src/engine/**`; respect [[prefer-free-services]] +
+   [[approval-before-consuming-limits]].
 5. ✅ **§26-A #8 (slim child Settings) — DONE (§29, csc-v28).**
 6. ✅ **§30 — LEARNING-MODEL REDESIGN + MASTERY (draw) mode (Ian 2026-06-19d) — SHIPPED + LIVE
    (sw `csc-v36`), verified on prod + on Ian's real iPad ("yes that works", 2026-06-19g).** All 6
@@ -216,11 +220,22 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    mastery-first nudging + `recommendNext`. Full detail in §31 below.
 8. ✅ **§33 — PHONE LAYOUT co-visibility, fixed (Ian 2026-06-20) — DONE + QA'd + LIVE (csc-v41).** See §33
    below. ➡️ **Follow-up: §34 (phone PROPORTIONS / visual polish) is OPEN** — usable now, but looks off.
-9. **🆕 §34 — PHONE PROPORTIONS / VISUAL POLISH (Ian 2026-06-20) — OPEN, the top UX item.** After §33 the
-   app is USABLE on phones (real progress) but the proportions look "pretty weird": **titles too big, play
-   area too small**; margins / padding / text sizes want phone-specific tuning. NOT a functional/overflow
-   bug (§33 fixed co-visibility) — a visual-HIERARCHY problem. Needs interactive visual QA (screenshot →
-   LOOK → adjust), iPad kept pixel-identical, §29/§33 guards green. Full brief in §34 below.
+9. ✅ **§34 — PHONE PROPORTIONS / VISUAL POLISH (Ian 2026-06-20) — DONE + QA'd + LIVE (csc-v44).** The
+   "titles too big, play area too small" feel is fixed on phones. Root cause confirmed via
+   `qa_phone_audit.mjs` geometry: a ~107px DEAD strip between the header and the play area (the session
+   **dots + combo bar + EMPTY combo-label**) plus the **empty `.verdict`/`.verdict-chip` reserves** (~57px)
+   pushed the play surface down, so `fitPlayArea` shrank the tiles to **scale 0.9** on a fresh long word. Fix
+   (styles.css, `@media (max-width:480px)` only): compact that strip + **collapse the reserves that are empty
+   on a fresh word** (`:empty{min-height:0}`) → the play area reclaims the space and keeps **FULL-SIZE tiles
+   (scale back to 1)** on craft/mastery/mining at 360 & 390; plus a lighter home brand title + tighter
+   hero→streak→grid spacing so the title no longer dominates the first screen. **iPad stays pixel-identical**
+   (every edit is phone-scoped; the audit re-confirms iPad-portrait `--play-scale=1` across all play modes).
+   QA all green: 277 tests, `qa_phone_audit` (iPad guard + co-visibility), `qa_responsive`/`qa_overflow`(Galaxy)/
+   `qa_fold`, `qa_mastery`/`qa_s31`, `qa.mjs` 0 console errors, smoke. Visual review of before/after phone
+   screenshots confirms a bigger play area + balanced framing. **Deliberately did NOT adopt the kidenv design-
+   token system** (see §26-B) this pass — that's a larger refactor that risks the pixel-identical iPad
+   constraint; the surgical phone fix achieves the goal at zero iPad risk. Files: `styles.css`, `sw.js`,
+   `src/version.js`. ⚠️ OWED: a real-device pass on an actual phone (judged via emulation + screenshots only).
 
 ---
 
@@ -264,8 +279,16 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 
 ---
 
-## §34 — PHONE PROPORTIONS / VISUAL POLISH (Ian 2026-06-20) — 🆕 OPEN (the top UX item)
+## §34 — PHONE PROPORTIONS / VISUAL POLISH (Ian 2026-06-20) — ✅ DONE + QA'd + LIVE (csc-v44)
 
+> **✅ SHIPPED (csc-v44).** Summary + root-cause + QA in §0 OPEN BACKLOG #9 above. In one line: the dead
+> chrome strip above the play area (session dots + combo bar + EMPTY combo-label, ~107px) and the empty
+> `.verdict`/`.verdict-chip` reserves (~57px) were collapsed on phones (`@media max-width:480px`, the
+> `:empty{min-height:0}` idiom), so `fitPlayArea` keeps FULL-SIZE play tiles (scale 1, was 0.9) — the
+> "play area too small" fix — plus a lighter home brand title + tighter hero spacing. iPad stays
+> pixel-identical (phone-scoped edits only; audit re-confirms iPad-portrait scale=1). ⚠️ OWED: a
+> real-device pass on an actual phone. The original brief is retained below for context.
+>
 > **Ian's feedback (verbatim sense), after §33 shipped:** "The app is usable now on phones but looks
 > pretty weird. The proportions are off in a way that is hard to describe — like the **titles are too
 > big and the play area too small**. But again, it works, so we've made progress. Particularly,
