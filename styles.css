@@ -1101,17 +1101,27 @@ button.quest {
   box-shadow: inset 0 3px 12px rgba(0, 0, 0, 0.45), 0 0 14px rgba(255, 210, 63, 0.4);
 }
 
-/* ------- §31.A whole-word writing on WIDE screens: a row of per-letter mini-canvases ------- */
+/* ------- §31.A whole-word writing on WIDE screens: a row of per-letter boxes + ONE ink overlay -------
+   The boxes are GUIDES; a single .boxes-ink canvas sits over the whole row so a kid can write
+   slightly outside a box and still be captured, and each stroke is routed to the nearest box. */
 .draw-boxes {
-  display: flex;
-  flex-wrap: wrap; /* a long word wraps rather than overflowing a ~700px tablet */
-  gap: 12px;
-  justify-content: center;
+  position: relative;
   width: 100%;
+  /* generous padding gives drawing room ABOVE/BELOW/beside the boxes — the overlay covers it,
+     so "mostly in the box, a bit outside" is still captured (Ian 2026-06-19g). */
+  padding: 18px 14px;
+}
+.box-guides {
+  display: flex;
+  flex-wrap: nowrap; /* always one row → simple left-to-right box columns, never wraps/overflows */
+  gap: 10px;
+  justify-content: center;
 }
 .lbox {
   position: relative;
-  width: clamp(54px, 8.5vw, 96px);
+  flex: 1 1 0; /* equal columns that shrink to fit a long word on one line */
+  min-width: 0;
+  max-width: 96px;
   height: clamp(68px, 11vw, 120px);
   border-radius: 16px;
   /* same glowing crystal-socket look as the empty .slot, so a box reads as "write here" */
@@ -1120,19 +1130,21 @@ button.quest {
   box-shadow: inset 0 3px 12px rgba(0, 0, 0, 0.5), inset 0 0 14px rgba(54, 241, 205, 0.07);
   transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-.lbox-canvas {
+.boxes-ink {
   position: absolute;
-  inset: 0;
+  inset: 0; /* covers the guides AND the padding around them */
   width: 100%;
   height: 100%;
   touch-action: none; /* drawing must not pan/scroll the page */
   cursor: crosshair;
-  border-radius: 16px;
+}
+.draw-boxes.display-only .boxes-ink {
+  pointer-events: none; /* while TYPING the boxes are a display, not a draw surface */
 }
 .lbox-letter {
   position: absolute;
   inset: 0;
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   font-size: clamp(1.7rem, 5vw, 2.6rem);
@@ -1152,13 +1164,6 @@ button.quest {
   border-color: var(--accent, #7cc4ff);
   box-shadow: 0 6px 18px -8px var(--accent, #7cc4ff), inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
-.lbox.filled .lbox-canvas,
-.draw-boxes.display-only .lbox-canvas {
-  pointer-events: none; /* a filled box (or any box while TYPING) is not a draw surface */
-}
-.lbox.filled .lbox-letter {
-  display: flex;
-}
 .lbox.locked {
   background: linear-gradient(160deg, #1f6f4a, #2bb673);
   border-color: var(--emerald, #2bb673);
@@ -1167,6 +1172,20 @@ button.quest {
 }
 .draw-boxes.shake {
   animation: shake 0.4s ease;
+}
+/* §31 explicit submit (wide multi-box): grade only when the learner taps Check, so a misread
+   auto-filled letter can be corrected first. Dim it until every box is filled. */
+.draw-submit {
+  display: flex;
+  justify-content: center;
+  padding: 2px 0 4px;
+}
+.check-btn[disabled] {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.check-btn.ready {
+  box-shadow: 0 8px 22px -10px #000a, 0 0 16px rgba(54, 241, 205, 0.5);
 }
 
 /* ------- §31.B dictation: peek button + active-toggle styling ------- */

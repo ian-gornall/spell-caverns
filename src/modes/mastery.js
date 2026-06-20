@@ -1,5 +1,7 @@
 // src/modes/mastery.js — §30 MASTERY mode: DRAW the letters (the new headline), with the
-// §31 upgrades (whole-word writing on wide screens + a dictation toggle).
+// §31 upgrades (whole-word writing on wide screens + a dictation toggle) and the 2026-06-19g
+// real-device fixes (tap-to-redo, a Check/submit button, speech that doesn't talk over praise,
+// and cross-box stroke capture that assigns each letter to the box it's MOSTLY written in).
 //
 // The mastery TEST: the learner hears a word and spells it with NO letter tiles to choose
 // from — they DRAW each letter. A FREE + OFFLINE on-device recognizer (the EMNIST CNN in
@@ -7,14 +9,14 @@
 // drawn letter. One clean success = MASTERED (categories.recordDraw); a wrong finish is a
 // gentle miss. Gated behind unlocks().mastery (after [set size] words reach KNOWN via craft).
 //
-// §31.A — WHOLE-WORD WRITING on WIDE screens (≥700px: tablet/desktop/landscape iPad): instead
-//   of one canvas one-letter-at-a-time, show a ROW OF PER-LETTER MINI-CANVASES (one box per
-//   letter). The learner writes box 1, 2, 3… freely WITHOUT waiting for each guess; each box
-//   recognises independently on pen-up and AUTO-FILLS its best guess; tap a box to redo it.
-//   PHONE (narrow) keeps the proven single-canvas flow (no room for a row). The keyboard
-//   fallback still fills the word left-to-right in either layout.
-// §31.B — DICTATION toggle: spell from HEARING ALONE — the example sentence is hidden by
-//   default with a 👀 Peek button to reveal it (kid-friendly, not punishing).
+// §31.A — WHOLE-WORD WRITING on WIDE screens (≥700px): the word is a ROW of per-letter boxes.
+//   A SINGLE ink overlay spans the whole row, so a kid can write "mostly in the box, a bit
+//   outside" and every stroke is still captured; each finished stroke is assigned to the box
+//   whose centre it's NEAREST (so a letter is graded by where MOST of it was written). Each box
+//   auto-recognises its strokes and shows its best guess, but NOTHING is graded until the learner
+//   taps ✓ Check — so a misread letter can be fixed first (tap a box to redo it). PHONE (<700px)
+//   keeps the single-canvas, one-letter-at-a-time + tap-a-candidate flow.
+// §31.B — DICTATION toggle: spell from HEARING ALONE — the sentence is hidden with a 👀 Peek.
 //
 // UI module — verified with Playwright.
 import { el, header, burst, toast, createIdleGuard, pulse } from '../ui.js';
@@ -31,9 +33,24 @@ const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 // the single-canvas flow (a phone has no room for a row of per-letter boxes — and this keeps the
 // §29 narrow-viewport no-horizontal-scroll guards green, which only exercise phone widths).
 const WIDE_QUERY = '(min-width: 700px)';
+// Wait this long after the LAST pen-up before guessing, so a multi-stroke letter (t, i, x, k)
+// isn't recognised after only its first stroke. A new stroke cancels + reschedules.
+const RECOGNIZE_DEBOUNCE_MS = 850;
+// A pen-down→up that barely moved is a TAP (used to redo a filled box), not a letter stroke.
+const TAP_PX = 12;
 
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function strokeSpan(stroke) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of stroke) {
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return Math.hypot(maxX - minX, maxY - minY);
 }
 
 // --- letter templates: rasterise each glyph of the app font ONCE (cached) ---------------
@@ -137,8 +154,10 @@ export function startMastery(ctx, params = {}) {
   const canvas = el('canvas', { class: 'draw-canvas', width: 320, height: 200 });
   const candidatesEl = el('div', { class: 'draw-candidates' });
   const drawStageEl = el('div', { class: 'draw-stage' }, canvas, candidatesEl);
-  // WIDE (§31.A): a row of per-letter mini-canvases — write the whole word freely.
-  const boxesEl = el('div', { class: 'draw-boxes' });
+  // WIDE (§31.A): a row of per-letter box GUIDES + ONE ink overlay spanning them all (built per word).
+  const boxGuidesEl = el('div', { class: 'box-guides' });
+  const boxInk = el('canvas', { class: 'boxes-ink' });
+  const boxesEl = el('div', { class: 'draw-boxes' }, boxGuidesEl, boxInk);
   // keyboard fallback (user request): type the word with the on-screen / physical keyboard.
   const typeInput = el('input', {
     class: 'draw-type-input',
@@ -165,6 +184,11 @@ export function startMastery(ctx, params = {}) {
   const peekBtn = el('button', { class: 'btn ghost peek-btn', onClick: () => { peeked = !peeked; applyDictation(); } }, '👀 Peek');
   const peekRow = el('div', { class: 'peek-row', style: { display: 'none' } }, peekBtn);
 
+  // §31 (2026-06-19g): an explicit Check/submit so a misread letter can be FIXED before grading
+  // (only the wide multi-box layout auto-fills guesses; the phone flow confirms each letter on tap).
+  const checkBtn = el('button', { class: 'btn primary check-btn', onClick: () => checkWord() }, '✓ Check it');
+  const submitRow = el('div', { class: 'draw-submit', style: { display: 'none' } }, checkBtn);
+
   const clearBtn = el('button', { class: 'btn ghost', onClick: clearCurrent }, '↺ Clear');
   const dictBtn = el('button', { class: 'btn ghost', onClick: () => setDictation(!dictation) }, '📣 Dictation');
   const toggleBtn = el('button', { class: 'btn ghost', onClick: () => setMode(inputMode === 'draw' ? 'type' : 'draw') }, '⌨️ Type it');
@@ -183,7 +207,7 @@ export function startMastery(ctx, params = {}) {
       'div',
       { class: 'play-body' },
       el('div', { class: 'prompt' }, el('div', { class: 'hear-row' }, hearBtn), sentenceEl, peekRow, verdictEl, verdictChip),
-      el('div', { class: 'answer-zone' }, slotsEl, drawStageEl, boxesEl, typeWrapEl, hintEl, controlsEl),
+      el('div', { class: 'answer-zone' }, slotsEl, drawStageEl, boxesEl, typeWrapEl, hintEl, submitRow, controlsEl),
     ),
   );
 
@@ -200,18 +224,19 @@ export function startMastery(ctx, params = {}) {
   let dictation = false; // §31.B: spell from hearing alone (sentence hidden unless peeked)
   let peeked = false;
   let recognizeTimer = 0; // single-canvas debounce: auto-recognise shortly after the pen lifts
-  let boxStates = []; // §31.A: one per letter box { box, cv, ctx, strokes, timer, drawing, letterSpan }
+  // §31.A multi-box (ONE ink overlay over a row of box guides):
+  let boxGuides = []; // [{ guide, letterSpan }] per letter box
+  let boxStrokes = []; // [[stroke,…]] the captured strokes assigned to each box
+  let boxTimers = []; // per-box recognise debounce timers
+  const inkCtx = boxInk.getContext('2d');
+  let inkDrawing = false;
+  let inkStroke = []; // the in-progress overlay stroke (CSS-px points)
   const ctx2d = canvas.getContext('2d');
   // §31.A responsive layout: re-evaluated live so rotating an iPad swaps layouts.
   const mediaWide = window.matchMedia ? window.matchMedia(WIDE_QUERY) : { matches: false, addEventListener() {}, removeEventListener() {} };
   let layoutWide = !!mediaWide.matches;
-  // Wait this long after the LAST pen-up before guessing, so a multi-stroke letter (t, i, x, k)
-  // isn't recognised after only its first stroke. A new stroke cancels + reschedules.
-  const RECOGNIZE_DEBOUNCE_MS = 850;
 
-  // In WIDE layout the per-letter BOXES are the word display (drawable in draw mode, a
-  // typed mirror in type mode); in NARROW layout the .slots row is the display. The visible
-  // "built spelling" container (for bursts / shake / lock styling) follows that.
+  // In WIDE layout the per-letter BOXES are the word display; in NARROW the .slots row is.
   function builtEl() {
     return layoutWide ? boxesEl : slotsEl;
   }
@@ -233,12 +258,15 @@ export function startMastery(ctx, params = {}) {
     rebuildSurface();
     renderBuilt();
   };
+  const onResize = () => sizeInk();
   mediaWide.addEventListener?.('change', onMedia);
+  window.addEventListener('resize', onResize);
   ctx.onLeave(() => {
     guard.stop();
     clearTimeout(recognizeTimer);
     clearBoxTimers();
     mediaWide.removeEventListener?.('change', onMedia);
+    window.removeEventListener('resize', onResize);
   });
 
   // --- single-canvas drawing (PHONE) --------------------------------------
@@ -317,121 +345,190 @@ export function startMastery(ctx, params = {}) {
     );
   }
 
-  // --- §31.A multi-box drawing (WIDE) -------------------------------------
+  // --- §31.A multi-box drawing (WIDE): one ink overlay, strokes routed to the nearest box ----
   function clearBoxTimers() {
-    for (const st of boxStates) clearTimeout(st.timer);
+    for (const t of boxTimers) clearTimeout(t);
+    boxTimers = boxTimers.map(() => 0);
   }
-  function boxPaint(st) {
-    st.ctx.lineWidth = 8;
-    st.ctx.lineCap = 'round';
-    st.ctx.lineJoin = 'round';
-    st.ctx.strokeStyle = '#36F1CD';
+  function inkPaint() {
+    inkCtx.lineWidth = 8;
+    inkCtx.lineCap = 'round';
+    inkCtx.lineJoin = 'round';
+    inkCtx.strokeStyle = '#36F1CD';
   }
-  function makeBox(i) {
-    const cv = el('canvas', { class: 'lbox-canvas', width: 132, height: 168 });
-    const letterSpan = el('span', { class: 'lbox-letter' });
-    const box = el('div', { class: 'lbox' }, cv, letterSpan);
-    const st = { box, cv, ctx: cv.getContext('2d'), strokes: [], timer: 0, drawing: false, letterSpan };
-    const xy = (e) => {
-      const r = cv.getBoundingClientRect();
-      return { x: (e.clientX - r.left) * (cv.width / r.width), y: (e.clientY - r.top) * (cv.height / r.height) };
-    };
-    cv.addEventListener('pointerdown', (e) => {
-      if (locked) return;
-      if (slots[i] != null) {
-        clearBox(i); // tap a FILLED box → redo it (then this same tap starts a fresh stroke below)
+  // The overlay is drawn 1:1 in CSS px (square pixels) so letters keep their aspect and stored
+  // strokes survive a resize. Resize the backing store to match the element when it changes.
+  function sizeInk() {
+    if (!layoutWide) return;
+    const r = boxInk.getBoundingClientRect();
+    const w = Math.round(r.width);
+    const h = Math.round(r.height);
+    if (w > 0 && (boxInk.width !== w || boxInk.height !== h)) {
+      boxInk.width = w;
+      boxInk.height = h;
+      repaintInk();
+    }
+  }
+  function inkXY(e) {
+    const r = boxInk.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+  // Assign a finished stroke to the box whose CENTRE its centroid is nearest — so a letter is
+  // graded by where MOST of it was written, even if it spilled past the box edges (Ian 2026-06-19g).
+  function boxForStroke(stroke) {
+    const cx = stroke.reduce((a, p) => a + p.x, 0) / stroke.length;
+    const cRect = boxInk.getBoundingClientRect();
+    let best = 0;
+    let bestD = Infinity;
+    boxGuides.forEach((g, i) => {
+      const r = g.guide.getBoundingClientRect();
+      const gcx = (r.left + r.right) / 2 - cRect.left;
+      const d = Math.abs(cx - gcx);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
       }
-      clearTimeout(st.timer);
-      st.drawing = true;
-      cv.setPointerCapture?.(e.pointerId);
-      const p = xy(e);
-      st.strokes.push([p]);
-      boxPaint(st);
-      st.ctx.beginPath();
-      st.ctx.moveTo(p.x, p.y);
-      e.preventDefault();
     });
-    cv.addEventListener('pointermove', (e) => {
-      if (!st.drawing || locked) return;
-      const p = xy(e);
-      st.strokes[st.strokes.length - 1].push(p);
-      st.ctx.lineTo(p.x, p.y);
-      st.ctx.stroke();
-      e.preventDefault();
-    });
-    const end = () => {
-      if (!st.drawing) return;
-      st.drawing = false;
-      clearTimeout(st.timer);
-      st.timer = setTimeout(() => readBox(i), RECOGNIZE_DEBOUNCE_MS);
+    return best;
+  }
+  function repaintInk() {
+    inkCtx.clearRect(0, 0, boxInk.width, boxInk.height);
+    inkPaint();
+    const drawStroke = (s) => {
+      if (!s.length) return;
+      inkCtx.beginPath();
+      inkCtx.moveTo(s[0].x, s[0].y);
+      for (let i = 1; i < s.length; i++) inkCtx.lineTo(s[i].x, s[i].y);
+      if (s.length === 1) inkCtx.lineTo(s[0].x + 0.1, s[0].y + 0.1);
+      inkCtx.stroke();
     };
-    cv.addEventListener('pointerup', end);
-    cv.addEventListener('pointercancel', end);
-    cv.addEventListener('pointerleave', end);
-    return st;
+    boxStrokes.forEach((group, i) => {
+      if (slots[i] == null) group.forEach(drawStroke); // a filled box shows its letter, not ink
+    });
+    if (inkDrawing) drawStroke(inkStroke);
+  }
+  boxInk.addEventListener('pointerdown', (e) => {
+    if (locked || inputMode !== 'draw') return;
+    sizeInk();
+    inkDrawing = true;
+    inkStroke = [inkXY(e)];
+    boxInk.setPointerCapture?.(e.pointerId);
+    inkPaint();
+    inkCtx.beginPath();
+    inkCtx.moveTo(inkStroke[0].x, inkStroke[0].y);
+    e.preventDefault();
+  });
+  boxInk.addEventListener('pointermove', (e) => {
+    if (!inkDrawing || locked) return;
+    const p = inkXY(e);
+    inkStroke.push(p);
+    inkCtx.lineTo(p.x, p.y);
+    inkCtx.stroke();
+    e.preventDefault();
+  });
+  const endInk = () => {
+    if (!inkDrawing) return;
+    inkDrawing = false;
+    const s = inkStroke;
+    inkStroke = [];
+    if (s.length) finalizeStroke(s);
+  };
+  boxInk.addEventListener('pointerup', endInk);
+  boxInk.addEventListener('pointercancel', endInk);
+  boxInk.addEventListener('pointerleave', endInk);
+
+  function finalizeStroke(stroke) {
+    const j = boxForStroke(stroke);
+    const tap = strokeSpan(stroke) < TAP_PX;
+    if (slots[j] != null) {
+      // the box already shows a letter: a TAP redoes it; a real stroke replaces it.
+      clearBox(j);
+      if (tap) {
+        repaintInk();
+        return;
+      }
+    }
+    boxStrokes[j].push(stroke);
+    clearTimeout(boxTimers[j]);
+    boxTimers[j] = setTimeout(() => recognizeBox(j), RECOGNIZE_DEBOUNCE_MS);
+    repaintInk();
+  }
+  async function recognizeBox(j) {
+    if (locked || inputMode !== 'draw' || !layoutWide) return;
+    const flat = boxStrokes[j].reduce((n, s) => n + s.length, 0);
+    if (flat < 2) return;
+    const cands = await recognizeStrokes(boxStrokes[j], 1);
+    if (!cands.length) {
+      toast('🤔 Try that letter again');
+      clearBox(j);
+      pulse(boxInk);
+      return;
+    }
+    fillBox(j, cands[0].letter);
   }
   function buildBoxes() {
     clearBoxTimers();
-    boxStates = slots.map((_, i) => makeBox(i));
-    boxesEl.replaceChildren(...boxStates.map((b) => b.box));
+    boxStrokes = slots.map(() => []);
+    boxTimers = slots.map(() => 0);
+    boxGuides = slots.map(() => {
+      const letterSpan = el('span', { class: 'lbox-letter' });
+      const guide = el('div', { class: 'lbox' }, letterSpan);
+      return { guide, letterSpan };
+    });
+    boxGuidesEl.replaceChildren(...boxGuides.map((g) => g.guide));
+    boxInk.width = 0; // force a re-size to the new row on the next paint/pointer
     syncBoxes();
+    requestAnimationFrame(sizeInk); // size once the row has laid out
   }
   function clearBox(i) {
-    const st = boxStates[i];
-    if (!st) return;
-    clearTimeout(st.timer);
-    st.strokes = [];
-    st.ctx.clearRect(0, 0, st.cv.width, st.cv.height);
+    if (!boxGuides[i]) return;
+    clearTimeout(boxTimers[i]);
+    boxStrokes[i] = [];
     slots[i] = null;
-    st.box.classList.remove('filled', 'locked');
-    st.letterSpan.textContent = '';
+    boxGuides[i].guide.classList.remove('filled', 'locked');
+    boxGuides[i].letterSpan.textContent = '';
+    repaintInk();
     updateBoxActive();
+    updateCheck();
   }
-  // WIDE recognition: AUTO-FILL the single best guess (the chosen per-box UX); tap to redo.
-  async function readBox(i) {
-    if (locked || inputMode !== 'draw' || !layoutWide) return;
-    const st = boxStates[i];
-    if (!st) return;
-    const flat = st.strokes.reduce((n, s) => n + s.length, 0);
-    if (flat < 2) return;
-    const cands = await recognizeStrokes(st.strokes, 1);
-    if (!cands.length) {
-      toast('🤔 Try that letter again');
-      clearBox(i);
-      pulse(st.cv);
-      return;
-    }
-    fillBox(i, cands[0].letter);
-  }
+  // AUTO-FILL the best guess for display only — grading waits for the Check button (Ian 2026-06-19g).
   function fillBox(i, letter) {
-    const st = boxStates[i];
-    if (!st) return;
+    if (!boxGuides[i]) return;
     slots[i] = letter.toLowerCase();
-    st.strokes = [];
-    st.ctx.clearRect(0, 0, st.cv.width, st.cv.height);
-    st.box.classList.add('filled');
-    st.letterSpan.textContent = slots[i];
+    boxGuides[i].guide.classList.add('filled');
+    boxGuides[i].letterSpan.textContent = slots[i];
     audio.sfx('tap');
+    repaintInk(); // the box's ink gives way to the recognised letter
     updateBoxActive();
-    if (slots.every((s) => s != null)) checkWord();
+    updateCheck();
   }
   function syncBoxes() {
-    boxStates.forEach((st, i) => {
-      st.ctx.clearRect(0, 0, st.cv.width, st.cv.height);
+    boxGuides.forEach((g, i) => {
       if (slots[i] != null) {
-        st.box.classList.add('filled');
-        st.letterSpan.textContent = slots[i];
+        g.guide.classList.add('filled');
+        g.letterSpan.textContent = slots[i];
       } else {
-        st.box.classList.remove('filled', 'locked');
-        st.letterSpan.textContent = '';
+        g.guide.classList.remove('filled', 'locked');
+        g.letterSpan.textContent = '';
       }
     });
+    repaintInk();
     updateBoxActive();
+    updateCheck();
   }
   // Mark the first empty box as `current` — a gentle "write here next" hint (free order, though).
   function updateBoxActive() {
     const next = slots.findIndex((s) => s == null);
-    boxStates.forEach((st, i) => st.box.classList.toggle('current', i === next));
+    boxGuides.forEach((g, i) => g.guide.classList.toggle('current', i === next));
+  }
+
+  // --- submit / check ------------------------------------------------------
+  // Enable the Check button only once every box is filled (it's shown in the wide layout, where
+  // boxes auto-fill guesses; the phone flow confirms each letter on tap, so it auto-checks).
+  function updateCheck() {
+    const all = slots.length > 0 && slots.every((s) => s != null);
+    checkBtn.disabled = !all;
+    checkBtn.classList.toggle('ready', all);
   }
 
   // --- keyboard fallback ---------------------------------------------------
@@ -448,8 +545,6 @@ export function startMastery(ctx, params = {}) {
     if (m === 'type') setTimeout(() => typeInput.focus(), 30); // raise the on-screen keyboard
   }
   // Build / reset whichever DRAW surface is now live (boxes in wide, single canvas in narrow).
-  // In WIDE layout the boxes exist for BOTH draw and type (the word display), so build them
-  // whenever wide; in NARROW only the single canvas needs resetting.
   function rebuildSurface() {
     if (layoutWide) buildBoxes();
     else {
@@ -458,25 +553,30 @@ export function startMastery(ctx, params = {}) {
     }
   }
   // Show/hide the input surfaces + adjust labels & hint text for the current layout/mode.
-  //   WIDE  → boxes are the word display (interactive in draw, a typed mirror in type).
-  //   NARROW→ the .slots row is the display + (single canvas | keyboard).
+  //   WIDE  → boxes are the word display (interactive in draw, a typed mirror in type) + Check.
+  //   NARROW→ the .slots row is the display + (single canvas | keyboard), auto-checks on complete.
   function applyLayout() {
     boxesEl.style.display = layoutWide ? '' : 'none';
-    boxesEl.classList.toggle('display-only', inputMode === 'type'); // not drawable while typing
+    boxesEl.classList.toggle('display-only', inputMode === 'type'); // overlay not drawable while typing
     slotsEl.style.display = layoutWide ? 'none' : '';
     drawStageEl.style.display = !layoutWide && inputMode === 'draw' ? '' : 'none';
     typeWrapEl.style.display = inputMode === 'type' ? '' : 'none';
+    submitRow.style.display = layoutWide ? '' : 'none'; // explicit submit only in the multi-box layout
     clearBtn.style.display = inputMode === 'type' ? 'none' : '';
     toggleBtn.textContent = inputMode === 'draw' ? '⌨️ Type it' : '✍️ Draw it';
     hintEl.textContent =
       inputMode === 'type'
-        ? 'Type the word you hear.'
+        ? layoutWide
+          ? 'Type the word, then tap ✓ Check.'
+          : 'Type the word you hear.'
         : layoutWide
-          ? 'Write each letter in its box — tap a box to redo it.'
+          ? 'Write each letter in its box, then tap ✓ Check. Tap a box to redo it.'
           : 'Draw a letter — I’ll guess it, then tap the one you meant.';
+    updateCheck();
   }
 
-  // Sync the slots from the typed text; auto-check once the whole word is typed.
+  // Sync the slots from the typed text. In the narrow layout this auto-checks when complete; in
+  // the wide layout the learner taps ✓ Check (consistent with the box flow there).
   function onTypeInput() {
     if (locked) return;
     const v = (typeInput.value || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, target.length);
@@ -484,7 +584,7 @@ export function startMastery(ctx, params = {}) {
     for (let i = 0; i < slots.length; i++) slots[i] = v[i] || null;
     cur = Math.min(v.length, slots.length - 1);
     renderBuilt();
-    if (v.length === target.length) checkWord();
+    if (!layoutWide && v.length === target.length) checkWord();
   }
 
   // --- placing / redoing (single-canvas + type) ---------------------------
@@ -495,7 +595,7 @@ export function startMastery(ctx, params = {}) {
     clearCanvas();
     cur = slots.findIndex((s) => s == null);
     renderBuilt();
-    if (cur === -1) checkWord();
+    if (cur === -1) checkWord(); // phone: each letter was confirmed on tap, so auto-check is fine
   }
   function redoSlot(i) {
     if (locked) return;
@@ -524,10 +624,11 @@ export function startMastery(ctx, params = {}) {
   function renderBuilt() {
     if (layoutWide) syncBoxes();
     else renderSlots();
+    updateCheck();
   }
   // Clear button (draw mode only): clears all boxes (wide) or the single canvas (phone).
   function clearCurrent() {
-    if (layoutWide) boxStates.forEach((_, i) => clearBox(i));
+    if (layoutWide) boxGuides.forEach((_, i) => clearBox(i));
     else clearCanvas();
   }
   function shakeBuilt() {
@@ -554,6 +655,8 @@ export function startMastery(ctx, params = {}) {
 
   // --- grading -------------------------------------------------------------
   function checkWord() {
+    if (locked) return;
+    if (slots.some((s) => s == null)) return; // not finished yet — nothing to grade
     const built = slots.join('');
     if (built === target) {
       locked = true;
@@ -563,18 +666,26 @@ export function startMastery(ctx, params = {}) {
       ctx.store.addGems(MASTERY_GEMS);
       ctx.store.recordAnswerStat(true, 'mastery');
       audio.sfx('combo');
-      audio.speakPraise('Mastered!');
       flashVerdict('⭐ Mastered!', `+${MASTERY_GEMS} 💎 · ${inputMode === 'draw' ? 'Drawn from memory' : 'Spelled it!'}`, '#FFD23F');
       const node = builtEl();
       const r = node.getBoundingClientRect();
       burst(r.left + r.width / 2, r.top + r.height / 2, '#FFD23F', 22);
       bumpGems();
       node.querySelectorAll('.slot, .lbox').forEach((s) => s.classList.add('locked'));
+      checkBtn.disabled = true;
       ctx.save();
-      setTimeout(() => {
+      // Advance to the next word only AFTER the praise has finished speaking, so the next
+      // dictation doesn't talk over "Mastered!" (Ian 2026-06-19g). A fallback timer covers the
+      // no-audio / onDone-never-fires case.
+      let advanced = false;
+      const advance = () => {
+        if (advanced) return;
+        advanced = true;
         index += 1;
         present();
-      }, 1300);
+      };
+      audio.speakPraise('Mastered!', { onDone: () => setTimeout(advance, 350) });
+      setTimeout(advance, 2600);
     } else {
       // a wrong finish is a gentle MISS (recordDraw(false): a mastered word drops to known,
       // a merely-known word stays known). Keep the correct letters, clear the wrong ones to redo.
@@ -586,6 +697,8 @@ export function startMastery(ctx, params = {}) {
         slots = slots.map(() => null); // a linear input can't show gaps — clear + retype
         typeInput.value = '';
         cur = 0;
+      } else if (layoutWide) {
+        for (let i = 0; i < slots.length; i++) if (slots[i] !== target[i]) clearBox(i); // keep correct
       } else {
         for (let i = 0; i < slots.length; i++) if (slots[i] !== target[i]) slots[i] = null; // keep correct
         cur = slots.findIndex((s) => s == null);
