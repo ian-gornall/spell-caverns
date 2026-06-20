@@ -495,6 +495,49 @@ peekable behind a 👀 button. (See the §31 banner above — all built on branc
 
 ---
 
+## §32 — INTERFACE-VOICE QUALITY + AUDIO-START GATING (Ian 2026-06-19g) — ⛔ NOT STARTED (recorded only)
+
+> Captured during §31 real-device testing. **Recorded only — no code yet.** Two related audio asks;
+> these are the FIRST things a new user hears, so they set the quality bar. Build test-first where it
+> touches engine, follow `QA.md`, bump `sw.js`/`version.js` on deploy. Relates to [[prefer-free-services]]
+> (Gemini free-tier TTS, ~3 req/min — see the §25 AUDIO-TAIL RESUME LOG + the lamejs reinstall GOTCHA).
+
+**A. The INTERFACE speech is still the robotic device voice — run it through Gemini too.** Today
+`scripts/gen_audio.mjs` only pre-generates Gemini clips for **dictated words** (`audio/words/`) and the
+fixed **praise/gentle phrases** (`audio/phrases/`, sourced from `praise.js` `SPEED_TIERS` /
+`GENTLE_PHRASES` / `COMBO_PHRASES`). **Every other spoken UI string** — the onboarding narration
+(`screens/onboarding.js`: "Hi! I'm Geo, your crystal guide…", "Pick your crystal colour!", the
+name/level/sync lines), mode hints, toasts, and the other `audio.say(...)` callers across
+`screens/{onboarding,settings,boss,geode}` + `modes/{rhythm,puzzle,mastery,lab}` — has **no clip**, so
+`audio.say()` falls through to `speakTTS()` (the device's robotic voice). Ian: "since these are the
+first things the user hears, it's very off-putting." **Ask:** collect the fixed interface strings into a
+catalog (like the phrases set), generate Gemini clips for them (probably a new `audio/ui/` bucket +
+manifest section, or fold them into `phrases`), and have `say()`/`speakPraise()` resolve them to clips.
+NOTE: only FIXED strings can be pre-generated — dynamic bits (the child's typed name, gem counts) can't,
+so design the lines so the variable part is minimal/omittable from speech, or accept TTS for just that
+token. Mind the free-tier rate cap (multi-day batches, per the §25 log).
+
+**B. Don't auto-talk on the intro — FORCE an interaction first; fixes the two-different-voices bug.**
+The onboarding intro currently **auto-speaks on mount** (`onboarding.js` `intro()` calls
+`audio.say("Hi! I'm Geo…")` immediately), but iOS unlocks audio only inside a user GESTURE and
+`audio.prime()` is wired to the FIRST `pointerdown` (`app.js:115`). So on first run the app tries to
+talk **before** a guaranteed gesture → on some systems the first line is blocked/missed or takes a
+different path than later (post-gesture) ones. Ian saw exactly this: **"one voice said the first thing,
+then a different voice said everything after."** Root cause = the mix of paths: `say()` plays a Gemini
+**clip** when the slug is in the manifest else falls back to device **TTS**, AND the manifest may not be
+loaded yet for the very first utterance (it self-heals via `ensureManifest()` on later calls) — so the
+first utterance can be TTS (one voice) and the rest clips (another), or blocked entirely. **Ask:** gate
+the start behind an explicit **"Tap to start 🔊"** interaction so audio is primed + the manifest is
+loaded BEFORE any narration, and every utterance then goes through the same (clip) path — consistent
+voice from the very first word, and never missed on stricter autoplay policies. (Pairs naturally with
+§32.A: once interface clips exist + audio is gated, the whole intro is one clean Gemini voice.)
+
+**Open questions to confirm before building (B/A):** new `audio/ui/` bucket vs extend `phrases`; which
+exact interface strings to voice (all `audio.say` literals, or a curated subset); whether the "Tap to
+start" gate is onboarding-only (first run) or also on every "Who's playing?" launch.
+
+---
+
 History (all ✅ DONE, deployed, QA'd): **§28** user backlog (this section — pricier crystals,
 always-ask who's-playing, offline printables, feedback-to-Ian + in-app archive); **§27** §26-A
 design brief + audio-manifest retry fix; **§24** §23 App-Store polish + daily geode + word
