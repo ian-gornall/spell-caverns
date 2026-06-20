@@ -201,6 +201,9 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    integration stays on existing vanilla surfaces WITHOUT touching `src/engine/**`; respect
    [[prefer-free-services]] + [[approval-before-consuming-limits]]. Partial §26-B already shipped
    dependency-free: owned-crystal glint + prefers-reduced-motion (§29, csc-v30).
+   **➡️ SUGGESTED PAIRING with §34 (phone polish):** do this review with §34 in mind — the kidenv
+   inventory may surface reusable phone-friendly assets (art, icons, and especially **spacing/type-scale
+   tokens** from the other kid-apps) that the §34 proportions tuning can adopt, so the two land together.
 5. ✅ **§26-A #8 (slim child Settings) — DONE (§29, csc-v28).**
 6. ✅ **§30 — LEARNING-MODEL REDESIGN + MASTERY (draw) mode (Ian 2026-06-19d) — SHIPPED + LIVE
    (sw `csc-v36`), verified on prod + on Ian's real iPad ("yes that works", 2026-06-19g).** All 6
@@ -319,6 +322,10 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 > 390×844, 414×896 portrait; a landscape pass) — take before/after screenshots and judge proportions, not
 > just overflow. Touches mainly `styles.css` (+ maybe `src/ui.js` `fitPlayArea` floor). Bump `sw.js` /
 > `version.js` on deploy. iPad-primary, phones a strong second.
+>
+> **➡️ SUGGESTED PAIRING with §26-B (kidenv asset review):** consider doing §26-B first or alongside this
+> — the kidenv inventory may surface reusable phone-friendly assets and, especially, **spacing / type-scale
+> tokens** from the other kid-apps that this proportions tuning can adopt, so the two land together.
 
 ---
 
