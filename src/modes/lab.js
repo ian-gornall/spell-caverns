@@ -13,7 +13,7 @@
 //              (nonsense words aren't real words, so they must not touch mastery).
 //
 // UI module — verified with Playwright, never imported by `node --test`.
-import { el, header, burst, toast, createIdleGuard } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard, NO_AUTOFILL } from '../ui.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { makeNonsenseWord, NONSENSE_PATTERNS } from '../engine/nonsense.js';
 import { scrambleTray, gradeBuild } from '../engine/puzzle.js';
@@ -446,6 +446,7 @@ export function startLab(ctx) {
     const input = el('input', {
       type: 'text',
       class: 'lab-name',
+      ...NO_AUTOFILL,
       value: suggestion,
       maxLength: 24,
       placeholder: 'Name your crystal',

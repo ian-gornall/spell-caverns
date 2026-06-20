@@ -8,9 +8,27 @@
 // el('button', { class:'tile', onClick: fn }, 'text', childNode, [more, nodes])
 // - on* keys become event listeners; `style`/`dataset` accept objects; falsy
 //   children are skipped (so `cond && el(...)` works inline).
+// Inputs must NOT show the mobile keyboard's autofill / autocomplete / autocorrect /
+// spellcheck suggestion strip: kids type the spelling (and their name) themselves, the
+// suggestion bar both defeats the exercise and clutters the small UI, and a contact-name
+// autofill could leak into the child's name field. Spread into an el() input's attrs.
+export const NO_AUTOFILL = {
+  autocomplete: 'off',
+  autocorrect: 'off',
+  autocapitalize: 'off',
+  spellcheck: 'false',
+};
+
 export function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
+    // `spellcheck` is a boolean IDL property — assigning the string 'false' to it is
+    // TRUTHY (leaving spellcheck ON), so always reflect it through the attribute. Handle
+    // it before the falsy-skip so `spellcheck: false` also disables it (not a no-op).
+    if (k === 'spellcheck') {
+      node.setAttribute('spellcheck', v === false || v === 'false' ? 'false' : 'true');
+      continue;
+    }
     if (v == null || v === false) continue;
     if (k === 'class' || k === 'className') node.className = v;
     else if (k === 'html') node.innerHTML = v;
@@ -180,7 +198,7 @@ export function parentalGate({ title = 'Grown-ups only 🔒', body = [], agree =
   const b = 2 + Math.floor(Math.random() * 8);
   const close = (fn) => { overlay.remove(); if (fn) fn(); };
   const answerInput = el('input', {
-    type: 'number', inputmode: 'numeric', class: 'gate-answer', 'aria-label': 'Answer the question',
+    type: 'number', inputmode: 'numeric', autocomplete: 'off', class: 'gate-answer', 'aria-label': 'Answer the question',
     onKeydown: (e) => { if (e.key === 'Enter') submit(); },
   });
   let consented = !agree; // no consent line ⇒ already satisfied

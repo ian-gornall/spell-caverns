@@ -4,7 +4,7 @@
 // learner name, and data export/import/reset. Harder difficulties show LOCKED
 // until mastery unlocks them (HANDOFF §4: unlock, never force) — tapping a locked
 // one explains how to unlock it rather than doing nothing.
-import { el, header, toast, applyTheme, applyReadable, picturePad } from '../ui.js';
+import { el, header, toast, applyTheme, applyReadable, picturePad, NO_AUTOFILL } from '../ui.js';
 import * as audio from '../audio.js';
 import * as push from '../push.js';
 import * as sync from '../cloud_sync_backend.js';
@@ -361,6 +361,7 @@ export function settingsScreen(ctx) {
   // learner name
   const nameInput = el('input', {
     type: 'text',
+    ...NO_AUTOFILL,
     value: ctx.state.profile.name || '',
     placeholder: 'Explorer',
     maxLength: '20',
@@ -707,8 +708,7 @@ export function settingsScreen(ctx) {
       type: 'text',
       placeholder: 'Family password',
       maxLength: 40,
-      autocapitalize: 'none',
-      autocomplete: 'off',
+      ...NO_AUTOFILL,
       disabled: 'disabled',
     });
     const goBtn = el('button', { class: 'btn primary', disabled: 'disabled', onClick: () => enableSync(codeInput.value) }, '☁️ Turn on sync');
@@ -853,6 +853,7 @@ export function settingsScreen(ctx) {
       // Show the lock gate.
       const pwInput = el('input', {
         type: 'password',
+        autocomplete: 'off',
         placeholder: 'Grown-up password',
         style: { display: 'none' },
       });
@@ -899,7 +900,7 @@ export function settingsScreen(ctx) {
             el('label', {}, 'Grown-up password'),
             el('p', { class: 'field-hint' }, 'A password is set. Change or remove it below.'),
             (() => {
-              const inp = el('input', { type: 'password', placeholder: 'New password (4+ chars), blank to remove' });
+              const inp = el('input', { type: 'password', autocomplete: 'new-password', placeholder: 'New password (4+ chars), blank to remove' });
               const saveBtn = el(
                 'button',
                 {
@@ -974,7 +975,7 @@ export function settingsScreen(ctx) {
   // --- Set grown-up password (shown only when none is set) -----------------
   const setPwBlock = !pw
     ? (() => {
-        const inp = el('input', { type: 'password', placeholder: 'Choose a password (4+ chars)' });
+        const inp = el('input', { type: 'password', autocomplete: 'new-password', placeholder: 'Choose a password (4+ chars)' });
         const saveBtn = el(
           'button',
           {

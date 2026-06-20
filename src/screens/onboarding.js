@@ -5,7 +5,7 @@
 // speaks each prompt. On finish we CREATE a new profile (store.addProfile) and make it
 // active, so siblings each get their own progress. Family sync is a parent/family concern
 // and lives in Settings (not here). UI module — never imported by node --test.
-import { el, mascot, applyTheme, toast } from '../ui.js';
+import { el, mascot, applyTheme, toast, NO_AUTOFILL } from '../ui.js';
 import { wordsByTier } from '../engine/lexicon.js';
 import * as sync from '../cloud_sync_backend.js';
 import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
@@ -126,7 +126,7 @@ export function onboardingScreen(ctx) {
   // --- step 2: name ---------------------------------------------------------
   function askName() {
     const line = UI.askName;
-    const input = el('input', { type: 'text', class: 'onboard-name', placeholder: 'Type your name', maxLength: 20, value: chosenName });
+    const input = el('input', { type: 'text', class: 'onboard-name', placeholder: 'Type your name', maxLength: 20, value: chosenName, ...NO_AUTOFILL });
     const next = () => {
       chosenName = (input.value || '').trim().slice(0, 20);
       chooseColour();
@@ -200,7 +200,7 @@ export function onboardingScreen(ctx) {
   }
 
   function syncSetup() {
-    const input = el('input', { type: 'text', class: 'onboard-name', placeholder: 'Family password', maxLength: 40, autocapitalize: 'none', autocomplete: 'off', disabled: 'disabled' });
+    const input = el('input', { type: 'text', class: 'onboard-name', placeholder: 'Family password', maxLength: 40, ...NO_AUTOFILL, disabled: 'disabled' });
     const goBtn = el('button', { class: 'btn primary onboard-go', disabled: 'disabled', onClick: () => enableSync(input.value) }, '☁️ Turn on sync');
     const consentRow = el(
       'label',

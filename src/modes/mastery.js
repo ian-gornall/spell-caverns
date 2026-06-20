@@ -21,7 +21,7 @@
 //   one-time GROWN-UP consent (mic → cloud transcription; COPPA — see speech.js / PRIVACY.md).
 //
 // UI module — verified with Playwright.
-import { el, header, burst, toast, createIdleGuard, pulse, parentalGate, fitPlayArea } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard, pulse, parentalGate, fitPlayArea, NO_AUTOFILL } from '../ui.js';
 import { buildMasteryPool } from '../engine/selection.js';
 import { recordDraw, unlocks } from '../engine/categories.js';
 import { recognizeGrid, pointsToGrid, GRID_N } from '../engine/handwriting.js';
@@ -175,10 +175,7 @@ export function startMastery(ctx, params = {}) {
     class: 'draw-type-input',
     type: 'text',
     inputmode: 'text',
-    autocapitalize: 'off',
-    autocomplete: 'off',
-    autocorrect: 'off',
-    spellcheck: 'false',
+    ...NO_AUTOFILL,
     'aria-label': 'Type the word',
     onInput: onTypeInput,
     onKeydown: (e) => {

@@ -6,7 +6,7 @@
 // Student-guided (HANDOFF §4): the kid gives feedback in their own words; it's
 // stored locally and leaves only via export. Giving feedback earns a few gems so
 // it feels worth doing. UI module — never imported by `node --test`.
-import { el, header, toast } from '../ui.js';
+import { el, header, toast, NO_AUTOFILL } from '../ui.js';
 import { postFeedback } from '../feedback_client.js';
 
 const RATINGS = [
@@ -70,6 +70,7 @@ export function feedbackScreen(ctx) {
     class: 'feedback-note',
     rows: '3',
     maxLength: '400',
+    ...NO_AUTOFILL,
     placeholder: 'Anything you want to tell us? (optional)',
   });
 

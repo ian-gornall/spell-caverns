@@ -144,7 +144,13 @@
 //      so a reinstall fetches the fresh orientation instead of a stale HTTP-cached copy. NOTE: an
 //      already-installed PWA bakes orientation at INSTALL time (iOS/Android WebAPK), so the manifest
 //      change alone won't rotate it — the home-screen app must be REMOVED + RE-ADDED to pick up "any".
-const VERSION = 'csc-v46';
+// csc-v47: §11 DISABLE KEYBOARD AUTOFILL — kill the mobile keyboard's autofill / autocomplete /
+//      autocorrect / spellcheck suggestion strip on every text input (it could SUGGEST or auto-replace
+//      the spelling, defeating the Mastery type-mode exercise, and clutter the kid UI). Root cause: the
+//      el() helper set the boolean `spellcheck` PROPERTY to the string 'false' (TRUTHY → spellcheck
+//      stayed ON) despite the attribute being present; el() now reflects it via the attribute + a shared
+//      NO_AUTOFILL constant is applied to all inputs (mastery type, names, family password, feedback).
+const VERSION = 'csc-v47';
 
 const CORE = [
   '/',
