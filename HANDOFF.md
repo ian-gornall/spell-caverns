@@ -176,16 +176,20 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    0 console errors), smoke + qa_responsive/overflow/fold green. **NOTE:** the settings voice-picker/speed
    previews stay TTS on purpose (they audition the DEVICE voice). ⚠️ OWED: a real-device pass (iPad/iOS) to
    confirm the gate unlocks iOS audio + the clips sound right on hardware.
-3. **AUDIO TAIL — IN PROGRESS (multi-day free path). csc-v43 (2026-06-20) added +460 word clips →
-   2298/2919 done; ~621 word clips remain.** (2298 word + 35 phrase + 10 ui ship as of csc-v43; manifest
-   matches.) **Time-gated by the daily quota:** on 2026-06-20 model-1 (gemini-3.1-flash-tts) was already
-   spent by the §32.A interface run, then gemini-2.5-flash gave +460 before all 3 models walled. Resets
-   daily. Each run: `npm i --no-save @breezystack/lamejs` (it gets pruned by other --no-save installs —
-   reinstall right before) → `npm run gen:audio words` (skips done, BATCH_SIZE=40) → commit new `audio/`
-   clips → bump `sw.js`/`version.js` → push → `node scripts/check_deploy.mjs csc-vNN`. Pre-approved FREE
-   path; honour [[approval-before-consuming-limits]] per run. (Minor owed: spot-listen the 2 small-byte
-   new clips `parking`/`bear` on a real device — size matches the proven set so likely fine.)
-4. **§26-B — ASSETS REVIEW of `C:\Users\iango\kidenv` → an ARTIFACT (Ian 2026-06-20, REVISED scope).**
+3. **AUDIO TAIL — IN PROGRESS (multi-day free path). csc-v43 (2026-06-20) added +459 word clips →
+   2297/2919 done; ~621 word clips remain.** (2297 word + 35 phrase + 10 ui ship as of csc-v43; manifest
+   matches disk.) **Time-gated by the daily quota:** on 2026-06-20 model-1 (gemini-3.1-flash-tts) was
+   already spent by the §32.A interface run, then gemini-2.5-flash gave +460 before all 3 models walled.
+   Resets daily. ⚠️ **Windows reserved-name gotcha:** the word "con" → `con.mp3`, which MSYS/Node can write
+   but native git can't index — `gen_audio.mjs` now SKIPS reserved slugs (CON/PRN/AUX/NUL/COM0-9/LPT0-9) →
+   TTS fallback (so the batch was +459 net, not 460; `con` 404s → TTS on prod). Each run: `npm i --no-save
+   @breezystack/lamejs` (it gets pruned by other --no-save installs — reinstall right before) → `npm run
+   gen:audio words` (skips done, BATCH_SIZE=40) → commit new `audio/` clips → bump `sw.js`/`version.js` →
+   push → `node scripts/check_deploy.mjs csc-vNN`. Pre-approved FREE path; honour
+   [[approval-before-consuming-limits]] per run. (Minor owed: spot-listen the 2 small-byte new clips
+   `parking`/`bear` on a real device — size matches the proven set so likely fine.)
+4. **§26-B — ASSETS REVIEW of `C:\Users\iango\kidenv` → an ARTIFACT — ⏳ STILL OPEN, NOT STARTED (status
+   as of 2026-06-20; no artifact exists in the repo yet).** (Ian 2026-06-20, REVISED scope.)
    Ian's revised direction: the free/low-cost assets task is **a review of what already exists in the
    `C:\Users\iango\kidenv` directory** (his other kid-apps workspace — art/audio/icon/library assets
    already gathered there) to **see what's available + reusable here**, and **generate an ARTIFACT
@@ -207,7 +211,13 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 7. ✅ **§31 — MASTERY UX + MASTERY-FIRST NUDGING (Ian 2026-06-19g) — SHIPPED + LIVE (csc-v40), writing
    APPROVED on iPad.** Whole-word multi-box writing on wide screens, dictation→§32 voice (shelved),
    mastery-first nudging + `recommendNext`. Full detail in §31 below.
-8. ✅ **§33 — PHONE LAYOUT, truly fixed (Ian 2026-06-20) — DONE + QA'd + LIVE (csc-v41).** See §33 below.
+8. ✅ **§33 — PHONE LAYOUT co-visibility, fixed (Ian 2026-06-20) — DONE + QA'd + LIVE (csc-v41).** See §33
+   below. ➡️ **Follow-up: §34 (phone PROPORTIONS / visual polish) is OPEN** — usable now, but looks off.
+9. **🆕 §34 — PHONE PROPORTIONS / VISUAL POLISH (Ian 2026-06-20) — OPEN, the top UX item.** After §33 the
+   app is USABLE on phones (real progress) but the proportions look "pretty weird": **titles too big, play
+   area too small**; margins / padding / text sizes want phone-specific tuning. NOT a functional/overflow
+   bug (§33 fixed co-visibility) — a visual-HIERARCHY problem. Needs interactive visual QA (screenshot →
+   LOOK → adjust), iPad kept pixel-identical, §29/§33 guards green. Full brief in §34 below.
 
 ---
 
@@ -248,6 +258,67 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 > `npm run smoke` green; `qa.mjs` 0 console errors. sw `csc-v40`→**`csc-v41`** + `src/version.js` bumped
 > (no new precached files). Files: `styles.css`, `src/ui.js`, `src/modes/{puzzle,mastery,rhythm}.js`,
 > `sw.js`, `src/version.js`; new probe `scripts/qa_phone_audit.mjs`.
+
+---
+
+## §34 — PHONE PROPORTIONS / VISUAL POLISH (Ian 2026-06-20) — 🆕 OPEN (the top UX item)
+
+> **Ian's feedback (verbatim sense), after §33 shipped:** "The app is usable now on phones but looks
+> pretty weird. The proportions are off in a way that is hard to describe — like the **titles are too
+> big and the play area too small**. But again, it works, so we've made progress. Particularly,
+> **margins, padding, text sizes, etc. could be better optimized for phones.**"
+>
+> **Read this as:** §33 solved the FUNCTIONAL problem (word + interaction surface + buttons co-visible
+> for any word length — no more clipping/scrolling). What's left is a VISUAL-HIERARCHY / proportions
+> problem, NOT an overflow bug. The objective guards (`qa_overflow`/`qa_fold`/`qa_phone_audit`) are all
+> green and CAN'T catch "looks weird" — so this needs **interactive visual QA** (screenshot → LOOK →
+> adjust → repeat), per `QA.md` + [[interactive-visual-qa]]. iPad is the primary device and the
+> §31-approved iPad layout must stay **pixel-identical** (don't regress it while tuning phones).
+>
+> **Likely root cause (a lead, not a diagnosis — verify with screenshots first):** §33's `--play-scale`
+> SHRINKS the play area to fit the viewport height, but the surrounding CHROME (the home/header titles,
+> per-screen `h1/h2`, mascot bubble, card titles, paddings, margins, header height) stayed iPad-tuned.
+> So on a ~360–414px phone the big titles + generous spacing eat the viewport, `fitPlayArea` then has to
+> shrink the tiles hard to fit what's left → the title dominates and the play area looks tiny/cramped.
+> Net: the CHROME should shrink on phones so the PLAY AREA gets a larger share (and needs less
+> down-scaling), and the type/spacing scale should step down for phones.
+>
+> **MEASURED EVIDENCE (2026-06-20, `scripts/qa_phone_audit.mjs` + screenshots — confirms the lead):**
+> - **The top chrome is a ~250px FIXED block that doesn't shrink with the viewport.** Home content
+>   (`.menu-card.craft`) starts at **top=252px on BOTH 360- and 390-wide phones** — i.e. **34% of a 740px
+>   phone / 30% of an 844px phone is consumed by header + title before any content**, vs only **27% on the
+>   1180px iPad** (where the same chrome is a smaller fraction, so iPad looks fine). The chrome is
+>   iPad-proportioned and eats a disproportionate share of a short phone.
+> - **Craft @390×844: an ~81px DEAD GAP** between the dictation sentence (`.sentence` bottom=330) and the
+>   word slots (`.slots` top=411); the play content (slots h=135 + tray h=202) is squeezed into the lower
+>   ~half. The screenshot shows the same: a big empty band in the upper-middle, loose spacing.
+> - **`--play-scale` already drops to 0.9 (craft) / 0.85 (mastery candidates) at 360px** while the chrome
+>   stays full-size — the play area shrinks *before* the chrome does. (At 390 scale is still 1, yet it
+>   still "feels off" because the chrome is big + the gap is wide.) iPad portrait correctly stays scale=1.
+> - The audit's only hard FAILs are the two LANDSCAPE home menus (a by-design scroll) — i.e. **no new
+>   functional/overflow regression; this is purely proportions.** So the next session can tune freely
+>   against `qa_phone_audit` numbers (push the chrome% DOWN, the play-area share UP) without fear of
+>   breaking co-visibility, as long as the guards stay green.
+>
+> **Suggested approach (confirm with Ian if a direction is ambiguous; otherwise pick the obvious tuning):**
+> - **Phone type scale** — step down the big type on `@media (max-width:480px)` (and a tighter tier at
+>   `≤360px`): `.home-title`, `.header-title`, screen `h1/h2`, `.mascot` text, card/section titles. A
+>   fluid `clamp(min, vw-based, max)` keyed to viewport width would scale smoothly phone↔tablet instead of
+>   a hard breakpoint (and keeps the iPad max pinned).
+> - **Tighten chrome spacing on phones** — header height, screen padding, card padding, section gaps,
+>   the gem/depth header — so vertical budget goes to the play area, not margins.
+> - **Give `.play-body` a bigger share of the phone viewport** so `fitPlayArea` rarely needs to drop below
+>   ~0.8 (raise the effective floor by shrinking chrome, not tiles). Check the resulting `--play-scale`
+>   values in the audit at 360/390/414 — if they're well under 1 on short words, the chrome is too greedy.
+> - **Re-balance the dictation prompt** (hear button / sentence / verdict) sizes for phones — these sit
+>   directly above the play area and contribute to the "title too big, play too small" feel.
+>
+> **Constraints / DoD:** iPad portrait + landscape unchanged (re-verify scale=1 on iPad portrait); keep
+> `qa_responsive` / `qa_overflow`(Galaxy) / `qa_fold` / `qa_phone_audit` green (no new horizontal pan or
+> below-fold regressions); vanilla CSS where possible. **Verify by EYE on real phone widths** (360×740,
+> 390×844, 414×896 portrait; a landscape pass) — take before/after screenshots and judge proportions, not
+> just overflow. Touches mainly `styles.css` (+ maybe `src/ui.js` `fitPlayArea` floor). Bump `sw.js` /
+> `version.js` on deploy. iPad-primary, phones a strong second.
 
 ---
 
