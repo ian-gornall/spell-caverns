@@ -236,6 +236,45 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    token system** (see §26-B) this pass — that's a larger refactor that risks the pixel-identical iPad
    constraint; the surgical phone fix achieves the goal at zero iPad risk. Files: `styles.css`, `sw.js`,
    `src/version.js`. ⚠️ OWED: a real-device pass on an actual phone (judged via emulation + screenshots only).
+10. ✅ **§35 — REWARD-SCREEN OVERLAY FIX + ORIENTATION UNLOCK (Ian 2026-06-20) — DONE + LIVE (csc-v45/v46).
+   ✅ ROTATION CONFIRMED WORKING by Ian (2026-06-20)** after he removed + re-added the home-screen PWA. (1)
+   The end-of-session reward's pinned button row covered the gem-haul text on short viewports → fixed
+   (full-width primary CTAs + a compact 3-across nav row on narrow phones; inline buttons in landscape;
+   iPad portrait unchanged). (2) manifest `orientation` portrait→`any` + `_headers` `no-cache` on the
+   manifest (csc-v46). **GOTCHA recorded:** an installed PWA BAKES `orientation` at add-to-home-screen time
+   (iOS / Android WebAPK), so the manifest change alone didn't rotate it — the fix required REINSTALLING the
+   icon. Full detail in §35 below.
+
+**🆕 NEW BACKLOG (Ian 2026-06-20, in priority order — "update the handoff only, do not code" for these):**
+
+11. **🆕 DISABLE KEYBOARD AUTOFILL — OPEN, the NEXT item. ➡️ DEPLOY IMMEDIATELY AFTER QA (Ian).** Turn off the
+   mobile keyboard's autofill / autocomplete / autocorrect / suggestion strip on the app's text inputs. Prime
+   suspect = the **Mastery keyboard-fallback "type the word" input** (autocorrect / autofill can SUGGEST or
+   auto-replace the spelling, defeating the exercise and cluttering the kid UI). Likely fix: on the relevant
+   `<input>`(s) set `autocomplete="off"`, `autocorrect="off"`, `autocapitalize="off"`, `spellcheck="false"`
+   (iOS can be stubborn — may also need an unusual `name`/`inputmode`, or `autocomplete="one-time-code"`, to
+   fully suppress the suggestion bar). **FIRST find every text input** (grep `createElement('input'` /
+   `type: 'text'` / `contenteditable` across `src/`: mastery type-mode, Settings name field, family password,
+   feedback box). Test-first only where logic changes; otherwise QA by EYE on a real device keyboard, then
+   **deploy immediately.**
+
+12. **🆕 LANDSCAPE-PHONE PLAY SIZING — OPEN. ➡️ DEPLOY after QA.** Verbatim (Ian): in horizontal phone view
+   "the top part with no buttons takes up most of the screen which makes the buttons on the bottom tiny, and
+   the letters chosen also super small." I.e. in **landscape phone** the upper PROMPT zone (Hear-it-again +
+   sentence) eats most of the vertical band, squeezing the play area so the **TRAY letter buttons + the SLOT
+   (chosen) letters render tiny**. Fix: rebalance the landscape proportions (the phone `@media (max-height:520px)`
+   band) — cap/shrink the top prompt, give the play area (slots + tray) the MAJORITY of the height, and stop
+   `fitPlayArea`/`--play-scale` from driving the tiles so small (raise the effective floor by shrinking the
+   prompt, not the tiles). iPad landscape already looks good — keep it; keep the §29/§33 guards green. Needs
+   interactive visual QA at real landscape-phone sizes (e.g. 740×360, 844×390). Then **deploy.**
+
+13. **🆕 ONE-SCREEN-AT-A-TIME EXPERIMENT — OPEN, TEST-ONLY (separate BRANCH + TEST URL).** On a NEW branch
+   (do NOT merge to main), build an experimental variant that shows exactly ONE screen at a time with **NO
+   vertical OR horizontal scroll anywhere** — every screen must fit the viewport (likely aggressive
+   fit-to-viewport scaling + paginating any long content, e.g. Settings / Progress / Catalog, into stepped
+   screens instead of scrolling). **FOR TESTING ONLY** — deploy it to a SEPARATE TEST URL (a preview/branch
+   deploy, or a second Cloudflare Worker/route) so Ian can compare it against the scrolling production build.
+   Keep `main` + prod untouched.
 
 ---
 
@@ -352,8 +391,11 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 
 ---
 
-## §35 — REWARD-SCREEN OVERLAY FIX + ORIENTATION UNLOCK (Ian 2026-06-20) — ✅ DONE + QA'd + LIVE (csc-v45)
+## §35 — REWARD-SCREEN OVERLAY FIX + ORIENTATION UNLOCK (Ian 2026-06-20) — ✅ DONE + QA'd + LIVE (csc-v45/v46) · ✅ ROTATION CONFIRMED WORKING
 
+> **✅ UPDATE 2026-06-20: rotation now WORKS on Ian's device** after he removed + re-added the home-screen
+> PWA (the installed-PWA orientation bake, below). Both §35 issues are fully resolved on-device.
+>
 > Two issues Ian reported after §34 shipped ("its working ok" + these):
 >
 > **(1) "When I end a crafting session, buttons appear overlaying a screen behind it that scrolls and
@@ -391,10 +433,11 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 > orientation BAKE**: iOS (and Android via the generated WebAPK) read `orientation` at ADD-TO-HOME-SCREEN
 > time and do NOT re-read it when the manifest changes — so an app installed under the old `portrait` stays
 > portrait until it's REMOVED + RE-ADDED. csc-v46 adds `Cache-Control: no-cache` for `manifest.webmanifest`
-> in `_headers` so the reinstall fetches the fresh manifest (not a stale HTTP copy). **USER ACTION REQUIRED:**
-> delete the home-screen icon → reopen spell.pryzmio.com in the browser → Add to Home Screen → relaunch; and
-> make sure the device ROTATION LOCK (iOS Control Center) is off. In a plain browser tab the manifest doesn't
-> apply at all, so there it rotates with the device (gated only by the OS rotation lock).
+> in `_headers` so the reinstall fetches the fresh manifest (not a stale HTTP copy). **RESOLUTION:** Ian
+> deleted the home-screen icon → re-added it from the browser → **rotation now works** (2026-06-20). (For
+> reference: in a plain browser tab the manifest doesn't apply at all, so there it rotates with the device,
+> gated only by the OS rotation lock.) ➡️ **Follow-up landscape polish is now backlog #12** — in landscape
+> phone the play buttons + chosen letters render too small; see §0 OPEN BACKLOG #12.
 
 ---
 
