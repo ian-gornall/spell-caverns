@@ -352,6 +352,41 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 
 ---
 
+## §35 — REWARD-SCREEN OVERLAY FIX + ORIENTATION UNLOCK (Ian 2026-06-20) — ✅ DONE + QA'd + LIVE (csc-v45)
+
+> Two issues Ian reported after §34 shipped ("its working ok" + these):
+>
+> **(1) "When I end a crafting session, buttons appear overlaying a screen behind it that scrolls and
+> can't really be seen."** ROOT CAUSE (reproduced objectively with a throwaway auto-solver probe): the
+> end-of-session reward (`.reward`, shared by craft `modes/puzzle.js` + mastery + mining) pins its action
+> `.row` to the bottom on short viewports (`@media max-height:800px`, the §27 CTA-reachability design). With
+> up to **5 buttons** (Craft again · Master them · Mine · Progress · Home) the pinned row **flex-wrapped to
+> ~388px = ~60% of a short phone**, so it COVERED the gem-haul / "now master them" text scrolling behind it.
+> Measured: at 360×640 the reward overflowed +198px with the buttons overlapping "+gems crafted".
+> **FIX (styles.css):** on NARROW phones (`max-height:800px AND max-width:480px`) the 1–2 PRIMARY CTAs go
+> full-width + prominent and the 3 secondary nav buttons pack into ONE compact row → the pinned block drops
+> to ~188px and the haul stays readable above it. In LANDSCAPE (`max-height:520px`) it drops the decorative
+> emoji + the Total/next-step paragraphs and lays every button INLINE (auto-width) so all 5 fit in ~1–2 short
+> rows. Scoped so iPad-landscape (1024×768, wide+short) keeps NATURAL-width buttons (no stretched primary)
+> and **iPad PORTRAIT is unchanged** (1180px tall → the short-tier never applies). Also shortened
+> `"⛏️ Mine (fast)"` → `"⛏️ Mine"` so the nav row fits a 360px phone. **Verified overflow=0 at 360/390
+> portrait, 390×690 (toolbar), 740×360 landscape, 820×1180 iPad portrait, 1024×768 iPad landscape**, with
+> before/after screenshots eyeballed. The same `.reward` fix automatically covers the mastery + mining
+> reward screens (fewer buttons, also tidier).
+>
+> **(2) "I should be able to tilt into landscape and I'm locked in portrait."** The PWA `manifest.webmanifest`
+> had `"orientation": "portrait"`, which locks an INSTALLED PWA. Changed to **`"orientation": "any"`** — the
+> app already has full landscape CSS (§33 + the new §35 landscape reward tier), so rotation now works. (An
+> already-installed PWA re-reads the manifest on the next SW update, so csc-v45 unlocks it.)
+>
+> **QA (all green):** 277 tests · `qa_phone_audit` (iPad-portrait `--play-scale=1` preserved, phones clean) ·
+> `qa_overflow`(Galaxy) ✅ no inner-scroll/bleed · `qa_fold` PASS · `qa_responsive` all viewports `horiz=0` ·
+> the dedicated reward repro across 6 viewports. Files: `styles.css`, `manifest.webmanifest`,
+> `src/modes/puzzle.js` (label), `sw.js`, `src/version.js`. sw `csc-v44`→**`csc-v45`**.
+> ⚠️ OWED: a real-device pass — confirm rotation works on Ian's actual iPad/phone + the reward reads well there.
+
+---
+
 ## §30 — LEARNING-MODEL REDESIGN + MASTERY (DRAW) MODE (Ian 2026-06-19d) — ✅ SHIPPED + LIVE (csc-v36)
 
 > **DONE + DEPLOYED: all SIX build-order steps + the user's 2026-06-19f follow-ups, shipped + verified.**

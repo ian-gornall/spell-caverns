@@ -553,7 +553,7 @@ export function startPuzzle(ctx, params = {}) {
         { class: 'row' },
         primary,
         masterCta,
-        el('button', { class: 'btn', onClick: () => ctx.nav('rhythm') }, '⛏️ Mine (fast)'),
+        el('button', { class: 'btn', onClick: () => ctx.nav('rhythm') }, '⛏️ Mine'),
         el('button', { class: 'btn', onClick: () => ctx.nav('progress') }, '🗺️ Progress'),
         el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
       ),

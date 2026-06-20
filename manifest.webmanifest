@@ -5,7 +5,7 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#070a1c",
   "theme_color": "#0b1026",
   "categories": ["education", "games", "kids"],

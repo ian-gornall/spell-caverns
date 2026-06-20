@@ -133,7 +133,14 @@
 //      fresh word (empty combo-label + combo bar + dots) and the empty verdict/verdict-chip reserves,
 //      so fitPlayArea keeps FULL-SIZE tiles (scale ~1, was 0.9) — the "play area too small" fix; plus a
 //      lighter home title + tighter hero spacing. styles.css only; iPad portrait stays pixel-identical.
-const VERSION = 'csc-v44';
+// csc-v45: REWARD-SCREEN overlay fix + orientation unlock. (1) End-of-session reward (craft/mastery/
+//      mining): on SHORT viewports the pinned button row grew to ~60% of the screen and COVERED the
+//      gem-haul text scrolling behind it. Now: narrow phones get full-width primary CTAs + a compact
+//      3-across nav row; landscape drops the decorative emoji/paragraphs and lays buttons inline — so
+//      nothing overlaps at any size (verified 360/390 portrait + landscape phone + iPad land). iPad
+//      PORTRAIT reward unchanged. "Mine (fast)"→"Mine" so the nav row fits narrow. (2) manifest
+//      orientation portrait→any so the installed PWA can rotate to landscape (CSS already supports it).
+const VERSION = 'csc-v45';
 
 const CORE = [
   '/',
