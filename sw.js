@@ -166,7 +166,10 @@
 //      inflated) + flex-centered glyph + global text-size-adjust:100%. Landscape: keys were ~16-22px
 //      tall ("tiny in widescreen") → vh-based key height+font, wider keys, smaller word boxes + compact
 //      Check/toggle to free vertical room (keys now ~26-33px / ~14-17px font). iPad keypad still fits.
-const VERSION = 'csc-v50';
+// csc-v51: AUDIO TAIL (#3) — +160 neural-TTS word clips (2297→2457/2918; ~461 remain, daily-quota
+//      gated). Clips are network-fetched (never sw-cached), so they work without a precache change;
+//      this bump just advances the visible build version + busts any cached /audio/manifest.json.
+const VERSION = 'csc-v51';
 
 const CORE = [
   '/',
