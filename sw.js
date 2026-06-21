@@ -177,7 +177,11 @@
 //      display) shrunk to free vertical budget; and in LANDSCAPE the Mastery prompt lays on one row
 //      with a tighter gap so the keypad keeps full size (all non-phone now --play-scale=1, ~36px keys).
 //      DRAW-mode boxes (:not(.display-only)) + iPad-portrait layout untouched (§31 / qa_phone_audit).
-const VERSION = 'csc-v52';
+// csc-v53: AUDIO TAIL (#3) COMPLETE — +461 neural-TTS word clips in one run (2457→2918/2918; the
+//      only gap is the Windows-reserved slug "con", which falls back to device TTS). Word audio is now
+//      FULLY generated. Clips are network-fetched (never sw-cached), so no precache change; this bump
+//      advances the visible build version + busts any cached /audio/manifest.json.
+const VERSION = 'csc-v53';
 
 const CORE = [
   '/',
