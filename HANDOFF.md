@@ -2,9 +2,11 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-21 • current live sw **csc-v50**. Mastery app-keypad (§11) is
-> APPROVED on a real PHONE; ⚠️ it looks OFF on iPad/tablet/desktop → next item **#14**. (§11 autofill + keypad;
-> §12 phone/landscape proportions + keypad legibility.)
+> `C:\Users\iango\spell`  •  Last updated 2026-06-21 • current live sw **csc-v52**. **Open backlog 11–14 ALL
+> DONE + LIVE** this session: **#3 audio tail +160 clips (csc-v51, 2457/2918, ~461 remain)**; **#14 mastery
+> keypad fixed on iPad/tablet/desktop (csc-v52)**; **#13 one-screen experiment built + deployed to an isolated
+> test URL** (https://spell-experiment.ian-gornall.workers.dev, branch `experiment/one-screen`, NOT merged —
+> awaiting Ian's verdict). Mastery app-keypad (§11/§12) now APPROVED on phone AND full-size on non-phone (#14).
 > **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
@@ -320,13 +322,25 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
      ⚠️ **But the keypad looks OFF on OTHER (non-phone) devices** ("on other devices, not so much") → NEW open
      item **#14** below. The phone tuning above must NOT be regressed while fixing the larger form factors.
 
-13. **🆕 ONE-SCREEN-AT-A-TIME EXPERIMENT — OPEN, the NEXT item, TEST-ONLY (separate BRANCH + TEST URL).** On a NEW branch
-   (do NOT merge to main), build an experimental variant that shows exactly ONE screen at a time with **NO
-   vertical OR horizontal scroll anywhere** — every screen must fit the viewport (likely aggressive
-   fit-to-viewport scaling + paginating any long content, e.g. Settings / Progress / Catalog, into stepped
-   screens instead of scrolling). **FOR TESTING ONLY** — deploy it to a SEPARATE TEST URL (a preview/branch
-   deploy, or a second Cloudflare Worker/route) so Ian can compare it against the scrolling production build.
-   Keep `main` + prod untouched.
+13. ✅ **ONE-SCREEN-AT-A-TIME EXPERIMENT — BUILT + DEPLOYED to a test URL (2026-06-21). TEST-ONLY; NOT merged.**
+   **LIVE for comparison: https://spell-experiment.ian-gornall.workers.dev** (a SEPARATE, isolated Cloudflare
+   Worker `spell-experiment` on workers.dev — NO custom domain, NO routes, and NO KV binding, so it cannot
+   touch prod or prod data; Ian chose the fully-isolated option). Code lives on the LOCAL branch
+   **`experiment/one-screen`** (committed, NOT pushed, NOT merged — `main`/prod untouched; tag `csc-v52-exp1`).
+   **What it does:** `src/experiment.js` `initOneScreen()` adds `html.one-screen` + a MutationObserver that
+   re-fits whatever screen `app.js` mounts (on swap/resize/rotate). Per screen: scale the WHOLE screen to fit
+   the viewport; if that would fall below a legibility floor (0.6), split the body into stepped PAGES
+   (fixed-height clip slots, scaled inner) with a ‹ Prev · x/n · Next › bar. The home/menu hub always SCALES
+   (never split — landing on a page with no menu is worse). `fitPlayArea` is neutralized (the global per-screen
+   scale handles play modes uniformly). Additive — NO screen files edited; all CSS branch-scoped under
+   `html.one-screen`. **Verified (`scripts/_arch/qa_onescreen.mjs`) on the LIVE URL: every screen fits with
+   ZERO overflow at phone 390×844, iPad portrait 820×1180, iPad landscape 1024×768** (home scales 0.55–0.86;
+   Settings/Progress/Catalog paginate where long; play screens mostly natural). **To redeploy after edits:**
+   on the branch, `node scripts/build_deploy.mjs` then (with `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` in
+   env) `npx wrangler deploy --config wrangler.experiment.toml`. ⚠️ Branch is local-only — `git push -u origin
+   experiment/one-screen` to back it up (a non-main push won't deploy prod, but MAY trigger a Cloudflare preview
+   build — left undone to avoid surprise build-credit use). ⚠️ Real-device pass still owed (emulation-verified).
+   **➡️ Awaiting Ian's verdict: adopt the one-screen model, keep scrolling prod, or a hybrid.**
 
 14. ✅ **MASTERY KEYPAD on NON-PHONE devices — DONE + QA'd + LIVE (csc-v52, 2026-06-21).** Ian after csc-v50:
    "the keyboard looks good on a phone now. on other devices, not so much." **DIAGNOSED via interactive visual QA**
