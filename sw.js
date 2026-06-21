@@ -160,7 +160,13 @@
 //      fitPlayArea floored --play-scale at 0.35 (tiny keypad) → thin header + hear+sentence on ONE row
 //      + collapsed empty verdict reserve, lifting landscape scale to ~0.65–0.8 (usable keys). Phone-
 //      scoped media queries only (max-width:480 / max-height:520); iPad portrait+landscape unchanged.
-const VERSION = 'csc-v49';
+// csc-v50: §11/§12 KEYPAD legibility — the app keypad keys (not the word boxes) were the real
+//      complaint. Portrait: the key font's rem floor (1.1rem≈19.8px, inflatable by iOS text-size)
+//      overran the ~28px key border → switched to a VIEWPORT-based font (fits the key width, can't be
+//      inflated) + flex-centered glyph + global text-size-adjust:100%. Landscape: keys were ~16-22px
+//      tall ("tiny in widescreen") → vh-based key height+font, wider keys, smaller word boxes + compact
+//      Check/toggle to free vertical room (keys now ~26-33px / ~14-17px font). iPad keypad still fits.
+const VERSION = 'csc-v50';
 
 const CORE = [
   '/',

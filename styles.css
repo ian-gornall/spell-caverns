@@ -51,6 +51,10 @@
 
 html,
 body {
+  /* don't let iOS/Safari auto-inflate text (it can blow rem-sized glyphs past their box —
+     e.g. a keypad letter over its key border on a phone). Keep 1rem = the :root 18px. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   margin: 0;
   height: 100%;
   overscroll-behavior: none;
@@ -1105,8 +1109,16 @@ button.quest {
   min-width: 0;
   max-width: calc(52px * var(--play-scale, 1));
   height: calc(clamp(40px, 8vw, 56px) * var(--play-scale, 1));
+  /* center the glyph in the key (flex + line-height:1) so it can't ride over the top/bottom border */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
   border-radius: 12px;
-  font-size: calc(clamp(1.1rem, 4.6vw, 1.7rem) * var(--play-scale, 1));
+  /* VIEWPORT-based font (each phone key ≈ 9-10vw wide) so the glyph always fits the key WIDTH and
+     CANNOT be inflated past the border by an iOS text-size setting — a rem floor did exactly that
+     (a 1.1rem = 19.8px letter crammed into a ~28px key overran its rounded border). */
+  font-size: calc(clamp(0.78rem, 4.1vw, 1.5rem) * var(--play-scale, 1));
   font-weight: 800;
   text-transform: lowercase;
   color: var(--ink);
@@ -3180,9 +3192,9 @@ html.readable .crystal-name {
   }
   .puzzle-controls .btn.ghost,
   .draw-controls .btn.ghost {
-    min-height: 38px;
-    padding: 5px 14px;
-    font-size: 0.9rem;
+    min-height: 32px;
+    padding: 4px 13px;
+    font-size: 0.88rem;
   }
   .combo-wrap {
     margin: 1px 6px 3px;
@@ -3197,9 +3209,9 @@ html.readable .crystal-name {
   /* compact the big primary Check button + speedmeter so Mastery's controls and Mining's tiles
      clear a 390px-tall landscape fold (the ~70px button + 49px meter were the last few px over). */
   .play-body .btn.primary {
-    min-height: 40px;
-    padding: 7px 18px;
-    font-size: 1rem;
+    min-height: 34px;
+    padding: 5px 18px;
+    font-size: 0.98rem;
   }
   .draw-submit {
     padding: 0;
@@ -3239,21 +3251,25 @@ html.readable .crystal-name {
     padding: 3px 9px;
     font-size: 0.82rem;
   }
+  /* landscape keypad: keys were tiny (~16-22px tall, ~11px font). Use the abundant WIDTH (wider
+     keys + wider keyboard) and the available HEIGHT (vh-based key height + font), and free vertical
+     room by shrinking the word boxes (just a display in type mode) so fitPlayArea doesn't crush the
+     keys back down. The glyph is vh-sized so it fills the (short) key height without overrunning. */
   .type-keyboard {
-    gap: calc(4px * var(--play-scale, 1));
-    max-width: 470px;
+    gap: calc(5px * var(--play-scale, 1));
+    max-width: 620px;
   }
   .key-row {
-    gap: calc(4px * var(--play-scale, 1));
+    gap: calc(5px * var(--play-scale, 1));
   }
   .key {
-    height: calc(clamp(24px, 7vh, 40px) * var(--play-scale, 1));
-    max-width: calc(46px * var(--play-scale, 1));
-    font-size: calc(clamp(0.9rem, 3.4vh, 1.3rem) * var(--play-scale, 1));
+    height: calc(clamp(30px, 12vh, 52px) * var(--play-scale, 1));
+    max-width: calc(58px * var(--play-scale, 1));
+    font-size: calc(clamp(1rem, 6.4vh, 1.7rem) * var(--play-scale, 1));
     border-radius: 9px;
   }
   .lbox {
-    height: calc(clamp(44px, 12vh, 72px) * var(--play-scale, 1));
+    height: calc(clamp(30px, 8vh, 50px) * var(--play-scale, 1));
   }
   /* a sub-700px landscape phone keeps the single-canvas/.slots flow — shrink that display too */
   .mastery .draw-slots .slot {
