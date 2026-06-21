@@ -384,14 +384,16 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 15. ⛔ **DESKTOP-CHROME HUMAN-QA PASS (Ian, 2026-06-21b) — THE CURRENT WORKING BACKLOG. See §36 below.** ~26
    items from a hands-on desktop-Chrome QA, grounded with file pointers + diagnoses + recommended approaches,
    grouped: **A** quick CSS bugs (Geo wink, desktop max-width, Progress padding, tiny phone geode, dead
-   "Visit the Crystal Lab" link, back-button proportions, ugly/horizontal scrollbar) · **B** audio timing
-   (lag/mid-phrase, praise↔next-word overlap, "British" Kore voice → American) · **C** learning-model clarity
-   (level picker leaks ages, scary "2881 new to find", the **two-systems "Repair" mismatch**) · **D** bigger
-   design (first-run lands in locked Mining, **Crystal Lab redesign** = riff off a real word, set-size = 6
-   fixed + per-dig mining size, **100-level cavern map**, catalog real photos+science) · **E** idle/pause/focus
-   (hint not past last letter, **manual Pause button**, no hints while paused, **background tab must not
-   advance/hint** — confirmed bug, screen-time off-ramp) · **F** defaults (mining 2 choices, daily reminder
-   ON). Several 🟡 need Ian's sign-off on specifics before building. **Nothing coded yet — handoff only.**
+   "Visit the Crystal Lab" link, back-button proportions, ugly/horizontal scrollbar) · **B** audio timing +
+   spelling (lag/mid-phrase, praise↔next-word overlap, **British SPELLINGS in the word data + UI copy — NOT
+   the voice**: flip `centre`/`programme`/`theatre` + UI "colour"/"practise") · **C** learning-model clarity
+   (**diagnostic start-level placement = DISCUSS-FIRST**, scary "2881 new to find", the **two-systems "Repair"
+   mismatch**) · **D** bigger design (first-run lands in locked Mining, **Crystal Lab redesign** = riff off a
+   real word, set-size = 6 fixed + per-dig mining size, **100-level cavern map + hide SKIPPED levels**, catalog
+   real photos+science) · **E** idle/pause/focus (hint not past last letter, **manual Pause button**, no hints
+   while paused, **background tab must not advance/hint** — confirmed bug, screen-time off-ramp) · **F** defaults
+   (mining 2 choices, daily reminder ON). **Ian (2026-06-21c): fix the less-involved items FIRST; the diagnostic
+   placement (C1) needs a full design discussion before any build.** **Nothing coded yet — handoff only.**
 
 > Ian ran a hands-on QA on **desktop Chrome** and gave the list below. This section captures every item
 > with a grounded diagnosis + file pointer + recommended approach, grouped by size. **Nothing here is built
@@ -454,17 +456,39 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
   notes flagged this for mastery; it's still biting Craft.)
 - **B2-NOTE — paused/background interaction:** B2 overlaps E-items (a paused or backgrounded session must not
   fire praise/next-word either). Fix the queue + visibility gate together.
-- **B3. 🟡 Sounds "British" → want American default.** The dictation CLIPS are pre-rendered with the Gemini
-  voice **"Kore"** (`scripts/gen_audio.mjs`, `GEMINI_VOICE`); the device-TTS fallback already PREFERS en-US
-  (`audio.js:153`), and the word LIST is American spelling. So the accent Ian hears is the Kore clip voice.
-  Options (Ian's call): (a) re-generate the clips with an American-accented Gemini voice (a full ~2,918-clip
-  rebuild — large but free, multi-day), (b) add a British/American ACCENT setting (British as the non-default
-  option), or (c) both. ⚠️ A voice swap means regenerating the whole audio library.
+- **B3. British SPELLINGS — NOT the voice (Ian CORRECTED 2026-06-21c).** Ian hit **"centre"** and
+  **"practising"** in the app's INSTRUCTIONS and as a SPELLING WORD. This is a spelling audit, *not* an
+  audio/accent change (the Kore-voice theory was wrong; ignore it). LOW-involvement (find-replace), do-first.
+  Two fronts:
+  - **Word data (`data/words.js`):** most entries are ALREADY American with the British form correctly listed
+    as a `misspelling` (color/colour, license/licence, practice/practise, defense/defence, jewelry/jewellery,
+    mom/mum, organization/organisation) — leave those. But exactly **THREE genuine British TARGET words slipped
+    through and must flip to American** (confirmed by grep): **`centre`→`center`** (rank 762, tier 5),
+    **`programme`→`program`** (rank 1344, tier 6), **`theatre`→`theater`** (rank 2199, tier 8). For each: flip
+    the target, move the British form INTO `misspellings` (so it's the WRONG alternative, consistent with the
+    rest), fix `syllables`/`pattern`/`sentence`, and REGENERATE that one clip (`center`/`program`/`theater`
+    .mp3 — 3 clips, trivial). ALSO sweep the `sentence` fields for stray British spellings (e.g. centre's
+    sentence reads "The gem centre had…"). If `data/words.js` is rebuilt via `scripts/merge.mjs`, fix at source.
+  - **UI copy / instructions (user-VISIBLE strings):** "colour"→"color" in `engine/ui_phrases.js:24` ("Pick
+    your crystal colour!"), `screens/onboarding.js:143` ("Pick your crystal colour."), `screens/settings.js:1139`
+    ("Crystal colour" label) and the three `engine/catalog.js` facts (lines 37/49/61: "its colour…", "the
+    colour of…", "changes colour…"); "practise/practising"→"practice/practicing" in `screens/printables.js:205`
+    ("What to practise") and `modes/rhythm.js:461` ("⛏️ Keep practising"). **Do a FULL visible-string sweep**
+    (the grep capped at 60 hits). CSS class names (`colour-grid` etc.) + code COMMENTS are internal — leave them
+    or fix cosmetically, no rush.
+  - 🟡 Optional later: a British-spelling SETTING so a UK family can opt in — but **American is the default**.
 
 ### C. Learning-model clarity (the confusing parts)
-- **C1. 🟡 Level picker leaks "ages" + descriptors.** Ian: drop the AGE labels (kids pick by age not skill) and
-  maybe the descriptors; replace with either a plain most-basic→most-complex list OR a CHECKLIST ("what words
-  are you learning? ✓ ✓ ✓"). Lives in `screens/onboarding.js` (level select) — re-frame around SKILL, not age.
+- **C1. 🟡🛑 DISCUSS-FIRST — diagnostic START-LEVEL placement (do NOT build yet; Ian wants a full design
+  discussion, 2026-06-21c).** Ian: the initial level must come from **DIAGNOSING the student** — specifically
+  finding the **MOST COMMON word they DON'T know** — not from an age/level picker, and *"I don't think we're
+  doing that well"* today. This SUPERSEDES the earlier "drop ages/descriptors from the picker" tweak: the
+  picker leaking AGE labels (`screens/onboarding.js` level select) is just a symptom; the real fix is a
+  PLACEMENT DIAGNOSTIC that walks the frequency-ordered list to find the first unknown word and seeds the
+  start level there. ⚠️ **This is one of the "more involved" items and needs a FULL DESIGN DISCUSSION BEFORE
+  ANY BUILD** — do the less-involved fixes first. (Hooks that exist: `data/words.js` is frequency-ordered, so a
+  diagnostic could binary/linear-search it; `categories.setLevelAndRefill(state, level, pool)` already re-aims
+  the working set once a level is chosen.)
 - **C2. 🟡 "2881 new to find" is overwhelming.** `categories.categorySummary.newRemaining` (all unseen dataset
   words) shown on Progress/home. Replace the scary total with **"words to the next cavern depth"** (depth is
   already mastered-driven). Pairs with D4.
@@ -490,10 +514,13 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
   dig** (the lever that used to live in Settings moves to a pre-dig choice). Touches `state.js` (`length`/setSize
   default 10→6 + lock for craft/mastery), `engine/categories.js` (setSize), `modes/rhythm.js` (per-dig size),
   Settings.
-- **D4. 🟡 Real cavern MAP (100 levels).** Ian: base depth on # mastered (already is), make it OBVIOUS — e.g. a
-  scrollable cavern map of ~100 levels (~30 words each), current level shown big; tap to zoom; reached levels
-  scrollable above, locked levels greyed below. Big new screen (replaces/augments the 8-zone `narrative.js`
-  framing). Confirm scale (100 levels × 30 words = 3,000 ≈ the dataset — workable).
+- **D4. 🟡 Real cavern MAP (100 levels) + HIDE SKIPPED levels (Ian 2026-06-21c).** Base depth on # mastered
+  (already is), make it OBVIOUS — a scrollable cavern map of ~100 levels (~30 words each); current level big;
+  tap to zoom; reached levels scrollable above, locked levels greyed below. **NEW (Ian):** if the adaptive
+  level JUMPS a student ahead, the SKIPPED lower levels stay HIDDEN/locked TOO — creating an incentive to **go
+  BACK and master the easier words** (so EVERYTHING gets mastered, not just the current tier; pairs with the
+  §30 "tricky"/repair backfill). Big new screen (augments the 8-zone `narrative.js`); one of the more-involved
+  items. Confirm scale (100 × 30 ≈ the 2,918 dataset — workable).
 - **D5. 🟡 Crystal catalog detail: real photos + elementary science.** On a catalog crystal's detail view, pull
   in an actual PHOTO + kid-level facts (hardness, etc.). Files: `engine/catalog.js` + `screens/catalog.js`.
   ⚠️ Needs image SOURCING with a clear licence ([[prefer-free-services]] — e.g. CC0/Wikimedia mineral photos);
@@ -527,10 +554,18 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
   keep it behind the grown-up/parental context). Worker cron already exists (`0 16 * * *`).
 - **F3. (from D3) words-per-dig default 10→6 + lock for craft/mastery** — listed under D3.
 
-> **Recommended build order (suggestion):** quick CSS bugs (A) + defaults (F1) first (cheap, visible wins);
-> then the audio queue (B1/B2) and visibility gating (E4) (correctness); then the clarity fixes (C);
-> then the 🟡 design items (B3 accent, C1/C2, D1–D5, E5, F2) once Ian confirms specifics. Bump `sw.js`/
-> `version.js` per deploy; keep all §29/§33/§34 phone + iPad guards green.
+> **PRIORITISATION (Ian 2026-06-21c): "fix the others first, they are less involved."**
+> - **DO-FIRST — less involved (no further discussion needed):** A1–A8 (CSS bugs) · **B3 (British SPELLINGS —
+>   word data + UI copy; NOT the voice)** · B1/B2 (audio lag + the praise↔next-word queue) · C2 ("new to find"
+>   → words-to-next-depth) · C3 (unify Repair + yellow light) · E1/E2/E3/E4 (hint cap, manual Pause, no-hints-
+>   while-paused, **background-tab gating** — the confirmed bug) · F1 (mining 2 choices) · F2 (reminder default —
+>   small; confirm the prompt timing).
+> - **MORE INVOLVED / DISCUSS-FIRST (do AFTER the above; some need Ian's sign-off before any build):**
+>   **C1 (diagnostic START-LEVEL placement — Ian wants a FULL DESIGN DISCUSSION first; "we're not doing that
+>   well")** · D2 (Crystal Lab redesign) · D4 (100-level cavern map + hide skipped levels) · D1 (first-run flow)
+>   · D3 (set-size = 6 fixed + per-dig mining size) · D5 (catalog photos+science) · E5 (screen-time off-ramp).
+> - Bump `sw.js`/`version.js` per deploy; keep all §29/§33/§34 phone + iPad guards green; don't regress the
+>   approved phone keypad or the pixel-identical iPad-portrait layout.
 
 ---
 
