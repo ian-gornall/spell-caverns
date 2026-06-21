@@ -2,11 +2,23 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-21 • current live sw **csc-v52**. **Open backlog 11–14 ALL
-> DONE + LIVE** this session: **#3 audio tail +160 clips (csc-v51, 2457/2918, ~461 remain)**; **#14 mastery
-> keypad fixed on iPad/tablet/desktop (csc-v52)**; **#13 one-screen experiment built + deployed to an isolated
-> test URL** (https://spell-experiment.ian-gornall.workers.dev, branch `experiment/one-screen`, NOT merged —
-> awaiting Ian's verdict). Mastery app-keypad (§11/§12) now APPROVED on phone AND full-size on non-phone (#14).
+> `C:\Users\iango\spell`  •  Last updated 2026-06-21b • current live sw **csc-v53**. **This session (Ian's
+> directives):** **#3 AUDIO TAIL — ✅ COMPLETE + LIVE (csc-v53):** the whole remaining tail generated in ONE
+> approved run (+461 clips → **2918/2918 words**; only the Windows-reserved slug `con` falls back to device
+> TTS). Word audio is now fully shipped. **#13 one-screen experiment — ⏸️ DEFERRED by Ian** ("many new issues
+> introduced") — the test Worker/branch stay as-is but the model is NOT being adopted; stop polling for a
+> verdict. **#1 follow-up (Gemini free-tier TTS commercial licensing) — ✅ RESOLVED 2026-06-21: OK to ship**
+> (Google doesn't claim ownership of generated content; the EEA/UK/CH "paid-only" clause governs *serving the
+> API to end-users at runtime*, which this app never does — clips are baked offline at build time. Full
+> reasoning + verbatim clauses in `SERVICES_AUDIT.md`). **Real-device passes — Ian marked done/approved**
+> (clear the "OWED: real-device pass" notes throughout). **§32 voice spelling — stays DEFERRED.** Earlier
+> 2026-06-21a session closed backlog 11–14: #14 mastery keypad fixed on iPad/tablet/desktop (csc-v52);
+> mastery app-keypad (§11/§12) APPROVED on phone AND full-size on non-phone.
+> **NOTE (2026-06-21b): a Cloudflare "50% of daily free max" warning was investigated — NOT this app.**
+> `FAMILY_SYNC` KV is empty + `spell-caverns` worker idle (0 reqs in an 80s live tail); the account-wide
+> free limit is being consumed by a **kidenv** worker (Ian confirmed + is handling it). The spell app's open
+> public endpoints (`/api/sync`, `/api/feedback`) remain unauthenticated/unthrottled — fine at family scale,
+> but a free Cloudflare rate-limit/WAF rule (or an in-worker per-IP throttle) is the hardening if ever needed.
 > **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
@@ -163,8 +175,11 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
 
 **→ OPEN BACKLOG (what's actually left — everything else is DONE + LIVE):**
 
-1. ✅ **Free-first SERVICES AUDIT — DONE (§29)** → `SERVICES_AUDIT.md`. (Owed follow-up still: confirm
-   Gemini free-tier TTS *commercial-use licensing* — a legal, not cost, check.)
+1. ✅ **Free-first SERVICES AUDIT — DONE (§29)** → `SERVICES_AUDIT.md`. Follow-up **Gemini free-tier TTS
+   commercial-use licensing — ✅ RESOLVED 2026-06-21: OK to ship** (Google doesn't claim ownership of
+   generated content; the EEA/UK/CH paid-only clause governs *serving the API to end-users at runtime*, which
+   this app never does — clips are baked offline at build time). Full reasoning + verbatim clauses in the new
+   "Gemini TTS commercial-licensing" section of `SERVICES_AUDIT.md`.
 2. ✅ **INTERFACE AUDIO (§32.A) + AUDIO-START GATE (§32.B) — DONE + QA'd (csc-v42, 2026-06-20).** The
    fixed interface narration (Geo's onboarding lines, the geode/boss prompts) + the mastery praise now
    play PRE-RENDERED neural-TTS Gemini clips, not the robotic device voice. Built: a centralized catalog
@@ -180,18 +195,17 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    0 console errors), smoke + qa_responsive/overflow/fold green. **NOTE:** the settings voice-picker/speed
    previews stay TTS on purpose (they audition the DEVICE voice). ⚠️ OWED: a real-device pass (iPad/iOS) to
    confirm the gate unlocks iOS audio + the clips sound right on hardware.
-3. **AUDIO TAIL — IN PROGRESS (multi-day free path). csc-v43 (2026-06-20) added +459 word clips →
-   2297/2919 done; ~621 word clips remain.** (2297 word + 35 phrase + 10 ui ship as of csc-v43; manifest
-   matches disk.) **Time-gated by the daily quota:** on 2026-06-20 model-1 (gemini-3.1-flash-tts) was
-   already spent by the §32.A interface run, then gemini-2.5-flash gave +460 before all 3 models walled.
-   Resets daily. ⚠️ **Windows reserved-name gotcha:** the word "con" → `con.mp3`, which MSYS/Node can write
-   but native git can't index — `gen_audio.mjs` now SKIPS reserved slugs (CON/PRN/AUX/NUL/COM0-9/LPT0-9) →
-   TTS fallback (so the batch was +459 net, not 460; `con` 404s → TTS on prod). Each run: `npm i --no-save
-   @breezystack/lamejs` (it gets pruned by other --no-save installs — reinstall right before) → `npm run
-   gen:audio words` (skips done, BATCH_SIZE=40) → commit new `audio/` clips → bump `sw.js`/`version.js` →
-   push → `node scripts/check_deploy.mjs csc-vNN`. Pre-approved FREE path; honour
-   [[approval-before-consuming-limits]] per run. (Minor owed: spot-listen the 2 small-byte new clips
-   `parking`/`bear` on a real device — size matches the proven set so likely fine.)
+3. ✅ **AUDIO TAIL — COMPLETE + LIVE (csc-v53, 2026-06-21b).** Ian approved the run; the WHOLE remaining tail
+   generated in ONE pass (the daily quota held the entire time): **+461 word clips → 2918/2918 words done**
+   (2918 word + 35 phrase + 10 ui; manifest matches disk). The ONLY gap is the Windows-reserved slug `con`
+   (→ device TTS by design). Word audio is now **fully shipped**. Deployed via the standard recipe (commit
+   clips → bump `sw.js`/`version.js` to csc-v53 → push `main` → Git-CD; verified `node scripts/check_deploy.mjs
+   csc-v53` = DEPLOYED ✅, prod sw=csc-v53). ⚠️ **Windows reserved-name gotcha (kept for reference):** `con`/
+   PRN/AUX/NUL/COM0-9/LPT0-9 slugs are SKIPPED by `gen_audio.mjs` (native git can't index `con.mp3`) → TTS
+   fallback. **Recipe if ever regenerating** (e.g. new words added): `npm i --no-save @breezystack/lamejs`
+   (it gets pruned by other --no-save installs — reinstall right before) → `npm run gen:audio words` (skips
+   done, BATCH_SIZE=40) → commit → bump versions → push → `check_deploy`. [[approval-before-consuming-limits]]
+   per run. (Was: nothing further owed — the prior `parking`/`bear` spot-listen note is moot now the full set ships.)
 4. ✅ **§26-B — ASSETS REVIEW of `C:\Users\iango\kidenv` → ARTIFACT — DONE (2026-06-20). Artifact:
    `KIDENV_ASSET_REVIEW.md` (repo root).** A read-only inventory of the kidenv workspace (6 apps + a
    `template/` skeleton + a shared `guides/phaser/` CC0 library). Findings: the single most valuable
@@ -322,7 +336,10 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
      ⚠️ **But the keypad looks OFF on OTHER (non-phone) devices** ("on other devices, not so much") → NEW open
      item **#14** below. The phone tuning above must NOT be regressed while fixing the larger form factors.
 
-13. ✅ **ONE-SCREEN-AT-A-TIME EXPERIMENT — BUILT + DEPLOYED to a test URL (2026-06-21). TEST-ONLY; NOT merged.**
+13. ⏸️ **ONE-SCREEN-AT-A-TIME EXPERIMENT — DEFERRED by Ian (2026-06-21b): "many new issues introduced."** The
+   model is **NOT being adopted**; prod stays on the scrolling layout. The isolated test Worker + local branch
+   below remain as-is for reference (no action needed; don't poll for a verdict). Original build notes retained:
+   **BUILT + DEPLOYED to a test URL (2026-06-21). TEST-ONLY; NOT merged.**
    **LIVE for comparison: https://spell-experiment.ian-gornall.workers.dev** (a SEPARATE, isolated Cloudflare
    Worker `spell-experiment` on workers.dev — NO custom domain, NO routes, and NO KV binding, so it cannot
    touch prod or prod data; Ian chose the fully-isolated option). Code lives on the LOCAL branch
