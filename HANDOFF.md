@@ -2,7 +2,7 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-20 • current live sw **csc-v49** (§11 autofill + Mastery app-keypad; §12 phone/landscape proportions).
+> `C:\Users\iango\spell`  •  Last updated 2026-06-20 • current live sw **csc-v50** (§11 autofill + Mastery app-keypad; §12 phone/landscape proportions; keypad-legibility follow-up).
 > **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
@@ -304,6 +304,16 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
      `qa_mastery`, `qa_autofill`, `qa_overflow`(Galaxy), `qa_responsive` all green; before/after screenshots at
      360/390 portrait + 740/844 landscape reviewed. Files: `styles.css`, `sw.js`, `src/version.js`. ⚠️ OWED: a
      real-device pass on an actual phone (portrait + landscape) — judged via emulation + screenshots only.
+   - ✅ **KEYPAD LEGIBILITY follow-up (csc-v50)** — Ian clarified the cramping was the **keypad keys** (not the
+     word boxes the round above tuned): letters overran the key borders in portrait, keys were tiny in landscape.
+     ROOT CAUSE (portrait): the `.key` font clamp FLOOR (`1.1rem`≈19.8px on the fixed 18px root, and inflatable
+     by the iOS text-size setting) won on a narrow phone and overran the ~28px key. FIX: a **viewport-based key
+     font** `clamp(0.78rem,4.1vw,1.5rem)` (each phone key ≈9-10vw, so the glyph always fits the key WIDTH and
+     can't be text-inflated past it) + flex-centered glyph + `line-height:1` + global `-webkit-text-size-adjust:100%`
+     (glyph 19.8→~15px, overflow 0). Landscape: keys were ~16-22px tall → **vh-based key height+font + wider keys**
+     using the abundant landscape width, plus freed vertical room (smaller `.lbox` display + compact Check/toggle)
+     so `fitPlayArea` doesn't crush them (keys now ~26-33px / ~14-17px font). iPad keypad still fits (caps at
+     1.5rem in a 52px key); guards green; cropped+full keypad screenshots reviewed. ⚠️ Still OWED: the real-phone pass.
 
 13. **🆕 ONE-SCREEN-AT-A-TIME EXPERIMENT — OPEN, the NEXT item, TEST-ONLY (separate BRANCH + TEST URL).** On a NEW branch
    (do NOT merge to main), build an experimental variant that shows exactly ONE screen at a time with **NO
