@@ -169,7 +169,15 @@
 // csc-v51: AUDIO TAIL (#3) — +160 neural-TTS word clips (2297→2457/2918; ~461 remain, daily-quota
 //      gated). Clips are network-fetched (never sw-cached), so they work without a precache change;
 //      this bump just advances the visible build version + busts any cached /audio/manifest.json.
-const VERSION = 'csc-v51';
+// csc-v52: §11/#14 Mastery APP-KEYPAD on NON-PHONE devices. Phone keypad was approved but on
+//      iPad/tablet/desktop the keys were a small, narrow island dwarfed by the word boxes, and on
+//      iPad LANDSCAPE fitPlayArea floored --play-scale to 0.35 (≈9px, unreadable). Fix (styles.css,
+//      scoped min-width:481 + min-height:521 = non-phone, so the phone keypad is untouched): a wider
+//      720px keyboard with bigger clamp-sized keys; TYPE-mode word boxes (.display-only, a passive
+//      display) shrunk to free vertical budget; and in LANDSCAPE the Mastery prompt lays on one row
+//      with a tighter gap so the keypad keeps full size (all non-phone now --play-scale=1, ~36px keys).
+//      DRAW-mode boxes (:not(.display-only)) + iPad-portrait layout untouched (§31 / qa_phone_audit).
+const VERSION = 'csc-v52';
 
 const CORE = [
   '/',

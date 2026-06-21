@@ -3062,6 +3062,72 @@ html.readable .crystal-name {
 }
 
 /* ============================================================================
+   #14 (2026-06-21) — Mastery APP-KEYPAD on NON-PHONE devices (iPad / tablet / desktop).
+   The base .key rule is tuned for PHONE portrait (a vw-based font that fits a ~33px key);
+   on a tablet/desktop it left the keypad a small, narrow 540px island whose keys were
+   DWARFED by the full-size word-display boxes ("the keyboard looks good on a phone now; on
+   other devices, not so much" — Ian). These rules retune ONLY the non-phone form factors:
+   min-width:481 excludes phone PORTRAIT, min-height:521 excludes phone LANDSCAPE (which keeps
+   its own @media max-height:520 tuning below) — so the approved PHONE keypad is untouched.
+   They're naturally Mastery-only (.type-keyboard/.key/.draw-boxes exist only here) and the
+   TYPE-mode box shrink targets .display-only, so DRAW-mode boxes + the §31 iPad layout +
+   qa_phone_audit's iPad-portrait --play-scale=1 are all preserved.
+   ============================================================================ */
+@media (min-width: 481px) and (min-height: 521px) {
+  /* a wider keyboard with bigger, comfortably-tappable keys (was a 540px island of ~45px keys) */
+  .type-keyboard {
+    max-width: 720px;
+    gap: calc(8px * var(--play-scale, 1));
+  }
+  .key-row {
+    gap: calc(8px * var(--play-scale, 1));
+  }
+  .key {
+    max-width: calc(64px * var(--play-scale, 1));
+    height: calc(clamp(50px, 7.2vh, 66px) * var(--play-scale, 1));
+    font-size: calc(clamp(1.4rem, 4.4vh, 2rem) * var(--play-scale, 1));
+    border-radius: 14px;
+  }
+  .key-back {
+    max-width: calc(86px * var(--play-scale, 1));
+  }
+  /* TYPE mode: the boxes are a read-only display of the typed letters (you type on the keypad,
+     you don't draw in them), so they don't need the big draw-target height. Shrinking them frees
+     vertical budget so fitPlayArea keeps the KEYPAD full-size instead of crushing it. DRAW-mode
+     boxes (:not(.display-only)) keep their §31 size. */
+  .draw-boxes.display-only .lbox {
+    height: calc(clamp(46px, 5.6vh, 72px) * var(--play-scale, 1));
+    max-width: 76px;
+  }
+  .draw-boxes.display-only .lbox-letter {
+    font-size: clamp(1.6rem, 3.2vh, 2.3rem);
+  }
+}
+
+/* #14 — any LANDSCAPE non-phone screen (iPad landscape ~768 tall, desktop, laptops): the prompt
+   (hear button + 2-line sentence) + the big .play-body gap are FIXED costs that DON'T scale with
+   --play-scale, so fitPlayArea floored the keypad (0.35 ≈9px on iPad landscape; 0.7 on desktop).
+   In landscape the vertical budget is the tight axis but WIDTH is plentiful, so lay the Mastery
+   prompt on ONE row, drop the sentence's 22ch wrap cap, and cut the prompt↔answer gap — freeing
+   the height fitPlayArea needs to keep the keypad full-size. Scoped to .mastery + landscape, so
+   iPad PORTRAIT (the §31-approved full-prompt layout) is untouched; min-height:521 keeps phone
+   landscape on its own @media max-height:520 tuning below. */
+@media (min-width: 481px) and (min-height: 521px) and (orientation: landscape) {
+  .mastery .play-body {
+    gap: clamp(10px, 2vh, 22px);
+  }
+  .mastery .prompt {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+  }
+  .mastery .sentence {
+    max-width: none;
+    font-size: clamp(1.2rem, 2.6vh, 1.7rem);
+  }
+}
+
+/* ============================================================================
    SHORT-VIEWPORT OVERRIDES (≤520px tall): phone LANDSCAPE and very short phones.
    The iPad-tuned home hero (title + welcome + streak/goal) is vertically tall and,
    on a ~390px-tall landscape phone, pushes EVERY menu card — including Craft itself —

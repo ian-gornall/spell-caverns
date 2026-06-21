@@ -328,20 +328,27 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    deploy, or a second Cloudflare Worker/route) so Ian can compare it against the scrolling production build.
    Keep `main` + prod untouched.
 
-14. **🆕 MASTERY KEYPAD on NON-PHONE devices — OPEN (Ian 2026-06-21). DO NOT regress the phone.** After the
-   csc-v50 keypad-legibility fix, Ian confirmed: **"the keyboard looks good on a phone now. on other devices,
-   not so much."** So the app-drawn A–Z keypad (type mode) is APPROVED on a real phone but looks WRONG on the
-   larger form factors — **iPad (the PRIMARY device), tablets, and desktop/wide browser**. Not yet diagnosed on
-   hardware. **STEP 1 = interactive visual QA** (per `QA.md` + [[interactive-visual-qa]]): screenshot Mastery →
-   ⌨️ Type it at iPad **portrait (820×1180)** + **landscape (1024×768)** and a **desktop width (≥1200)**, then
-   LOOK and characterise what's off before tuning. **Likely suspects** (the keypad's WIDE/large-screen sizing,
-   in `styles.css`): `.type-keyboard { max-width: 540px }` + `.key { max-width: calc(52px*scale) }` + the font
-   cap `clamp(..,..,1.5rem)` — on an 820-1200px+ screen the keypad is a ~540px island that may read as too small/
-   narrow, or the keys/letters mis-proportioned vs the big multi-box word row above. (The phone path is `vw`/`vh`-
-   based and is good — the large-screen CAPS are the untuned part.) **CONSTRAINTS:** keep the now-good PHONE keypad
-   (`@media max-width:480` / `max-height:520`) untouched; keep the §31-approved iPad DRAW/multi-box layout +
-   `--play-scale=1` (qa_phone_audit); keep `qa_s31`/`qa_mastery`/`qa_autofill`/overflow/responsive green. Verify by
-   EYE on iPad + a desktop width. (Reminder: the keypad shipped §11; sizing history is the §11/§12 entries above.)
+14. ✅ **MASTERY KEYPAD on NON-PHONE devices — DONE + QA'd + LIVE (csc-v52, 2026-06-21).** Ian after csc-v50:
+   "the keyboard looks good on a phone now. on other devices, not so much." **DIAGNOSED via interactive visual QA**
+   (`scripts/_arch/qa_keypad_look.mjs` — screenshots + geometry at iPad portrait 820×1180 / iPad landscape 1024×768 /
+   desktop 1440×900): (a) the keypad was a small NARROW 540px island whose ~45px keys were DWARFED by the full-size
+   word-display boxes (inverted hierarchy — the *passive* display bigger than the keys you press); (b) **iPad LANDSCAPE
+   floored `--play-scale` to 0.35 → keys ≈9px, unreadable**, because the `.prompt` (hear button + 2-line sentence) +
+   the big `.play-body` gap are FIXED costs that don't scale, so `fitPlayArea` crushed the keypad chasing a tiny
+   overflow; desktop similarly shrank to 0.7. **FIX (styles.css, two scoped blocks):** ① `@media (min-width:481px) and
+   (min-height:521px)` (= non-phone; excludes phone portrait by width + phone landscape by height, so the APPROVED phone
+   keypad is untouched and there are no specificity fights with the `max-height:520` block): wider **720px** keyboard +
+   bigger clamp-sized keys (`max-width 64px`, `height clamp(50,7.2vh,66)`, `font clamp(1.4rem,4.4vh,2rem)`), and the
+   TYPE-mode word boxes (`.draw-boxes.display-only .lbox`, a passive display) shrunk to free vertical budget. ② the same
+   query `and (orientation: landscape)`, scoped to `.mastery`: lay the prompt on ONE row, drop the sentence's 22ch wrap
+   cap, cut the `.play-body` gap — so `fitPlayArea` keeps the keypad full-size in landscape. **RESULT:** all non-phone
+   now `--play-scale=1` with ~36px keys (iPad-landscape 0.35→1.0, desktop 0.7→1.0); phone keypad byte-identical (keys
+   31×40, scale 1). DRAW-mode boxes (`:not(.display-only)`) + the §31 iPad-portrait layout are untouched. **QA all green:**
+   277 tests, `qa_s31` (draw+type wide / phone narrow), `qa_mastery`, `qa_autofill`, `qa_overflow`(Galaxy), `qa_responsive`,
+   `qa_fold`, smoke; `qa_phone_audit` shows only the 2 documented by-design landscape home-menu fails (no new regression,
+   iPad-portrait `--play-scale=1` preserved). Files: `styles.css`, `sw.js`, `src/version.js`. ⚠️ OWED: a real-device pass
+   on an actual iPad (portrait + landscape) — judged via emulation + screenshots only. **The now-good PHONE keypad
+   (`@media max-width:480`/`max-height:520`) must stay untouched in any follow-up.**
 
 ---
 
