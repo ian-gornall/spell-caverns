@@ -381,6 +381,157 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    on an actual iPad (portrait + landscape) — judged via emulation + screenshots only. **The now-good PHONE keypad
    (`@media max-width:480`/`max-height:520`) must stay untouched in any follow-up.**
 
+15. ⛔ **DESKTOP-CHROME HUMAN-QA PASS (Ian, 2026-06-21b) — THE CURRENT WORKING BACKLOG. See §36 below.** ~26
+   items from a hands-on desktop-Chrome QA, grounded with file pointers + diagnoses + recommended approaches,
+   grouped: **A** quick CSS bugs (Geo wink, desktop max-width, Progress padding, tiny phone geode, dead
+   "Visit the Crystal Lab" link, back-button proportions, ugly/horizontal scrollbar) · **B** audio timing
+   (lag/mid-phrase, praise↔next-word overlap, "British" Kore voice → American) · **C** learning-model clarity
+   (level picker leaks ages, scary "2881 new to find", the **two-systems "Repair" mismatch**) · **D** bigger
+   design (first-run lands in locked Mining, **Crystal Lab redesign** = riff off a real word, set-size = 6
+   fixed + per-dig mining size, **100-level cavern map**, catalog real photos+science) · **E** idle/pause/focus
+   (hint not past last letter, **manual Pause button**, no hints while paused, **background tab must not
+   advance/hint** — confirmed bug, screen-time off-ramp) · **F** defaults (mining 2 choices, daily reminder
+   ON). Several 🟡 need Ian's sign-off on specifics before building. **Nothing coded yet — handoff only.**
+
+> Ian ran a hands-on QA on **desktop Chrome** and gave the list below. This section captures every item
+> with a grounded diagnosis + file pointer + recommended approach, grouped by size. **Nothing here is built
+> yet** — this is the new working backlog (supersedes the now-DONE items #1–#14). Several items are DESIGN
+> DECISIONS that need Ian's confirmation before building (flagged 🟡). The phone keypad (§11/§12, csc-v50)
+> and the pixel-identical iPad-portrait layout must NOT regress while addressing these. Follow `QA.md`
+> (interactive visual QA) — most of these are "looks/feels wrong," which the objective guards can't catch.
+
+**ANSWERS to Ian's direct questions (so they're recorded, not just fixed):**
+- **"How are words picked / sorted? Point me to the reference file."** The pipeline is three files:
+  **`data/words.js`** = 2,919 words ordered by real-world FREQUENCY (most-common first), tagged with a
+  `tier` (age band) + `pattern` (one of 63 spelling-pattern families) + `rank`. **`src/engine/categories.js`**
+  = the §30 state machine: every word is `new → learning → known → mastered` (+ `tricky`). *Learning* is a
+  fixed working set of `setSize` words (default 10); a word becomes *known* after being **crafted correctly
+  TWICE IN A ROW**, and *mastered* after **one MASTERY (draw) success**. **`src/engine/selection.js`** turns
+  those categories into each mode's word list (Craft focuses learning + ~25% review; Mining = known∪mastered;
+  Mastery = known-lead). A word is introduced lowest-`rank` (most common) first at the current tier. *(There
+  is ALSO a parallel legacy selector, `engine/session.js`+`engine/progress.js`, still used by the "Repair"
+  path — see item C3, which is the source of Ian's confusion.)*
+- **"How is 'Repair' determined?"** Two DIFFERENT systems are both live (the root cause of the mismatch):
+  the green dots on the learning words come from `categories.learningProgress` (craftStreak 0→2 toward known),
+  but the **home "Repair (N)" card** (`screens/home.js:103`) and Progress "Repair N words" (`screens/progress.js:148`)
+  read the **legacy continuous tracker's "cracked crystals"** = `lapsedWords(state.tracker)` (words whose
+  continuous mastery dipped after a miss), NOT the categories. So "6 words each with one green" (categories)
+  vs "repair 4 words" (legacy tracker) don't reconcile, and Repair can appear even with nothing visibly
+  "cracked." **This dual-bookkeeping is the bug to resolve (item C3).**
+- **"How many cavern depths are there?"** `src/engine/narrative.js` defines **8 named ZONES**; cavern
+  **depth = 1 + floor(mastered / 8)** (≈8 mastered words per new depth; see `app.js`). Depth is already
+  driven by MASTERED count (what Ian wanted) but it's not surfaced well — see item D4 (the 100-level map idea).
+
+### A. Quick visual / CSS bugs (low-risk, phone+desktop)
+- **A1. Geo's wink sticks at start → wants normal eyes.** `screens/onboarding.js:99,120` render the mascot with
+  `{ mood: 'wink' }`, and `.mascot.wink` (styles.css) holds the wink. Make the wink a brief one-shot GREETING
+  animation that resolves back to normal eyes (e.g. timed class removal), not a persistent state.
+- **A2. Desktop too wide → set a max-width.** The `.app` container has no desktop cap; on a wide monitor it
+  stretches. Add a `max-width` (e.g. ~720–900px, centred) at wide breakpoints. Keep iPad/phone unchanged.
+- **A3. Progress screen: category text (known/mastered/new-to-find) too close to the borders** (`screens/progress.js:143`
+  `.seg` tiles) — looks janky. Add internal padding / breathing room.
+- **A4. Progress screen: "personal bests" text also too close to the edge/border.** Same padding fix.
+- **A5. Geode is tiny on phone, unusable** (`screens/geode.js` + its CSS). Size the tap-to-open geode up on
+  `@media max-width:480` so it's a comfortable touch target.
+- **A6. "Visit the Crystal Lab" does nothing.** `screens/progress.js:276` is STATIC text in the empty
+  Specimen-Collection state, not a link. Make it a real button → `ctx.nav('lab')` (or route via home).
+- **A7. Back button looks oddly proportioned on every screen.** The shared `header()` (`src/ui.js`) `.back`
+  button + its CSS — re-proportion (size/padding/alignment).
+- **A8. Ugly desktop scrollbar (Chrome) + a HORIZONTAL scrollbar appears when a box pulses/highlights.** The
+  `.pulse`/highlight animation (styles.css) overflows by a sub-pixel and trips an x-scrollbar; style the
+  scrollbar and contain the pulse (transform-based, or `overflow:clip` on the animating container). Ties into
+  the §29 no-horizontal-pan guards — keep `qa_overflow`/`qa_galaxy` green.
+
+### B. Audio / speech timing
+- **B1. Audio lags / starts mid-phrase** (noted during setup). Likely the clip starts playing before it's
+  buffered, or the iOS/Chrome audio-prime path races the first `say()`. Investigate `src/audio.js` clip
+  playback + the §32.B "Tap to start" prime/`whenReady` gate (desktop has no gesture-gate, so first-play may
+  fire un-buffered).
+- **B2. Craft praise + next word overlap / praise sometimes silent / partial overlap.** Recurring race: `say()`
+  cancels in-flight speech, so praise and the next dictation step on each other. There is NO real speech QUEUE
+  — fix by serialising utterances (a proper queue with onDone chaining) in `src/audio.js`, and gate the
+  next-word advance on praise completion (`speakPraise` onDone) in `modes/puzzle.js`/`mastery.js`. (Prior §31
+  notes flagged this for mastery; it's still biting Craft.)
+- **B2-NOTE — paused/background interaction:** B2 overlaps E-items (a paused or backgrounded session must not
+  fire praise/next-word either). Fix the queue + visibility gate together.
+- **B3. 🟡 Sounds "British" → want American default.** The dictation CLIPS are pre-rendered with the Gemini
+  voice **"Kore"** (`scripts/gen_audio.mjs`, `GEMINI_VOICE`); the device-TTS fallback already PREFERS en-US
+  (`audio.js:153`), and the word LIST is American spelling. So the accent Ian hears is the Kore clip voice.
+  Options (Ian's call): (a) re-generate the clips with an American-accented Gemini voice (a full ~2,918-clip
+  rebuild — large but free, multi-day), (b) add a British/American ACCENT setting (British as the non-default
+  option), or (c) both. ⚠️ A voice swap means regenerating the whole audio library.
+
+### C. Learning-model clarity (the confusing parts)
+- **C1. 🟡 Level picker leaks "ages" + descriptors.** Ian: drop the AGE labels (kids pick by age not skill) and
+  maybe the descriptors; replace with either a plain most-basic→most-complex list OR a CHECKLIST ("what words
+  are you learning? ✓ ✓ ✓"). Lives in `screens/onboarding.js` (level select) — re-frame around SKILL, not age.
+- **C2. 🟡 "2881 new to find" is overwhelming.** `categories.categorySummary.newRemaining` (all unseen dataset
+  words) shown on Progress/home. Replace the scary total with **"words to the next cavern depth"** (depth is
+  already mastered-driven). Pairs with D4.
+- **C3. Unify the "Repair" model (the 6-dots-vs-repair-4 bug).** Resolve the dual bookkeeping (see answer
+  above): either drive Repair from the §30 categories (`tricky`/missed-learning) so it matches the dots, or
+  clearly separate "in-progress learning" from "repair." **Add a YELLOW light** on words that were missed /
+  need repair (Ian's suggestion) so the kid can SEE which need fixing. Files: `screens/home.js`,
+  `screens/progress.js`, `modes/puzzle.js` (review mode), `engine/categories.js` vs `engine/{session,progress}.js`.
+
+### D. Bigger design / feature requests (need a build plan; several 🟡 need Ian's sign-off on specifics)
+- **D1. 🟡 First-run drops you into MINING, which then locks.** The intro starts a recognition/mining-style
+  session, but the §30 unlock chain LOCKS mining until `setSize` words are mastered — contradictory + confusing.
+  Desired: start first-run in **Craft**, or a **guided tour of the menu**. (Trace the first-run path:
+  `app.js` boot routing → `onboarding` → first activity; reconcile with the home unlock gates.)
+- **D2. 🟡 Crystal Lab REDESIGN (current build ≠ Ian's vision).** Today `modes/lab.js` invents a NONSENSE word
+  → unscramble → draw → name. Ian envisioned: give a **REAL word**, let the kid **riff** off it by changing a
+  letter **that doesn't break the spelling pattern** (ideally driven by the patterns giving them trouble) →
+  hear the original spoken → modify → hear the new word again → DRAW it → save (NO rename). This is a from-scratch
+  lab flow keyed off `engine/categories` troublesome patterns + `engine/nonsense`/pattern data. Confirm the exact
+  "change a letter within the pattern" rule with Ian before building.
+- **D3. 🟡 Set-size semantics change.** Make words-before-mastery **6 by default and UNCHANGEABLE** (the count for
+  each Craft / Mastery set). Then for **MINING**, let the kid pick one of the four sizes (6/10/15/20) **before each
+  dig** (the lever that used to live in Settings moves to a pre-dig choice). Touches `state.js` (`length`/setSize
+  default 10→6 + lock for craft/mastery), `engine/categories.js` (setSize), `modes/rhythm.js` (per-dig size),
+  Settings.
+- **D4. 🟡 Real cavern MAP (100 levels).** Ian: base depth on # mastered (already is), make it OBVIOUS — e.g. a
+  scrollable cavern map of ~100 levels (~30 words each), current level shown big; tap to zoom; reached levels
+  scrollable above, locked levels greyed below. Big new screen (replaces/augments the 8-zone `narrative.js`
+  framing). Confirm scale (100 levels × 30 words = 3,000 ≈ the dataset — workable).
+- **D5. 🟡 Crystal catalog detail: real photos + elementary science.** On a catalog crystal's detail view, pull
+  in an actual PHOTO + kid-level facts (hardness, etc.). Files: `engine/catalog.js` + `screens/catalog.js`.
+  ⚠️ Needs image SOURCING with a clear licence ([[prefer-free-services]] — e.g. CC0/Wikimedia mineral photos);
+  flag any dependency. Confirm with Ian where assets come from.
+
+### E. Idle / hints / pause / focus (engagement + healthy-use)
+- **E1. Hints should STOP before the last letter is revealed; then escalate to the pause screen.** Today the
+  idle guard nudges at 15s and the progressive HINT (`💡`/auto-reveal in `modes/puzzle.js`) can fill in letters;
+  cap the auto-reveal so it never gives the FINAL letter, then let the 45s pause overlay take over.
+- **E2. Add a user-initiated PAUSE button.** Currently the ONLY pause is the auto-overlay at 45s idle
+  (`ui.js createIdleGuard`, `pauseMs=45000`). Add a manual Pause control to the play header.
+- **E3. While PAUSED, give no more hints.** The auto-overlay already suppresses nudges (`arm()` returns when an
+  overlay is up), but a MANUAL pause must also stop the progressive hint timers + the lab/mastery step timers.
+- **E4. Background tab must NOT advance / hint / auto-fire — only when focused.** CONFIRMED bug: `createIdleGuard`
+  (`src/ui.js`) and the step timers in `modes/lab.js`/`modes/mastery.js` use `setTimeout` with NO
+  `document.hidden`/`visibilityState` check, so nudges, auto-reveals and auto-advances keep firing in a
+  backgrounded/blurred tab. Gate ALL idle/auto-advance timers (and audio) on `document.visibilityState ===
+  'visible'`; pause on `visibilitychange`→hidden, resume on visible. (Only `app.js`=sync and `pwa.js`=update
+  check currently listen to visibility.)
+- **E5. 🟡 Screen-time off-ramp / forced break.** Ian: define a MAX session length, then lock the child out for
+  ~5 min showing just a printable WORD LIST to study with a partner (we already have `engine/printables.js`).
+  Healthy-use guardrail. Confirm the time cap + lockout behaviour with Ian. (Pairs with the existing pause/idle
+  system; this is a deliberate, not idle, break.)
+
+### F. Defaults to change (small, but confirm the push one)
+- **F1. Mining answer-tiles = 2 by default** (`state.js defaultSettings().optionCount` is **3** → 2); keep 3/4 as
+  Settings options. (`modes/rhythm.js` reads `settings.optionCount`.)
+- **F2. Daily reminder ON by default.** `defaultSettings()` has no reminder field → it's currently OFF/opt-in
+  (`src/push.js`). ⚠️ Web Push needs OS permission, so "on by default" really means default the toggle ON +
+  prompt for permission early (you can't silently force-enable). Confirm the prompt timing with Ian (COPPA:
+  keep it behind the grown-up/parental context). Worker cron already exists (`0 16 * * *`).
+- **F3. (from D3) words-per-dig default 10→6 + lock for craft/mastery** — listed under D3.
+
+> **Recommended build order (suggestion):** quick CSS bugs (A) + defaults (F1) first (cheap, visible wins);
+> then the audio queue (B1/B2) and visibility gating (E4) (correctness); then the clarity fixes (C);
+> then the 🟡 design items (B3 accent, C1/C2, D1–D5, E5, F2) once Ian confirms specifics. Bump `sw.js`/
+> `version.js` per deploy; keep all §29/§33/§34 phone + iPad guards green.
+
 ---
 
 ## §33 — PHONE LAYOUT: word + buttons co-visible for ANY word length (Ian 2026-06-20) — ✅ DONE + QA'd (csc-v41)
