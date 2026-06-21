@@ -2,7 +2,9 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-20 • current live sw **csc-v50** (§11 autofill + Mastery app-keypad; §12 phone/landscape proportions; keypad-legibility follow-up).
+> `C:\Users\iango\spell`  •  Last updated 2026-06-21 • current live sw **csc-v50**. Mastery app-keypad (§11) is
+> APPROVED on a real PHONE; ⚠️ it looks OFF on iPad/tablet/desktop → next item **#14**. (§11 autofill + keypad;
+> §12 phone/landscape proportions + keypad legibility.)
 > **The game is FEATURE-COMPLETE, DEPLOYED, MULTI-USER, and POLISHED.** Live (HTTPS,
 > installable PWA) at **https://spell.pryzmio.com** (Cloudflare Worker + Static Assets,
 > Git-CD from **github.com/ian-gornall/spell-caverns** on every push to `main`).
@@ -313,7 +315,10 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
      (glyph 19.8→~15px, overflow 0). Landscape: keys were ~16-22px tall → **vh-based key height+font + wider keys**
      using the abundant landscape width, plus freed vertical room (smaller `.lbox` display + compact Check/toggle)
      so `fitPlayArea` doesn't crush them (keys now ~26-33px / ~14-17px font). iPad keypad still fits (caps at
-     1.5rem in a 52px key); guards green; cropped+full keypad screenshots reviewed. ⚠️ Still OWED: the real-phone pass.
+     1.5rem in a 52px key); guards green; cropped+full keypad screenshots reviewed.
+   - ✅ **PHONE keypad APPROVED on a real phone (Ian 2026-06-21): "the keyboard looks good on a phone now."**
+     ⚠️ **But the keypad looks OFF on OTHER (non-phone) devices** ("on other devices, not so much") → NEW open
+     item **#14** below. The phone tuning above must NOT be regressed while fixing the larger form factors.
 
 13. **🆕 ONE-SCREEN-AT-A-TIME EXPERIMENT — OPEN, the NEXT item, TEST-ONLY (separate BRANCH + TEST URL).** On a NEW branch
    (do NOT merge to main), build an experimental variant that shows exactly ONE screen at a time with **NO
@@ -322,6 +327,21 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
    screens instead of scrolling). **FOR TESTING ONLY** — deploy it to a SEPARATE TEST URL (a preview/branch
    deploy, or a second Cloudflare Worker/route) so Ian can compare it against the scrolling production build.
    Keep `main` + prod untouched.
+
+14. **🆕 MASTERY KEYPAD on NON-PHONE devices — OPEN (Ian 2026-06-21). DO NOT regress the phone.** After the
+   csc-v50 keypad-legibility fix, Ian confirmed: **"the keyboard looks good on a phone now. on other devices,
+   not so much."** So the app-drawn A–Z keypad (type mode) is APPROVED on a real phone but looks WRONG on the
+   larger form factors — **iPad (the PRIMARY device), tablets, and desktop/wide browser**. Not yet diagnosed on
+   hardware. **STEP 1 = interactive visual QA** (per `QA.md` + [[interactive-visual-qa]]): screenshot Mastery →
+   ⌨️ Type it at iPad **portrait (820×1180)** + **landscape (1024×768)** and a **desktop width (≥1200)**, then
+   LOOK and characterise what's off before tuning. **Likely suspects** (the keypad's WIDE/large-screen sizing,
+   in `styles.css`): `.type-keyboard { max-width: 540px }` + `.key { max-width: calc(52px*scale) }` + the font
+   cap `clamp(..,..,1.5rem)` — on an 820-1200px+ screen the keypad is a ~540px island that may read as too small/
+   narrow, or the keys/letters mis-proportioned vs the big multi-box word row above. (The phone path is `vw`/`vh`-
+   based and is good — the large-screen CAPS are the untuned part.) **CONSTRAINTS:** keep the now-good PHONE keypad
+   (`@media max-width:480` / `max-height:520`) untouched; keep the §31-approved iPad DRAW/multi-box layout +
+   `--play-scale=1` (qa_phone_audit); keep `qa_s31`/`qa_mastery`/`qa_autofill`/overflow/responsive green. Verify by
+   EYE on iPad + a desktop width. (Reminder: the keypad shipped §11; sizing history is the §11/§12 entries above.)
 
 ---
 
