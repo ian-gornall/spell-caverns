@@ -7,6 +7,12 @@
 // + endowed-progress framing, never a gate on play (RESEARCH.md guardrails). Data
 // only + deterministic; covered by node --test.
 
+// §36 D4 (Ian 2026-06-22d): a geode boss / new cavern DEPTH every 10 MASTERED words (was 8). This is
+// the single source of truth for the mastery-depth axis — app.js depth() and screens/progress.js both
+// import it, so the boss trigger and the "to the next boss" copy can never drift apart again.
+export const WORDS_PER_DEPTH = 10;
+export const depthForMastered = (mastered) => 1 + Math.floor(Math.max(0, Number.isFinite(mastered) ? mastered : 0) / WORDS_PER_DEPTH);
+
 export const ZONES = [
   { name: 'the Glimmer Shallows', tagline: 'Sunlight still sparkles on the walls here.' },
   { name: 'the Crystal Hollows', tagline: 'Bright clusters line every winding tunnel.' },

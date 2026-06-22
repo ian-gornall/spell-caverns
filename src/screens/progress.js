@@ -6,6 +6,7 @@
 // Buckets are display-only — never a gate.
 import { el, header, toast } from '../ui.js';
 import { summary } from '../engine/progress.js';
+import { WORDS_PER_DEPTH } from '../engine/narrative.js';
 import { categorySummary } from '../engine/categories.js';
 import { byRank } from '../engine/lexicon.js';
 import { dailyQuests, questProgress, allQuestsDone } from '../engine/quests.js';
@@ -179,7 +180,6 @@ function catalogPanel(ctx) {
 // Cavern map — a visual "how deep have I dug" path with "you are here" + the next
 // level as the goal (research Tier 2 #7: goal-gradient + endowed progress). Depth =
 // 1 + floor(known/8), matching app.js, so it's never at a bare zero (Depth 1 is lit).
-const WORDS_PER_DEPTH = 8;
 function cavernMap(ctx) {
   const known = summary(ctx.state.tracker).counts.known;
   const depth = ctx.depth();

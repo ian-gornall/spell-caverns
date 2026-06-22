@@ -23,6 +23,7 @@ import { startPuzzle } from './modes/puzzle.js';
 import { startMastery } from './modes/mastery.js';
 import { startLab } from './modes/lab.js';
 import { summary } from './engine/progress.js';
+import { depthForMastered } from './engine/narrative.js';
 // ⏸️ only used by the DISABLED /?dev=mastery test unlock (commented below) — kept for re-enabling:
 // import { byRank } from './engine/lexicon.js';
 // import { fillLearning, recordCraft, knownWords, learningWords } from './engine/categories.js';
@@ -73,11 +74,13 @@ function nav(name, params = {}) {
   render(factory(ctx, params));
 }
 
-// Cavern depth = a friendly level number that grows as words are mastered.
+// Mastery DEPTH = the milestone axis that fires geode bosses — grows as words are MASTERED
+// (every WORDS_PER_DEPTH=10, §36 D4). Distinct from the cavern LEVEL/band (categories.level), which
+// is "where you are" in the word list. (summary().counts.known = the legacy tracker's mastered tally.)
 function depth() {
   if (!ctx.state) return 1;
-  const known = summary(ctx.state.tracker).counts.known;
-  return 1 + Math.floor(known / 8);
+  const mastered = summary(ctx.state.tracker).counts.known;
+  return depthForMastered(mastered);
 }
 
 // Load the ACTIVE profile into ctx + apply its audio/theme/easy-read prefs. Called at
@@ -150,6 +153,21 @@ function boot() {
   //   maybeBootSync();
   //   return;
   // }
+
+  // §36 D4 DEBUG (Ian 2026-06-22d): "/?boss" (or "/?boss=N") jumps straight to the GEODE BOSS at
+  // depth N (default 1) so the boss screens can be exercised without grinding to a mastery milestone.
+  // Needs a profile (the screen reads gems/depth); local data only, harmless. Granting the milestone
+  // crystal is idempotent per depth, so re-previewing the same depth is a no-op.
+  {
+    const bossParam = new URLSearchParams(location.search).get('boss');
+    if (bossParam != null && store.profileCount() >= 1) {
+      refreshActive();
+      const d = Math.max(1, parseInt(bossParam, 10) || 1);
+      nav('boss', { depth: d, from: 'home' });
+      maybeBootSync();
+      return;
+    }
+  }
 
   // Route by how many explorers exist:
   //  - none yet → first-run onboarding (creates explorer #1)
