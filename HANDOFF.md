@@ -20,13 +20,16 @@
 > visibility-gated `createIdleGuard` with onSuspend/onWake) · **C2** (scary "~2800 new to find" →
 > "to next depth") · **C3** (Repair UNIFIED on the §30 categories: `repairWords`/`needsRepair`,
 > `buildRepairSession`, a YELLOW light on missed words, count+pips+drill now reconcile — no more legacy
-> `lapsedWords` mismatch) · **F1** (mining defaults to 2 answer tiles; 3/4 still selectable). **287→293
-> tests green; smoke/overflow/fold/phone-audit/mastery/s31/autofill all green; iPad-portrait
-> --play-scale=1 preserved.** **⏸️ PENDING IAN'S DECISION:** **(1) DEPLOY** — the 6 commits aren't pushed
-> (a prod deploy where the kids play, incl. the C3 learning-model change, was held for sign-off; to ship:
-> bump `sw.js`/`version.js` csc-v53→**csc-v54** + push `main` → Git-CD). **(2) F2** (daily reminder ON by
-> default) — DEFERRED: needs Ian's call on the COPPA-sensitive OS-permission PROMPT TIMING (can't silently
-> force-enable). **NOT STARTED (the "discuss-first" §36 items, all need Ian's design input):** **C1**
+> `lapsedWords` mismatch) · **F1** (mining defaults to 2 answer tiles; 3/4 still selectable) · **F2**
+> (Ian chose "prompt at end of onboarding": `defaultSettings().reminders=true` + a grown-up-framed
+> permission prompt after the explorer is created, gated on push-supported && `Notification.permission===
+> 'default'`; honest — ON only if granted). **287→293 tests green; smoke/overflow/fold/phone-audit/mastery/
+> s31/autofill all green; iPad-portrait --play-scale=1 preserved.** **⏸️ PENDING IAN'S DECISION — DEPLOY:**
+> the 7 commits aren't pushed — Ian asked to **REVIEW LOCALLY FIRST** (dev server `npm start` →
+> http://localhost:5173). Prod stays csc-v53. A prod deploy (where the kids play, incl. the C3
+> learning-model change) was held for sign-off; to ship: bump `sw.js`/`version.js` csc-v53→**csc-v54** +
+> push `main` → Git-CD, then verify `check_deploy.mjs csc-v54` + `qa_prod.mjs`. ALL §36 do-first items are
+> now DONE locally (A1–A8, B3, B1/B2, E1–E4, C2/C3, F1, F2). **NOT STARTED (the "discuss-first" §36 items, all need Ian's design input):** **C1**
 > (diagnostic start-level placement — Ian wants a FULL design discussion), **D1** (first-run flow), **D2**
 > (Crystal Lab redesign), **D3** (set-size 6 fixed + per-dig mining size), **D4** (100-level cavern map +
 > hide skipped levels), **D5** (catalog photos+science), **E5** (screen-time off-ramp). See §36 below.
