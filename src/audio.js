@@ -12,6 +12,13 @@
 // no audio/voices (e.g. headless Playwright) degrades silently, never throws.
 // This is a UI module — never imported by `node --test`.
 
+import { createVoiceQueue } from './engine/voicequeue.js';
+
+// All spoken output (dictation + praise) runs through ONE serial queue (§36 B1/B2):
+// a new utterance waits for the prior one to FINISH, so praise never overlaps the
+// next word's dictation and a fast re-trigger can't start a clip mid-phrase.
+const voiceQueue = createVoiceQueue();
+
 let actx = null; // Web Audio context (created on prime)
 let primed = false;
 let voices = [];
@@ -170,8 +177,8 @@ function pickVoice() {
   return pool.slice().sort((a, b) => scoreVoice(b) - scoreVoice(a))[0];
 }
 
-// Stop any in-flight voice immediately (speech + clip players) when changing screens.
-export function stop() {
+// Hard-silence the actual audio (speech + both clip players). Does NOT touch the queue.
+function hardStopAudio() {
   try {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   } catch {
@@ -185,6 +192,15 @@ export function stop() {
       /* ignore */
     }
   }
+}
+
+// Stop any in-flight voice immediately (speech + clip players) when changing screens.
+// Drains the serial queue first (force-finishing the active job + dropping pending so
+// no awaiter hangs), then hard-silences the actual audio. clear() does NOT fire the
+// jobs' caller-onDone callbacks, so navigating away can't start a stale gem clock.
+export function stop() {
+  voiceQueue.clear();
+  hardStopAudio();
 }
 
 // English voices for the Settings picker.
@@ -241,6 +257,7 @@ function playClip(el, url, { onDone, onFail, rate = 1 } = {}) {
   const done = onceFn(onDone);
   const fail = onceFn(onFail);
   try {
+    a.pause(); // B1: clear any prior playback on this reused element before re-loading
     a.onended = done;
     a.onerror = fail;
     a.volume = settings.volume ?? 1;
@@ -248,6 +265,7 @@ function playClip(el, url, { onDone, onFail, rate = 1 } = {}) {
     a.muted = false;
     a.src = url;
     a.currentTime = 0;
+    a.load(); // (re)load from the start so playback can't begin mid-phrase on a reused element
     const p = a.play();
     if (p && p.catch) p.catch(fail);
   } catch {
@@ -260,32 +278,49 @@ function playClip(el, url, { onDone, onFail, rate = 1 } = {}) {
 // when the word has FINISHED (so the rhythm meter waits before the clock starts).
 export function say(word, { onDone } = {}) {
   const text = String(word || '');
-  const done = onceFn(onDone);
+  const cb = onceFn(onDone);
   if (!settings.voice || !text) {
-    setTimeout(done, 160);
+    setTimeout(cb, 160); // silent: no utterance, don't tie up the queue
     return;
   }
   const s = slug(text);
   const rate = settings.voiceRate ?? 0.85; // dictation speed (configurable; default a bit slow)
-  // A fixed interface line (§32.A) — Geo's narration, the geode prompts. These are
-  // sentences (no slug-collision with a single dictation word) and should speak at a
-  // NATURAL pace, NOT the slowed dictation rate. Checked first; words next.
-  if (manifest && manifest.ui && manifest.ui.has(s)) {
-    clipEl = playClip(clipEl, `/audio/ui/${s}.mp3`, {
-      rate: 1,
-      onDone: done,
-      onFail: () => speakTTS(text, { rate: 1, pitch: 1.02, onDone: done }),
-    });
-  } else if (manifest && manifest.words.has(s)) {
-    clipEl = playClip(clipEl, `/audio/words/${s}.mp3`, {
-      rate,
-      onDone: done,
-      onFail: () => speakTTS(text, { rate, pitch: 1.02, onDone: done }),
-    });
-  } else {
-    if (!manifest) ensureManifest(); // self-heal: (re)load the manifest so later words use clips
-    speakTTS(text, { rate, pitch: 1.02, onDone: done });
+  // A new dictation/narration SUPERSEDES a currently-playing one (e.g. an onboarding
+  // step advance, or an idle re-dictate) — stop it and speak now. But NEVER cut praise:
+  // when any protected (praise) job is in flight we fall through and queue, so praise
+  // always finishes before the next word (the §36 B2 fix). protectedCount===0 means the
+  // active + pending jobs are all interruptible dictation/narration.
+  if (voiceQueue.busy && voiceQueue.protectedCount === 0) {
+    voiceQueue.clear();
+    hardStopAudio();
   }
+  voiceQueue.enqueue((finish) => {
+    // `done` fires the caller's onDone AND releases the queue for the next utterance,
+    // exactly once. (stop()/clear() force-finishes the queue WITHOUT calling cb.)
+    const done = onceFn(() => {
+      cb();
+      finish();
+    });
+    // A fixed interface line (§32.A) — Geo's narration, the geode prompts. These are
+    // sentences (no slug-collision with a single dictation word) and should speak at a
+    // NATURAL pace, NOT the slowed dictation rate. Checked first; words next.
+    if (manifest && manifest.ui && manifest.ui.has(s)) {
+      clipEl = playClip(clipEl, `/audio/ui/${s}.mp3`, {
+        rate: 1,
+        onDone: done,
+        onFail: () => speakTTS(text, { rate: 1, pitch: 1.02, onDone: done }),
+      });
+    } else if (manifest && manifest.words.has(s)) {
+      clipEl = playClip(clipEl, `/audio/words/${s}.mp3`, {
+        rate,
+        onDone: done,
+        onFail: () => speakTTS(text, { rate, pitch: 1.02, onDone: done }),
+      });
+    } else {
+      if (!manifest) ensureManifest(); // self-heal: (re)load the manifest so later words use clips
+      speakTTS(text, { rate, pitch: 1.02, onDone: done });
+    }
+  });
 }
 
 // CURRENTLY UNUSED (the "Sound it out" buttons were disabled 2026-06-18 — iOS TTS
@@ -297,28 +332,34 @@ export function say(word, { onDone } = {}) {
 // slow rate. Falls back to the whole word if there's only one syllable / none given.
 // Degrades silently when voice is off. `onDone` fires after the final whole-word say.
 export function saySlow(word, syllables, { onDone } = {}) {
-  const done = onceFn(onDone);
+  const cb = onceFn(onDone);
   const text = String(word || '');
   if (!settings.voice || !text) {
-    setTimeout(done, 160);
+    setTimeout(cb, 160);
     return;
   }
   const parts = Array.isArray(syllables) && syllables.length > 1 ? syllables.slice() : null;
-  if (!parts) {
-    speakTTS(text, { rate: 0.78, pitch: 1.0, onDone: done });
-    return;
-  }
-  let i = 0;
-  const next = () => {
-    if (i >= parts.length) {
-      // a beat, then the whole word at a gentle pace to "blend" the parts
-      setTimeout(() => speakTTS(text, { rate: 0.85, pitch: 1.0, onDone: done }), 260);
+  voiceQueue.enqueue((finish) => {
+    const done = onceFn(() => {
+      cb();
+      finish();
+    });
+    if (!parts) {
+      speakTTS(text, { rate: 0.78, pitch: 1.0, onDone: done });
       return;
     }
-    const part = parts[i++];
-    speakTTS(part, { rate: 0.7, pitch: 1.02, onDone: () => setTimeout(next, 300) });
-  };
-  next();
+    let i = 0;
+    const next = () => {
+      if (i >= parts.length) {
+        // a beat, then the whole word at a gentle pace to "blend" the parts
+        setTimeout(() => speakTTS(text, { rate: 0.85, pitch: 1.0, onDone: done }), 260);
+        return;
+      }
+      const part = parts[i++];
+      speakTTS(part, { rate: 0.7, pitch: 1.02, onDone: () => setTimeout(next, 300) });
+    };
+    next();
+  });
 }
 
 // Spoken praise: prefer the clip; warm + natural Web Speech otherwise. (Only fired
@@ -326,21 +367,31 @@ export function saySlow(word, syllables, { onDone } = {}) {
 // `onDone` when the phrase has FINISHED so the rhythm loop can hold the next word's
 // dictation until then — otherwise dictation cancels praise mid-word (HANDOFF §12).
 export function speakPraise(phrase, { onDone } = {}) {
-  const done = onceFn(onDone);
+  const cb = onceFn(onDone);
   if (!settings.voice || !phrase) {
-    setTimeout(done, 0);
+    setTimeout(cb, 0);
     return;
   }
   const s = slug(phrase);
-  if (manifest && manifest.phrases.has(s)) {
-    praiseEl = playClip(praiseEl, `/audio/phrases/${s}.mp3`, {
-      onDone: done,
-      onFail: () => speakTTS(phrase, { rate: 1.0, pitch: 1.1, onDone: done }),
-    });
-  } else {
-    if (!manifest) ensureManifest(); // self-heal: (re)load the manifest so later praise uses clips
-    speakTTS(phrase, { rate: 1.0, pitch: 1.1, onDone: done });
-  }
+  // protected: praise plays to completion; a following dictation waits for it.
+  voiceQueue.enqueue(
+    (finish) => {
+      const done = onceFn(() => {
+        cb();
+        finish();
+      });
+      if (manifest && manifest.phrases.has(s)) {
+        praiseEl = playClip(praiseEl, `/audio/phrases/${s}.mp3`, {
+          onDone: done,
+          onFail: () => speakTTS(phrase, { rate: 1.0, pitch: 1.1, onDone: done }),
+        });
+      } else {
+        if (!manifest) ensureManifest(); // self-heal: (re)load the manifest so later praise uses clips
+        speakTTS(phrase, { rate: 1.0, pitch: 1.1, onDone: done });
+      }
+    },
+    { protected: true },
+  );
 }
 
 // --- Web Audio synth SFX -----------------------------------------------------

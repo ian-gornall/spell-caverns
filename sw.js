@@ -211,6 +211,7 @@ const CORE = [
   '/src/engine/lexicon.js',
   '/src/engine/distractors.js',
   '/src/engine/praise.js',
+  '/src/engine/voicequeue.js',
   '/src/engine/ui_phrases.js',
   '/src/engine/assessment.js',
   '/src/engine/progress.js',
