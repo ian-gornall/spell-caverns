@@ -206,36 +206,25 @@ function pickRefill(state, idx) {
   return null;
 }
 
-// Are there NEW unseen words strictly above the current level/band (so a level-up can help)?
-function hasNewAbove(state, idx) {
-  for (const entry of idx.values()) if (entry.band > state.level && !state.words.has(recKey(entry.word))) return true;
-  return false;
-}
-
-// Top the learning set up to `setSize`, honouring the refill priority. May raise `state.level`
-// when the current level (and below, via tricky) is exhausted but higher tiers have new words.
+// Top the learning set up to `setSize` from the CURRENT band only (new words first, then an
+// on-band/lower tricky reintroduction). §36 stay-in-level (Ian 2026-06-22d): it NEVER climbs to a
+// deeper band — when the current band's new/tricky words are exhausted the set simply sits UNDER
+// setSize until the band is mastered. The level only advances via advanceLevelIfCleared (mastery-
+// gated) or a manual Settings / cavern-map re-aim. The child masters the band's known words in draw
+// mode; once all are mastered the band clears and the level moves on.
 export function fillLearning(state, pool) {
   const idx = poolIndex(pool);
-  const top = maxBand(pool);
   let guard = 0;
   while (learningCount(state) < state.setSize && guard++ < 5000) {
     const pick = pickRefill(state, idx);
-    if (pick) {
-      if (pick.kind === 'new') {
-        const rec = ensureRecord(state, pick.entry.word, pick.entry);
-        rec.category = CATEGORIES.LEARNING;
-      } else {
-        pick.rec.category = CATEGORIES.LEARNING;
-        pick.rec.craftStreak = 0; // a fresh attempt run at the reintroduced word
-      }
-      continue;
+    if (!pick) break; // nothing new/tricky in the current band → stop (do NOT climb out of the band)
+    if (pick.kind === 'new') {
+      const rec = ensureRecord(state, pick.entry.word, pick.entry);
+      rec.category = CATEGORIES.LEARNING;
+    } else {
+      pick.rec.category = CATEGORIES.LEARNING;
+      pick.rec.craftStreak = 0; // a fresh attempt run at the reintroduced word
     }
-    // nothing at/below level → climb if higher tiers still have new words, else stop
-    if (state.level < top && hasNewAbove(state, idx)) {
-      state.level = clampLevel(state.level + 1, top);
-      continue;
-    }
-    break;
   }
   bumpPeaks(state);
   return state;
@@ -383,6 +372,37 @@ export function promoteLevel(state, pool) {
   return state;
 }
 
+// §36 stay-in-level (Ian 2026-06-22d): is EVERY word in `band` mastered? This is the bar to advance
+// the cavern level — the explorer stays in a band (fillLearning never auto-climbs) until all its
+// words are drawn from memory. An empty band (no words in the pool) returns false (nothing to clear).
+// Pure; one pass over the pool.
+export function bandMastered(state, pool, band = state.level) {
+  let any = false;
+  for (const w of pool || []) {
+    if (!w || w.band !== band) continue;
+    any = true;
+    const rec = getRecord(state, w.word);
+    if (!rec || rec.category !== CATEGORIES.MASTERED) return false;
+  }
+  return any;
+}
+
+// §36 stay-in-level: advance to the next cavern level ONLY when the current band is fully MASTERED.
+// Climbs past any deeper bands that happen to be mastered already (e.g. one visited earlier via the
+// cavern-map go-back). Never DROPS — the adaptive down-mover was removed; a manual Settings / map
+// re-aim is the only way back to an easier level. Returns true iff the level moved. Call this after a
+// mastery (draw) success — recordDraw is the only place a word becomes MASTERED.
+export function advanceLevelIfCleared(state, pool) {
+  const top = pool ? maxBand(pool) : 9999;
+  if (state.level >= top) return false;
+  if (!bandMastered(state, pool, state.level)) return false;
+  do {
+    promoteLevel(state, pool); // +1 level, reset the run window, refill from the new band
+  } while (state.level < top && bandMastered(state, pool, state.level));
+  bumpPeaks(state); // raise the cavern-map frontier (peakLevel) to the newly-reached level
+  return true;
+}
+
 // ---- repair (§36 C3) ----
 // "Needs repair" = a LEARNING word the child got RIGHT before but has since MISSED — i.e. it
 // has at least one correct craft yet is back at a zero streak (a known/mastered word demoted by
@@ -418,16 +438,16 @@ export function learningProgress(state) {
 export function categorySummary(state, pool) {
   const idx = poolIndex(pool);
   let newRemaining = 0;
-  // §36 next-step #2 (Ian 2026-06-22c): "words to the next LEVEL" = words in the CURRENT cavern
-  // level (band === state.level) the child hasn't yet learned (known or mastered). Reaches 0 when
-  // the whole band is learned — a friendly, accurate goal vs the old whole-dataset "new remaining"
-  // or the mastery-depth count. (A still-LEARNING/new/tricky band word counts; known/mastered don't.)
+  // §36 stay-in-level (Ian 2026-06-22d): "words to the next LEVEL" = words in the CURRENT cavern level
+  // (band === state.level) not yet MASTERED. The bar to advance a cavern level is "all mastered", so
+  // this reaches 0 exactly when the band clears and the level moves on. A known-but-unmastered word
+  // still counts (it has to be drawn from memory first) — only a MASTERED band word drops off.
   let toNextLevel = 0;
   for (const entry of idx.values()) {
     if (!state.words.has(recKey(entry.word))) newRemaining += 1;
     if (entry.band === state.level) {
       const rec = getRecord(state, entry.word);
-      if (!(rec && (rec.category === CATEGORIES.KNOWN || rec.category === CATEGORIES.MASTERED))) toNextLevel += 1;
+      if (!(rec && rec.category === CATEGORIES.MASTERED)) toNextLevel += 1;
     }
   }
   return {
@@ -448,13 +468,15 @@ export function categorySummary(state, pool) {
 // one descriptor per level (1..maxBand) with a status for the scrollable map:
 //   current  — band === state.level ("you are here")
 //   locked   — band > the FRONTIER (peakLevel, the deepest level ever reached) — not yet reached
-//   cleared  — within the frontier, not current, every word in it is known/mastered (done)
-//   reached  — within the frontier, not current, some words engaged but not all done
+//   cleared  — within the frontier, not current, every word in it is MASTERED (done)
+//   reached  — within the frontier, not current, some words engaged but not all mastered
 //   skipped  — within the frontier, not current, NO word engaged (a placement jump leapt over it,
 //              or a level passed without mastering it → go back & master). The "hide-skipped" cue.
 // Using peakLevel (not just level) as the locked boundary lets a child DROP back to an easier level
 // without the deeper ones they already reached re-locking — the whole reached range stays navigable.
-// `total`/`done` are the band's word count and known-or-mastered count (for a per-level progress bar).
+// §36 stay-in-level (Ian 2026-06-22d): "cleared" (⭐) requires every word MASTERED — the same bar the
+// game uses to advance the cavern level (advanceLevelIfCleared) — so the map can't show ⭐ on a band
+// the game still serves. `total`/`done` are the band's word count and MASTERED count (per-level bar).
 // Pure; iterates the pool once + a record lookup per word. Empty bands (total 0) never occur in the
 // real (contiguous) dataset but stay safe.
 export function cavernLevels(state, pool) {
@@ -469,7 +491,7 @@ export function cavernLevels(state, pool) {
     const rec = getRecord(state, w.word);
     if (rec) {
       engaged[b] = true;
-      if (rec.category === CATEGORIES.KNOWN || rec.category === CATEGORIES.MASTERED) done[b] += 1;
+      if (rec.category === CATEGORIES.MASTERED) done[b] += 1; // §36: a band clears only when fully MASTERED
     }
   }
   const level = state.level;

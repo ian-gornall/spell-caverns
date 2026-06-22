@@ -10,7 +10,7 @@
 // speed/combo gems; a build that needed help still earns a small "you crafted it"
 // reward (positive reinforcement, never shaming). UI module — verified with Playwright.
 import { el, header, burst, toast, createIdleGuard, pulse, fitPlayArea, visibleTimeout } from '../ui.js';
-import { buildCraftPool, buildRepairSession, applyAdaptiveLevel, recommendNext } from '../engine/selection.js';
+import { buildCraftPool, buildRepairSession, recommendNext } from '../engine/selection.js';
 import { fillLearning, recordCraft, repairWords, seedFromPlacement } from '../engine/categories.js';
 import { createPlacement, nextWord as placementNext, submit as placementSubmit, result as placementResult, serialize as placementSerialize } from '../engine/placement.js';
 import { byRank } from '../engine/lexicon.js';
@@ -521,14 +521,15 @@ export function startPuzzle(ctx, params = {}) {
     // §C1: during placement the WALK (not the categories machine) decides the level — we record
     // each answer onto the walk and seed categories ALL AT ONCE when it finishes (finishPlacement),
     // so corrects already bank progress. Normal play feeds the §30 state machine per word:
-    // a clean build advances toward KNOWN (2 in a row), an assisted one resets the streak, then
-    // the adaptive level may nudge up/down (skipped for a repair drill of known-hard words).
+    // a clean build advances toward KNOWN (2 in a row), an assisted one resets the streak.
+    // §36 stay-in-level (Ian 2026-06-22d): crafting NO LONGER moves the cavern level — the level only
+    // advances by MASTERING the whole band (in draw mode, advanceLevelIfCleared). The adaptive
+    // up/down nudge that used to fire here was removed (it caused the level to jump before a band was learned).
     if (placement) {
       placementSubmit(walk, target, firstTry);
       sessionCount += 1;
     } else {
       recordCraft(state.categories, target, firstTry, { pool });
-      if (!review) applyAdaptiveLevel(state.categories, pool);
     }
 
     if (firstTry) {

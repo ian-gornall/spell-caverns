@@ -23,7 +23,7 @@
 // UI module — verified with Playwright.
 import { el, header, burst, toast, createIdleGuard, pulse, parentalGate, fitPlayArea, visibleTimeout } from '../ui.js';
 import { buildMasteryPool } from '../engine/selection.js';
-import { recordDraw, unlocks } from '../engine/categories.js';
+import { recordDraw, unlocks, advanceLevelIfCleared } from '../engine/categories.js';
 import { recognizeGrid, pointsToGrid, GRID_N } from '../engine/handwriting.js';
 import { ensureRecognizer, recognizeDrawing } from '../cnn_recognizer.js';
 import { speechSupported, createLetterRecognizer } from '../speech.js';
@@ -848,6 +848,10 @@ export function startMastery(ctx, params = {}) {
       locked = true;
       // §30: a draw success is the ONLY path to MASTERED.
       recordDraw(state.categories, target, true);
+      // §36 stay-in-level (Ian 2026-06-22d): mastering a word is the only way the cavern level
+      // advances — if this just cleared the current band (all its words mastered), step up to the
+      // next one. Silent (no boss yet, per Ian); the new level surfaces on Home / the cavern map.
+      advanceLevelIfCleared(state.categories, pool);
       earned += MASTERY_GEMS;
       ctx.store.addGems(MASTERY_GEMS);
       ctx.store.recordAnswerStat(true, 'mastery');

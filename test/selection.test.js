@@ -27,9 +27,6 @@ import {
   buildRepairSession,
   buildMiningPool,
   buildMasteryPool,
-  ADAPT_WINDOW,
-  adaptiveLevelDecision,
-  applyAdaptiveLevel,
 } from '../src/engine/selection.js';
 
 const POOL = [
@@ -129,36 +126,7 @@ test('buildMasteryPool leads with KNOWN (unmastered) words — the ones still to
   assert.equal(getCat(st, out[0].word), CATEGORIES.KNOWN, 'the unmastered known word is offered first');
 });
 
-test('adaptiveLevelDecision: a clearly-weak run pushes DOWN, a clearly-strong run pushes UP', () => {
-  const st = createCategoryState({ setSize: 4, level: 3 });
-  st.recent = [false, false, false, false].slice(-ADAPT_WINDOW); // all wrong
-  assert.equal(adaptiveLevelDecision(st), 'down');
-  st.recent = [true, false, false, false]; // 1/4 correct — still weak
-  assert.equal(adaptiveLevelDecision(st), 'down');
-  st.recent = [true, true, true, true]; // all correct
-  assert.equal(adaptiveLevelDecision(st), 'up');
-});
-
-test('adaptiveLevelDecision: a mixed run or too-little data holds the level', () => {
-  const st = createCategoryState({ setSize: 4, level: 3 });
-  st.recent = [true, false, true, false]; // 2/4 — neither clearly strong nor weak
-  assert.equal(adaptiveLevelDecision(st), null);
-  st.recent = [false, false]; // not enough data yet
-  assert.equal(adaptiveLevelDecision(st), null);
-});
-
-test('applyAdaptiveLevel moves the level and resets the run window', () => {
-  const st = createCategoryState({ setSize: 4, level: 3 });
-  fillLearning(st, POOL);
-  st.recent = [false, false, false, false];
-  const dir = applyAdaptiveLevel(st, POOL);
-  assert.equal(dir, 'down');
-  assert.equal(st.level, 2);
-  assert.equal(st.recent.length, 0, 'window resets after a move so it does not re-fire immediately');
-
-  const st2 = createCategoryState({ setSize: 4, level: 1 });
-  fillLearning(st2, POOL); // POOL spans tiers 1-2, so a promote from 1 lands on 2
-  st2.recent = [true, true, true, true];
-  assert.equal(applyAdaptiveLevel(st2, POOL), 'up');
-  assert.equal(st2.level, 2);
-});
+// §36 stay-in-level (Ian 2026-06-22d): the adaptive up/down level mover was REMOVED — the level
+// now only advances by MASTERING the current cavern band (categories.advanceLevelIfCleared) or via a
+// manual Settings / cavern-map re-aim. Its old tests lived here; see test/categories.test.js for the
+// mastery-gated advance.

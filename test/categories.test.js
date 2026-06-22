@@ -32,6 +32,8 @@ import {
   fillLearning,
   demoteLevel,
   promoteLevel,
+  bandMastered,
+  advanceLevelIfCleared,
   setLevelAndRefill,
   seedFromPlacement,
   unlocks,
@@ -132,13 +134,19 @@ test('cavernLevels maps each band to current / skipped / locked with per-band ta
   assert.deepEqual(map.map((l) => l.band), [1, 2, 3]);
 });
 
-test('cavernLevels: an engaged lower band is "reached", a fully-known one is "cleared"; deeper is "locked"', () => {
+test('cavernLevels: an engaged lower band is "reached", a fully-MASTERED one is "cleared"; deeper is "locked"', () => {
   const st = createCategoryState({ setSize: 10, level: 3 });
   recordCraft(st, 'cat', false); // engage band 1 (no pool → no refill side-effects), not done yet
   let map = cavernLevels(st, POOL);
   assert.equal(map[0].status, 'reached');
   assert.equal(map[0].done, 0);
+  // §36 stay-in-level: a band is only "cleared" (⭐) when every word is MASTERED, NOT merely known —
+  // the same bar the game uses to advance the cavern level. All-known is still just "reached".
   for (const w of ['cat', 'bat', 'hat', 'map', 'rat']) { recordCraft(st, w, true); recordCraft(st, w, true); }
+  map = cavernLevels(st, POOL);
+  assert.equal(map[0].status, 'reached', 'all KNOWN but not mastered → still just reached');
+  assert.equal(map[0].done, 0, 'done counts MASTERED words only');
+  for (const w of ['cat', 'bat', 'hat', 'map', 'rat']) recordDraw(st, w, true); // master them all
   map = cavernLevels(st, POOL);
   assert.equal(map[0].status, 'cleared');
   assert.equal(map[0].done, 5);
@@ -274,8 +282,11 @@ test('unlock chain: mastery after setSize KNOWN, mining after setSize MASTERED �
   assert.equal(unlocks(st).mastery, true);
 });
 
-test('refill levels UP when the current level has no more new words (and none below)', () => {
-  // Only 2 tier-1 words → setSize 3 cannot be filled from level 1 alone.
+// §36 stay-in-level (Ian 2026-06-22d): fillLearning must NOT auto-climb the band. The explorer
+// stays in the current cavern level until it is MASTERED; the level only advances via
+// advanceLevelIfCleared (mastery-gated) or a manual Settings/cavern-map re-aim.
+test('fillLearning stays in the current band — it never climbs out to find more new words', () => {
+  // Only 2 band-1 words → setSize 3 cannot be filled from band 1 alone, but it must NOT reach into band 2.
   const tiny = [
     { word: 'cat', band: 1, pattern: 'short-a', rank: 1 },
     { word: 'bat', band: 1, pattern: 'short-a', rank: 2 },
@@ -284,9 +295,33 @@ test('refill levels UP when the current level has no more new words (and none be
   ];
   const st = createCategoryState({ setSize: 3, level: 1 });
   fillLearning(st, tiny);
-  assert.equal(learningWords(st).length, 3);
-  assert.ok(st.level >= 2, 'level climbed to find enough new words');
-  assert.ok(learningWords(st).includes('ship')); // pulled a tier-2 word after tier 1 ran dry
+  assert.equal(st.level, 1, 'stayed in band 1; did not climb to band 2');
+  assert.deepEqual(learningWords(st).sort(), ['bat', 'cat'], 'only the 2 band-1 words; the set sits under setSize until the band is mastered');
+  assert.ok(!learningWords(st).includes('ship'), 'never pulled a band-2 word');
+});
+
+test('bandMastered: true only when EVERY word in the band is MASTERED', () => {
+  const st = createCategoryState({ setSize: 5, level: 1 });
+  fillLearning(st, POOL); // cat,bat,hat,map,rat (all 5 band-1 words)
+  assert.equal(bandMastered(st, POOL, 1), false); // none mastered yet
+  for (const w of ['cat', 'bat', 'hat', 'map', 'rat']) makeKnown(st, w); // all KNOWN…
+  assert.equal(bandMastered(st, POOL, 1), false, 'all KNOWN is not enough — needs mastered');
+  for (const w of ['cat', 'bat', 'hat', 'map', 'rat']) recordDraw(st, w, true); // …then mastered
+  assert.equal(bandMastered(st, POOL, 1), true);
+  assert.equal(bandMastered(st, POOL, 2), false, 'an untouched band is not mastered');
+});
+
+test('advanceLevelIfCleared: advances to the next band ONLY when the current band is fully mastered', () => {
+  const st = createCategoryState({ setSize: 5, level: 1 });
+  fillLearning(st, POOL);
+  makeKnown(st, 'cat'); // partial progress — not all mastered
+  assert.equal(advanceLevelIfCleared(st, POOL), false, 'no advance while band 1 is unmastered');
+  assert.equal(st.level, 1);
+  for (const w of ['cat', 'bat', 'hat', 'map', 'rat']) { makeKnown(st, w); recordDraw(st, w, true); }
+  assert.equal(advanceLevelIfCleared(st, POOL), true, 'band 1 fully mastered → advance');
+  assert.equal(st.level, 2, 'climbed to band 2');
+  assert.ok(learningWords(st).some((w) => POOL.find((p) => p.word === w).band === 2), 'refilled with band-2 words');
+  assert.equal(advanceLevelIfCleared(st, POOL), false, 'band 2 is fresh → no further advance');
 });
 
 test('tricky reintroduction: an on-level-or-lower tricky word is reused BEFORE leveling up', () => {
@@ -373,21 +408,20 @@ test('categorySummary reports learning list + known/mastered/tricky/new-remainin
   assert.ok(Array.isArray(s.tricky)); // present in the data; the SCREEN gates it to grown-ups
 });
 
-// §36 next-step #2 (Ian 2026-06-22c): the Progress tile shows "words to next LEVEL" — words in
-// the CURRENT cavern level (band === state.level) the child hasn't yet learned (known/mastered),
-// NOT the old mastery-depth count. It reaches 0 when every word in the band is learned.
-test('categorySummary.toNextLevel = words in the current cavern level (band) not yet known/mastered', () => {
-  const st = fresh(); // level 1; band 1 has 5 words (cat,bat,hat,map,rat), none learned yet
+// §36 stay-in-level (Ian 2026-06-22d): the bar to advance a cavern level is "all MASTERED", so the
+// Progress tile "words to next LEVEL" counts words in the CURRENT band that aren't yet MASTERED
+// (known-but-unmastered still count). It reaches 0 exactly when the band clears and the level advances.
+test('categorySummary.toNextLevel = words in the current cavern level (band) not yet MASTERED', () => {
+  const st = fresh(); // level 1; band 1 has 5 words (cat,bat,hat,map,rat), none mastered yet
   let s = categorySummary(st, POOL);
   assert.equal(s.level, 1);
-  assert.equal(s.toNextLevel, 5); // all 5 band-1 words still to learn
-  makeKnown(st, 'cat'); // cat → known (counts as learned)
+  assert.equal(s.toNextLevel, 5); // all 5 band-1 words still to master
+  makeKnown(st, 'cat'); // cat → KNOWN but not yet mastered → still counts
   s = categorySummary(st, POOL);
-  assert.equal(s.toNextLevel, 4);
-  recordDraw(st, 'cat', true); // cat → mastered (still learned)
-  makeKnown(st, 'bat'); // bat → known
+  assert.equal(s.toNextLevel, 5, 'known-but-unmastered still counts toward the level');
+  recordDraw(st, 'cat', true); // cat → MASTERED → now it drops off
   s = categorySummary(st, POOL);
-  assert.equal(s.toNextLevel, 3); // 2 of 5 band-1 words learned
+  assert.equal(s.toNextLevel, 4); // 1 of 5 band-1 words mastered
 });
 
 test('serialize → deserialize is a lossless round-trip of the whole state machine', () => {

@@ -1,9 +1,9 @@
-// src/engine/selection.js — PURE §30 category-driven selection + adaptive level.
+// src/engine/selection.js — PURE §30 category-driven selection.
 //
 // Turns the categories.js state machine into concrete, ordered per-mode word lists
-// (full dataset entries, so the modes get .sentence/.syllables/etc.), and decides the
-// MEDIUM-cadence adaptive level off a short run of craft results. progress.js still
-// owns gems/speed/recency; this module owns WHICH words each mode serves.
+// (full dataset entries, so the modes get .sentence/.syllables/etc.). progress.js still
+// owns gems/speed/recency; this module owns WHICH words each mode serves. (§36: the old
+// adaptive level mover lived here and was removed — see the note where it used to be.)
 //
 //   - CRAFT   (productive-struggle hub): FOCUS the learning set, balanced with a little
 //             KNOWN (review) + TRICKY (repair). Any word may appear; learning leads.
@@ -21,16 +21,8 @@ import {
   trickyWords,
   repairWords,
   unlocks,
-  demoteLevel,
-  promoteLevel,
   getRecord,
 } from './categories.js';
-
-// Adaptive level (MEDIUM aggressiveness — Ian): read the last ADAPT_WINDOW craft results.
-//   ≤ ADAPT_DOWN_MAX correct → push DOWN (clearly weak) ; all correct → push UP (clearly strong).
-// Not hair-trigger (window > 1), not glacial (window small). The window resets on every move.
-export const ADAPT_WINDOW = 4;
-export const ADAPT_DOWN_MAX = 1; // ≤ this many correct in the window ⇒ weak ⇒ down
 
 const entriesFor = (pool, words) => {
   // §4 caps: case-insensitive so a record word (cased "Williams" or lowercased "williams") always
@@ -107,26 +99,12 @@ export function buildMasteryPool(state, pool, opts = {}) {
   return [...lead, ...tail].slice(0, length);
 }
 
-// Decide whether the adaptive level should move, from the recent craft-result window.
-// Pure — does NOT mutate. Returns 'up' | 'down' | null.
-export function adaptiveLevelDecision(state) {
-  const recent = Array.isArray(state.recent) ? state.recent : [];
-  if (recent.length < ADAPT_WINDOW) return null; // not enough data for a confident move
-  const window = recent.slice(-ADAPT_WINDOW);
-  const correct = window.filter(Boolean).length;
-  if (correct <= ADAPT_DOWN_MAX) return 'down';
-  if (correct === ADAPT_WINDOW) return 'up';
-  return null;
-}
-
-// Apply the adaptive decision: demote/promote the level (which parks/draws words and resets
-// the run window inside categories.js). Returns the direction moved, or null.
-export function applyAdaptiveLevel(state, pool) {
-  const dir = adaptiveLevelDecision(state);
-  if (dir === 'down') demoteLevel(state, pool);
-  else if (dir === 'up') promoteLevel(state, pool);
-  return dir;
-}
+// §36 stay-in-level (Ian 2026-06-22d): the MEDIUM-cadence adaptive level mover (it pushed the level
+// up/down off a short run of craft results) was REMOVED — it was the cause of the level "jumping
+// around" before a band was learned. The cavern level now advances ONLY by MASTERING the current
+// band (categories.advanceLevelIfCleared, called from the mastery draw mode) and only moves back via
+// a manual Settings / cavern-map re-aim (categories.setLevelAndRefill). categories.demoteLevel /
+// promoteLevel remain as the level primitives (promoteLevel powers advanceLevelIfCleared).
 
 // §31.D — "what should this student do next?" The pedagogical loop Ian wants is a CYCLE:
 //   Craft (new→learning→known) → Mastery (known→mastered) → cycle missed/mastered back to Craft.

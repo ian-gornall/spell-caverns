@@ -41,5 +41,12 @@ scripts/_regen_targets.json
 scripts/_remapped.json
 # Placement-diagnostic QA screenshots (scratch).
 scripts/qa_placement/
+# §36 next-steps QA screenshots (scratch — csc-v57→v61 guards).
+scripts/qa_diag_oneshot/
+scripts/qa_caps/
+scripts/qa_caps_mastery/
+scripts/qa_boss_debug/
+scripts/qa_cavernmap/
+scripts/qa_stay_in_level/
 # Pre-existing archived scripts (not part of the app).
 scripts/_arch/

@@ -224,7 +224,15 @@
 //      "Give it another go!"/"Try again!" — implying a retry the diagnostic does NOT allow. New
 //      praise.NEXT_WORD_PHRASES (forward-moving, e.g. "Let's keep going!") used in puzzle.diagnosticMiss
 //      for the spoken + shown copy. qa_diag_oneshot now also fails on any retry-implying miss phrase.
-const VERSION = 'csc-v60';
+// csc-v61: §36 STAY-IN-LEVEL (Ian 2026-06-22d) — the cavern level no longer JUMPS while a band is still
+//      being learned. The MEDIUM adaptive up/down mover (selection.applyAdaptiveLevel) is REMOVED, and
+//      categories.fillLearning no longer auto-climbs out of the current band when it runs out of NEW
+//      words. The level now advances ONLY by MASTERING the whole band (new categories.advanceLevelIfCleared,
+//      called on a mastery/draw success — bar = ALL words MASTERED, Ian's pick) or a manual Settings /
+//      cavern-map re-aim (never auto-drops). cavernLevels "cleared" (⭐) + categorySummary.toNextLevel now
+//      key off MASTERED (not known-or-mastered) so the map/tile match the advance bar. New guard
+//      qa_stay_in_level (5 clean crafts → level unchanged); +2 unit tests (bandMastered, advanceLevelIfCleared).
+const VERSION = 'csc-v61';
 
 const CORE = [
   '/',
