@@ -181,7 +181,12 @@
 //      only gap is the Windows-reserved slug "con", which falls back to device TTS). Word audio is now
 //      FULLY generated. Clips are network-fetched (never sw-cached), so no precache change; this bump
 //      advances the visible build version + busts any cached /audio/manifest.json.
-const VERSION = 'csc-v53';
+// csc-v54: §36 DO-FIRST backlog (desktop-Chrome QA). A1-A8 CSS bugs; B3 American spellings (data + UI);
+//      B1/B2 serial voice queue (engine/voicequeue.js — precached above) so praise never overlaps the
+//      next word; E1-E4 auto-hint cap + manual Pause + no-hints-while-paused + background-tab gating
+//      (visibleTimeout); C2 "to next depth"; C3 Repair unified on the §30 categories + yellow light;
+//      F1 mining 2 tiles; F2 daily reminder default ON + end-of-onboarding permission prompt.
+const VERSION = 'csc-v54';
 
 const CORE = [
   '/',
