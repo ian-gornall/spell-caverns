@@ -265,11 +265,11 @@ export function settingsScreen(ctx) {
     ),
   );
 
-  // option count 3/4
+  // option count 2/3/4 (§36 F1: 2 is the default; 3/4 stay available)
   const optSeg = el(
     'div',
     { class: 'seg' },
-    ...[3, 4].map((n) =>
+    ...[2, 3, 4].map((n) =>
       el(
         'button',
         {

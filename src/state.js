@@ -31,7 +31,7 @@ function defaultSettings() {
   return {
     difficulty: 'easy',
     length: 10,
-    optionCount: 3,
+    optionCount: 2, // §36 F1: mining shows 2 answer tiles by default (3/4 still selectable in Settings)
     voice: true,
     volume: 0.85,
     voiceName: null,
