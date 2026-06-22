@@ -21,7 +21,7 @@
 //   one-time GROWN-UP consent (mic → cloud transcription; COPPA — see speech.js / PRIVACY.md).
 //
 // UI module — verified with Playwright.
-import { el, header, burst, toast, createIdleGuard, pulse, parentalGate, fitPlayArea } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard, pulse, parentalGate, fitPlayArea, visibleTimeout } from '../ui.js';
 import { buildMasteryPool } from '../engine/selection.js';
 import { recordDraw, unlocks } from '../engine/categories.js';
 import { recognizeGrid, pointsToGrid, GRID_N } from '../engine/handwriting.js';
@@ -202,7 +202,11 @@ export function startMastery(ctx, params = {}) {
   const controlsEl = el('div', { class: 'draw-controls' }, clearBtn, ...(VOICE_SPELLING_ENABLED ? [dictBtn] : []), toggleBtn);
   const hintEl = el('div', { class: 'draw-hint' }, '');
 
-  const hdr = header(ctx, { title: 'Mastery', onBack: () => ctx.nav('home') });
+  const hdr = header(ctx, {
+    title: 'Mastery',
+    onBack: () => ctx.nav('home'),
+    onPause: () => guard.pauseNow(), // §36 E2 (guard assigned below; click fires later)
+  });
   const gemCountEl = hdr.querySelector('.gem-count');
 
   const playBody = el(
@@ -252,6 +256,12 @@ export function startMastery(ctx, params = {}) {
       audio.say(target);
       toast('✍️ Draw the next letter!');
       pulse(layoutWide ? boxesEl : canvas);
+    },
+    // §36 E3/E4: don't auto-recognise a half-drawn letter behind a pause overlay or in a
+    // hidden tab (no re-arm needed on wake — the child just keeps drawing).
+    onSuspend: () => {
+      clearTimeout(recognizeTimer);
+      clearBoxTimers();
     },
     onResume: () => !locked && audio.say(target),
   });
@@ -858,8 +868,9 @@ export function startMastery(ctx, params = {}) {
         index += 1;
         present();
       };
-      audio.speakPraise(PRAISE.mastered, { onDone: () => setTimeout(advance, 350) });
-      setTimeout(advance, 2600);
+      // visibleTimeout (§36 E4): don't advance to the next word in a backgrounded tab.
+      audio.speakPraise(PRAISE.mastered, { onDone: () => visibleTimeout(advance, 350) });
+      visibleTimeout(advance, 2600);
     } else {
       // a wrong finish is a gentle MISS (recordDraw(false): a mastered word drops to known,
       // a merely-known word stays known). Keep the correct letters, clear the wrong ones to redo.

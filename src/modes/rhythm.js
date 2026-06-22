@@ -105,7 +105,11 @@ export function startRhythm(ctx, params = {}) {
   // revisit (e.g. real phoneme audio). Until then the prompt shows only "Hear it again".
   const hearRow = el('div', { class: 'hear-row' }, hearBtn);
 
-  const hdr = header(ctx, { title: 'Mining', onBack: () => ctx.nav('home') });
+  const hdr = header(ctx, {
+    title: 'Mining',
+    onBack: () => ctx.nav('home'),
+    onPause: () => guard.pauseNow(), // §36 E2 (guard assigned below; click fires later)
+  });
   const gemCountEl = hdr.querySelector('.gem-count');
 
   const playBody = el(
@@ -176,14 +180,20 @@ export function startRhythm(ctx, params = {}) {
       tilesEl.classList.add('nudge');
       setTimeout(() => tilesEl.classList.remove('nudge'), 1300);
     },
-    onPause: () => {
-      paused = true; // freeze the speed clock while the overlay is up
+    // §36 E3/E4: freeze the speed clock while PAUSED (overlay) OR BACKGROUNDED (onSuspend
+    // fires for both) so a hidden/paused tab never advances the timer or penalises the child.
+    onSuspend: () => {
+      paused = true;
       cancelAnimationFrame(rafId);
       clearTimeout(graceTimer);
     },
     onResume: () => {
       if (locked || index >= session.length) return;
       armAndDictate(session[index]); // fresh read window so the pause isn't penalised
+    },
+    onWake: () => {
+      if (locked || index >= session.length) return;
+      armAndDictate(session[index]); // returning to the tab gives a fresh read window too
     },
   });
   ctx.onLeave(() => guard.stop());

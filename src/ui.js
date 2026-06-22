@@ -122,9 +122,10 @@ export function render(screenNode) {
   root.replaceChildren(screenNode);
 }
 
-// Shared header: a back chevron (optional), a title (optional), and the live
-// gem + cavern-depth readout. `ctx.depth()` computes depth from mastery.
-export function header(ctx, { title, onBack } = {}) {
+// Shared header: a back chevron (optional), a title (optional), an optional Pause
+// button (play screens, §36 E2), and the live gem + cavern-depth readout.
+// `ctx.depth()` computes depth from mastery.
+export function header(ctx, { title, onBack, onPause } = {}) {
   const gems = ctx.state.gems || 0;
   const depth = ctx.depth ? ctx.depth() : 1;
   return el(
@@ -132,6 +133,8 @@ export function header(ctx, { title, onBack } = {}) {
     { class: 'app-header' },
     onBack && el('button', { class: 'btn-icon back', onClick: onBack, 'aria-label': 'Back' }, '‹'),
     title && el('div', { class: 'header-title' }, title),
+    onPause &&
+      el('button', { class: 'btn-icon pause', onClick: onPause, 'aria-label': 'Pause' }, '⏸'),
     el(
       'div',
       { class: 'header-stats' },
@@ -281,39 +284,61 @@ export function fitPlayArea(playBody) {
 //     `onResume` when the child taps to resume) — for active play, so they can't zone out.
 // Self-manages its listeners + overlay — call `.stop()` on leaving the screen (register
 // it via ctx.onLeave). `.poke()` resets the timer. Thresholds scale by window.__idleTest.
-export function createIdleGuard({ nudgeMs = 15000, pauseMs = 45000, onNudge, onPause, onResume, onTimeout } = {}) {
+//
+// §36 hooks + visibility (E2/E3/E4):
+//   - `.pauseNow()` shows the pause overlay on demand (the manual Pause button, E2).
+//   - `onPause`/`onResume` fire when the OVERLAY appears / is dismissed (existing).
+//   - `onSuspend` fires when the screen should freeze its OWN auto timers — i.e. the overlay
+//     appears OR the tab goes hidden; `onWake` fires when the tab becomes visible again with
+//     no overlay. Together they let a screen pause hint/step/clock timers while paused or
+//     backgrounded (E3) and resume on return. The idle timers themselves never fire while the
+//     tab is hidden (visibleTimeout + an explicit visibility check), fixing the background-tab
+//     auto-advance/nudge bug (E4).
+export function createIdleGuard({ nudgeMs = 15000, pauseMs = 45000, onNudge, onPause, onResume, onTimeout, onSuspend, onWake } = {}) {
   const scale = (typeof window !== 'undefined' && Number(window.__idleTest)) || 1;
   nudgeMs *= scale;
   pauseMs *= scale;
-  let nudgeT = 0;
-  let pauseT = 0;
+  let nudgeT = null;
+  let pauseT = null;
   let stopped = false;
   let overlay = null;
   let last = 0;
 
+  const isHidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden';
   const clearTimers = () => {
-    clearTimeout(nudgeT);
-    clearTimeout(pauseT);
+    if (nudgeT) { nudgeT.cancel(); nudgeT = null; }
+    if (pauseT) { pauseT.cancel(); pauseT = null; }
   };
+  // The idle countdown only runs while the tab is VISIBLE and not stopped/overlaid (§36 E4):
+  // a backgrounded tab must never nudge, auto-advance, or pop the pause overlay. visibleTimeout
+  // itself also withholds firing while hidden, so this is belt-and-suspenders.
   const arm = () => {
     clearTimers();
-    if (stopped || overlay) return;
-    if (onNudge) nudgeT = setTimeout(() => { if (!stopped && !overlay) onNudge(); }, nudgeMs);
-    pauseT = setTimeout(() => {
+    if (stopped || overlay || isHidden()) return;
+    if (onNudge) nudgeT = visibleTimeout(() => { if (!stopped && !overlay) onNudge(); }, nudgeMs);
+    pauseT = visibleTimeout(() => {
       if (stopped || overlay) return;
       if (onTimeout) {
         onTimeout(); // menu auto-advance ("let's go") — no blocking overlay
         return;
       }
-      if (onPause) onPause();
-      overlay = pauseOverlay({
-        onResume: () => {
-          overlay = null;
-          arm();
-          if (onResume) onResume();
-        },
-      });
+      showOverlay();
     }, pauseMs);
+  };
+  // Show the blocking pause overlay (idle timeout OR the manual Pause button). onPause +
+  // onSuspend let the screen stop its OWN auto timers (hints/steps) while paused (E3).
+  const showOverlay = () => {
+    if (stopped || overlay) return;
+    clearTimers();
+    if (onPause) onPause();
+    if (onSuspend) onSuspend();
+    overlay = pauseOverlay({
+      onResume: () => {
+        overlay = null;
+        arm();
+        if (onResume) onResume();
+      },
+    });
   };
   const poke = () => {
     if (stopped || overlay) return;
@@ -323,24 +348,76 @@ export function createIdleGuard({ nudgeMs = 15000, pauseMs = 45000, onNudge, onP
     arm();
   };
   const onAct = () => poke();
+  // On tab hide: stop the idle timers + suspend the screen's auto timers; on return:
+  // re-arm + wake. Showing-on-return is avoided (no nudge fires the instant they look back).
+  const onVis = () => {
+    if (stopped) return;
+    if (isHidden()) {
+      clearTimers();
+      if (onSuspend) onSuspend();
+    } else if (!overlay) {
+      if (onWake) onWake();
+      arm();
+    }
+  };
   document.addEventListener('pointerdown', onAct, true);
   document.addEventListener('pointermove', onAct, true);
   document.addEventListener('keydown', onAct, true);
+  document.addEventListener('visibilitychange', onVis);
   arm();
 
   return {
     poke,
     pausedNow: () => !!overlay,
+    pauseNow: showOverlay, // §36 E2: the manual Pause button triggers the same overlay
     stop() {
       stopped = true;
       clearTimers();
       document.removeEventListener('pointerdown', onAct, true);
       document.removeEventListener('pointermove', onAct, true);
       document.removeEventListener('keydown', onAct, true);
+      document.removeEventListener('visibilitychange', onVis);
       if (overlay) {
         overlay.remove();
         overlay = null;
       }
+    },
+  };
+}
+
+// A setTimeout that NEVER fires while the tab is hidden (§36 E4): if the tab goes hidden
+// mid-countdown the pending fire is cancelled, and on becoming visible again the FULL delay
+// restarts. So auto-advance / hint / idle timers can't fire, reveal, or nudge in a
+// backgrounded tab — they wait until the child is actually looking. Returns { cancel }.
+// (In a non-DOM context it degrades to a plain setTimeout.)
+export function visibleTimeout(fn, ms) {
+  let id = 0;
+  let done = false;
+  const visible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
+  const cleanup = () => {
+    clearTimeout(id);
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
+  };
+  const start = () => {
+    clearTimeout(id);
+    if (done || !visible()) return;
+    id = setTimeout(() => {
+      done = true;
+      cleanup();
+      fn();
+    }, ms);
+  };
+  function onVis() {
+    if (done) return;
+    if (visible()) start();
+    else clearTimeout(id); // paused while hidden
+  }
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis);
+  start();
+  return {
+    cancel() {
+      done = true;
+      cleanup();
     },
   };
 }

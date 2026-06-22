@@ -9,7 +9,7 @@
 // (recall ≠ recognition, the §12 pedagogy concern). A clean build earns full
 // speed/combo gems; a build that needed help still earns a small "you crafted it"
 // reward (positive reinforcement, never shaming). UI module — verified with Playwright.
-import { el, header, burst, toast, createIdleGuard, pulse, fitPlayArea } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard, pulse, fitPlayArea, visibleTimeout } from '../ui.js';
 import { buildReviewSession } from '../engine/session.js';
 import { buildCraftPool, applyAdaptiveLevel, recommendNext } from '../engine/selection.js';
 import { fillLearning, recordCraft } from '../engine/categories.js';
@@ -90,7 +90,11 @@ export function startPuzzle(ctx, params = {}) {
   const clearBtn = el('button', { class: 'btn ghost', onClick: clearAll }, '↺ Clear');
   const controlsEl = el('div', { class: 'puzzle-controls' }, hintBtn, clearBtn);
 
-  const hdr = header(ctx, { title: review ? 'Repair Crystals' : 'Crafting', onBack: () => ctx.nav('home') });
+  const hdr = header(ctx, {
+    title: review ? 'Repair Crystals' : 'Crafting',
+    onBack: () => ctx.nav('home'),
+    onPause: () => guard.pauseNow(), // §36 E2 (guard is assigned below; the click fires later)
+  });
   const gemCountEl = hdr.querySelector('.gem-count');
 
   const playBody = el(
@@ -129,8 +133,8 @@ export function startPuzzle(ctx, params = {}) {
   let locked = false; // true once solved, while the verdict shows
   let startTime = 0; // 0 until the read window passes
   let graceTimer = 0;
-  let hintHiTimer = 0; // → highlight the hint button after HINT_HIGHLIGHT_MS with no correct letter
-  let hintFireTimer = 0; // → auto-fire a hint after HINT_AUTOFIRE_MS with no correct letter
+  let hintHiTimer = null; // visibleTimeout → highlight the hint button after HINT_HIGHLIGHT_MS
+  let hintFireTimer = null; // visibleTimeout → auto-reveal a hint after HINT_AUTOFIRE_MS
   let suppressClick = false; // set right after a drag so the trailing click is ignored
 
   // (Re)start the no-correct-letter hint clock. Called when the word goes live and reset on
@@ -138,19 +142,22 @@ export function startPuzzle(ctx, params = {}) {
   function armHintTimers() {
     clearHintTimers();
     if (locked) return;
-    hintHiTimer = setTimeout(() => {
+    // thresholds scale by window.__idleTest (same hook the idle guard uses) so QA can drive them fast
+    const tScale = (typeof window !== 'undefined' && Number(window.__idleTest)) || 1;
+    // visibleTimeout (§36 E4): the highlight + auto-reveal never fire in a backgrounded tab.
+    hintHiTimer = visibleTimeout(() => {
       if (!locked) {
         hintBtn.classList.add('hint-ready');
         pulse(hintBtn);
       }
-    }, HINT_HIGHLIGHT_MS);
-    hintFireTimer = setTimeout(() => {
+    }, HINT_HIGHLIGHT_MS * tScale);
+    hintFireTimer = visibleTimeout(() => {
       if (!locked) hint(true); // auto-fire (same gem cost as a tapped hint)
-    }, HINT_AUTOFIRE_MS);
+    }, HINT_AUTOFIRE_MS * tScale);
   }
   function clearHintTimers() {
-    clearTimeout(hintHiTimer);
-    clearTimeout(hintFireTimer);
+    if (hintHiTimer) { hintHiTimer.cancel(); hintHiTimer = null; }
+    if (hintFireTimer) { hintFireTimer.cancel(); hintFireTimer = null; }
     hintBtn.classList.remove('hint-ready');
   }
   ctx.onLeave(clearHintTimers);
@@ -175,10 +182,15 @@ export function startPuzzle(ctx, params = {}) {
       trayEl.classList.add('nudge');
       setTimeout(() => trayEl.classList.remove('nudge'), 1300);
     },
+    // §36 E3/E4: while PAUSED (manual or idle) or BACKGROUNDED, stop the hint clock so no
+    // letter is auto-revealed behind a pause overlay or in a hidden tab; restart it on wake.
+    onSuspend: () => clearHintTimers(),
+    onWake: () => { if (!locked) armHintTimers(); },
     onResume: () => {
       if (locked) return;
       startTime = performance.now();
       audio.say(target);
+      armHintTimers();
     },
   });
   ctx.onLeave(() => guard.stop());
@@ -319,6 +331,13 @@ export function startPuzzle(ctx, params = {}) {
     const g = gradeBuild(target, slots.map((s) => (s ? s.letter : null)));
     const i = g.perPosition.findIndex((p) => p !== true);
     if (i < 0) return;
+    // §36 E1: an AUTO-reveal never fills the FINAL missing letter — the child must place
+    // the last one themselves. If they keep stalling, the 45s idle pause overlay escalates
+    // (we stop nudging here so it isn't perpetually re-armed). A tapped hint still helps fully.
+    if (auto && g.perPosition.filter((p) => p !== true).length <= 1) {
+      clearHintTimers();
+      return;
+    }
     firstTry = false;
     hintsUsed += 1;
     if (slots[i] && !slots[i].locked) returnSlot(i);

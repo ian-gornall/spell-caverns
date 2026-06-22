@@ -13,7 +13,7 @@
 //              (nonsense words aren't real words, so they must not touch mastery).
 //
 // UI module — verified with Playwright, never imported by `node --test`.
-import { el, header, burst, toast, createIdleGuard, NO_AUTOFILL } from '../ui.js';
+import { el, header, burst, toast, createIdleGuard, visibleTimeout, NO_AUTOFILL } from '../ui.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { makeNonsenseWord, NONSENSE_PATTERNS } from '../engine/nonsense.js';
 import { scrambleTray, gradeBuild } from '../engine/puzzle.js';
@@ -77,7 +77,7 @@ export function startLab(ctx) {
       guard.stop();
       guard = null;
     }
-    stepTimers.forEach(clearTimeout);
+    stepTimers.forEach((t) => t.cancel());
     stepTimers = [];
   }
   ctx.onLeave(resetStep);
@@ -429,12 +429,14 @@ export function startLab(ctx) {
         pulseGo();
       },
     });
+    // visibleTimeout (§36 E4): the soft nudge + the HARD auto-commit never fire in a
+    // backgrounded tab — the lab can't auto-advance / auto-save while the child is away.
     stepTimers.push(
-      setTimeout(() => {
+      visibleTimeout(() => {
         toast('✨ Your crystal looks amazing! Tap “Name it” when ready');
         pulseGo();
       }, DRAW_SOFT_MS),
-      setTimeout(commitAndName, DRAW_HARD_MS),
+      visibleTimeout(commitAndName, DRAW_HARD_MS),
     );
   }
 

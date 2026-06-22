@@ -205,6 +205,29 @@ button {
 .btn-icon.back:active {
   transform: scale(0.92);
 }
+/* §36 E2: manual Pause button in the play header (a child / grown-up can pause mid-word).
+   Sits just before the gem/depth stats; sized to match the back chevron but a touch smaller. */
+.btn-icon.pause {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  margin-left: auto; /* push it to the right edge, before the stats */
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  line-height: 1;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+}
+.btn-icon.pause:active {
+  transform: scale(0.92);
+}
+/* when a pause button is present, the stats no longer need the auto-margin push */
+.app-header .btn-icon.pause + .header-stats {
+  margin-left: 12px;
+}
 
 /* SHARED button token (§17.B app-store-consistency pass): every pill/box button
    centers its content the SAME way — flex centering instead of relying on the
