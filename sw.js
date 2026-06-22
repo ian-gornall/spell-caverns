@@ -212,7 +212,15 @@
 //      recKey/getRecord + engine/selection entriesFor) so a proper noun is ONE record across fill
 //      (cased pool entry) + craft (lowercased target), not a stuck "Williams" + phantom "williams".
 //      Also: "August" capitalized (data/words.js); may/march/states/united stay lowercase. No new files.
-const VERSION = 'csc-v58';
+// csc-v59: §36 D4 — depth/level/cavern-map. (1) Geode bosses now fire every 10 MASTERED words (was 8),
+//      centralized as engine/narrative.WORDS_PER_DEPTH + depthForMastered (app.js + progress.js share
+//      it). (2) "/?boss[=N]" debug deep-link jumps to a boss at depth N for testing. (3) NEW scrollable
+//      CAVERN MAP on Progress (screens/progress.js cavernMap rebuilt): every 30-word band is a cavern
+//      LEVEL — current (auto-centered) / cleared / reached / skipped (a placement jump leapt over it →
+//      tap to go back & master) / locked (beyond the peakLevel frontier). engine/categories.cavernLevels
+//      (pure) + a new peakLevel high-water (so dropping back doesn't re-lock reached levels). Tapping a
+//      level re-aims the set there (setLevelAndRefill) + crafts it. Replaces the old mastery-DEPTH strip.
+const VERSION = 'csc-v59';
 
 const CORE = [
   '/',

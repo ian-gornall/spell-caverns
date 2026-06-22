@@ -1,13 +1,11 @@
 // src/screens/progress.js — the transparent progress view (UX.md §8).
 //
 // Same view for kid AND parent (HANDOFF §4 — no separate teacher console). Shows
-// gems, cavern depth, the mastery SPECTRUM (progress.summary buckets, as a
-// friendly bar rather than raw numbers), and a tiny recent-days accuracy strip.
-// Buckets are display-only — never a gate.
+// gems, the cavern LEVEL, the learning set, the §36-D4 scrollable CAVERN MAP (every
+// 30-word band as a level: current / cleared / reached / skipped / locked), daily
+// quests, personal bests, recent-days accuracy, and the crystal catalog. Display-only.
 import { el, header, toast } from '../ui.js';
-import { summary } from '../engine/progress.js';
-import { WORDS_PER_DEPTH } from '../engine/narrative.js';
-import { categorySummary } from '../engine/categories.js';
+import { categorySummary, cavernLevels, setLevelAndRefill } from '../engine/categories.js';
 import { byRank } from '../engine/lexicon.js';
 import { dailyQuests, questProgress, allQuestsDone } from '../engine/quests.js';
 import { catalogSummary } from '../engine/catalog.js';
@@ -177,41 +175,68 @@ function catalogPanel(ctx) {
   );
 }
 
-// Cavern map — a visual "how deep have I dug" path with "you are here" + the next
-// level as the goal (research Tier 2 #7: goal-gradient + endowed progress). Depth =
-// 1 + floor(known/8), matching app.js, so it's never at a bare zero (Depth 1 is lit).
+// §36 D4 (Ian 2026-06-22d): the CAVERN MAP — a scrollable column of every cavern LEVEL (30-word band,
+// ~97 of them). "You are here" (current) is highlighted + auto-centered; CLEARED levels (all words
+// mastered) glow gold, REACHED levels show partial progress, SKIPPED levels (a placement jump leapt
+// over them) are dashed + locked-looking to PULL the child back to master the easier words, and
+// levels beyond the deepest reached (the peakLevel frontier) are greyed/locked. Tapping any reached/
+// skipped/cleared level re-aims the working set there (setLevelAndRefill — the same Settings nudge)
+// and starts crafting it; a locked level just nudges "keep digging". This replaces the old 5-node
+// mastery-DEPTH strip (bosses still fire on mastery depth — engine/narrative — that's a separate axis).
+// skipped = open (🔓: tap to go back & master it); locked = not yet reachable (🔒).
+const LEVEL_ICON = { current: '⛏️', cleared: '⭐', reached: '💎', skipped: '🔓', locked: '🔒' };
 function cavernMap(ctx) {
-  const known = summary(ctx.state.tracker).counts.known;
-  const depth = ctx.depth();
-  const intoNext = known % WORDS_PER_DEPTH;
-  const toNext = WORDS_PER_DEPTH - intoNext;
-  const start = Math.max(1, depth - 2);
+  const pool = byRank().filter((w) => w.word.length >= 3);
+  const levels = cavernLevels(ctx.state.categories, pool);
+  const current = (ctx.state.categories && ctx.state.categories.level) || 1;
+  const skipped = levels.filter((l) => l.status === 'skipped').length;
+  const cleared = levels.filter((l) => l.status === 'cleared').length;
 
-  const nodes = [];
-  for (let d = start; d <= depth + 2; d++) {
-    const state = d < depth ? 'done' : d === depth ? 'current' : 'locked';
-    if (d > start) nodes.push(el('div', { class: 'depth-link' + (d <= depth ? ' lit' : '') }));
-    nodes.push(
+  let currentEl = null;
+  const onTap = (lv) => {
+    if (lv.status === 'locked') {
+      toast(`⛏️ Master more words to dig down to Level ${lv.band}!`);
+      return;
+    }
+    if (lv.band !== current) {
+      setLevelAndRefill(ctx.state.categories, lv.band, pool); // go practice that level (re-aims the set)
+      ctx.save();
+    }
+    ctx.nav('puzzle');
+  };
+  const node = (lv) => {
+    const b = el(
+      'button',
+      { class: `cavern-level ${lv.status}`, disabled: lv.status === 'locked', onClick: () => onTap(lv) },
+      el('span', { class: 'cl-icon' }, LEVEL_ICON[lv.status]),
       el(
         'div',
-        { class: 'depth-node ' + state },
-        el('div', { class: 'depth-dot' }, d === depth ? '⛏️' : d < depth ? '💎' : '🔒'),
-        el('div', { class: 'depth-cap' }, `D${d}`),
+        { class: 'cl-main' },
+        el('span', { class: 'cl-num' }, `Level ${lv.band}`),
+        el('div', { class: 'cl-bar' }, el('div', { class: 'cl-fill', style: { width: lv.total ? `${Math.round((lv.done / lv.total) * 100)}%` : '0%' } })),
       ),
+      el('span', { class: 'cl-prog' }, lv.total ? `${lv.done}/${lv.total}` : ''),
     );
-  }
+    if (lv.status === 'current') currentEl = b;
+    return b;
+  };
+
+  const scroll = el('div', { class: 'cavern-scroll' }, ...levels.map(node));
+  // center the current level once the panel is in the DOM (scoped to the scroll container)
+  setTimeout(() => {
+    if (currentEl) scroll.scrollTop = Math.max(0, currentEl.offsetTop - scroll.clientHeight / 2 + currentEl.clientHeight / 2);
+  }, 0);
+
+  const note = skipped
+    ? `You're at Level ${current} of ${levels.length}. ${skipped} easier level${skipped === 1 ? '' : 's'} to go back and master! ⛏️`
+    : `You're at Level ${current} of ${levels.length}${cleared ? ` — ${cleared} cleared ⭐` : ''}. Tap a level to practice it.`;
 
   return el(
     'div',
     { class: 'panel' },
     el('h3', {}, 'Cavern map'),
-    el('div', { class: 'cavern-strip' }, ...nodes),
-    el('div', { class: 'goal-bar', style: { marginTop: '12px' } }, el('div', { class: 'goal-fill', style: { width: `${(intoNext / WORDS_PER_DEPTH) * 100}%` } })),
-    el(
-      'p',
-      { class: 'quest-note', style: { marginTop: '8px' } },
-      `You're at Depth ${depth} — master ${toNext} more word${toNext === 1 ? '' : 's'} to reach Depth ${depth + 1}!`,
-    ),
+    el('p', { class: 'quest-note', style: { marginTop: '0', marginBottom: '10px' } }, note),
+    scroll,
   );
 }
 

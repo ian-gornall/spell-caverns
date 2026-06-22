@@ -37,6 +37,7 @@ import {
   unlocks,
   learningProgress,
   categorySummary,
+  cavernLevels,
   repairWords,
   needsRepair,
   serializeCategoryState,
@@ -115,6 +116,47 @@ test('a proper noun (capitalized in data) is ONE record across fill + lowercased
   assert.equal(recs[0].category, CATEGORIES.KNOWN, 'the lowercased craft must progress the SAME record');
   assert.equal(getCat(st, 'Sam'), CATEGORIES.KNOWN); // lookups are case-insensitive either way
   assert.equal(getCat(st, 'sam'), CATEGORIES.KNOWN);
+});
+
+// §36 D4 (Ian 2026-06-22d): the cavern MAP is the BAND axis (~97 cavern levels). cavernLevels maps
+// every band to a status for the scrollable map: current (= state.level), locked (deeper, not yet
+// reached), and for shallower bands — skipped (a placement jump left it untouched → go back and
+// master it), reached (some words engaged) or cleared (all words known/mastered).
+test('cavernLevels maps each band to current / skipped / locked with per-band tallies', () => {
+  const st = createCategoryState({ setSize: 3, level: 3 });
+  fillLearning(st, POOL); // band-3 words become learning; bands 1,2 untouched (skipped)
+  const map = cavernLevels(st, POOL);
+  assert.equal(map.length, 3); // maxBand = 3
+  assert.deepEqual(map.map((l) => l.status), ['skipped', 'skipped', 'current']);
+  assert.deepEqual(map.map((l) => l.total), [5, 4, 3]);
+  assert.deepEqual(map.map((l) => l.band), [1, 2, 3]);
+});
+
+test('cavernLevels: an engaged lower band is "reached", a fully-known one is "cleared"; deeper is "locked"', () => {
+  const st = createCategoryState({ setSize: 10, level: 3 });
+  recordCraft(st, 'cat', false); // engage band 1 (no pool → no refill side-effects), not done yet
+  let map = cavernLevels(st, POOL);
+  assert.equal(map[0].status, 'reached');
+  assert.equal(map[0].done, 0);
+  for (const w of ['cat', 'bat', 'hat', 'map', 'rat']) { recordCraft(st, w, true); recordCraft(st, w, true); }
+  map = cavernLevels(st, POOL);
+  assert.equal(map[0].status, 'cleared');
+  assert.equal(map[0].done, 5);
+  // a band deeper than the current level is always locked
+  const st2 = createCategoryState({ setSize: 3, level: 1 });
+  fillLearning(st2, POOL);
+  assert.deepEqual(cavernLevels(st2, POOL).map((l) => l.status), ['current', 'locked', 'locked']);
+});
+
+test('cavernLevels: dropping back below the frontier (peakLevel) keeps the deeper reached levels unlocked', () => {
+  // reached level 3 (peakLevel 3), then dropped back to level 1 (e.g. tapped an easier level on the map)
+  const st = createCategoryState({ setSize: 3, level: 1 });
+  st.peakLevel = 3;
+  const map = cavernLevels(st, POOL);
+  assert.equal(map[0].status, 'current'); // band 1 = where we are now
+  // bands 2 and 3 are within the frontier → NOT locked (still navigable), shown as skipped/reached
+  assert.notEqual(map[1].status, 'locked');
+  assert.notEqual(map[2].status, 'locked');
 });
 
 // ---- §36 C3: repair (cracked words) reconciles with the craft-streak pips ----

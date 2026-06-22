@@ -432,60 +432,103 @@ button.quest {
 }
 
 /* cavern map — a visual depth path ("you are here" + next-level goal) */
-.cavern-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.depth-node {
+/* §36 D4 — the scrollable cavern-level map (replaces the old 5-node mastery-depth strip). */
+.cavern-scroll {
+  position: relative; /* so a level's offsetTop is measured against THIS box (auto-center math) */
+  max-height: 340px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.18));
 }
-.depth-dot {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
+.cavern-level {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1.35rem;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
   background: var(--panel);
   border: 2px solid var(--panel-border);
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  scroll-margin: 120px;
 }
-.depth-node.done .depth-dot {
-  background: linear-gradient(160deg, #1f6f4a, #2bb673);
-  border-color: var(--emerald);
+.cavern-level .cl-icon {
+  font-size: 1.3rem;
+  width: 28px;
+  text-align: center;
+  flex: none;
 }
-.depth-node.current .depth-dot {
-  background: linear-gradient(150deg, #5f7bff, #8a5cff);
-  border-color: var(--gold);
-  box-shadow: 0 0 18px -2px var(--gold);
-  transform: scale(1.12);
-}
-.depth-node.locked {
-  opacity: 0.5;
-}
-.depth-cap {
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: var(--ink-dim);
-}
-.depth-node.current .depth-cap {
-  color: var(--gold);
-}
-.depth-link {
+.cavern-level .cl-main {
   flex: 1;
-  height: 4px;
-  margin: 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.cavern-level .cl-num {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.cavern-level .cl-prog {
+  font-size: 0.8rem;
+  color: var(--ink-dim);
+  font-weight: 700;
+  min-width: 40px;
+  text-align: right;
+  flex: none;
+}
+.cavern-level .cl-bar {
+  height: 5px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.12);
-  align-self: flex-start;
-  margin-top: 21px;
+  overflow: hidden;
 }
-.depth-link.lit {
+.cavern-level .cl-fill {
+  height: 100%;
+  border-radius: 999px;
   background: var(--emerald);
+}
+.cavern-level.reached {
+  border-color: var(--emerald);
+}
+.cavern-level.cleared {
+  border-color: var(--gold);
+}
+.cavern-level.cleared .cl-num {
+  color: var(--gold);
+}
+.cavern-level.cleared .cl-fill {
+  background: linear-gradient(90deg, var(--gold), #ffe9a8);
+}
+.cavern-level.current {
+  background: linear-gradient(150deg, #5f7bff, #8a5cff);
+  border-color: var(--gold);
+  box-shadow: 0 0 18px -4px var(--gold);
+}
+.cavern-level.current .cl-num {
+  color: #fff;
+  font-size: 1.08rem;
+}
+.cavern-level.current .cl-prog {
+  color: rgba(255, 255, 255, 0.85);
+}
+.cavern-level.skipped {
+  opacity: 0.72;
+  border-style: dashed;
+}
+.cavern-level.skipped .cl-num {
+  color: var(--ink-dim);
+}
+.cavern-level.locked {
+  opacity: 0.4;
+  cursor: default;
 }
 .home-grid {
   display: grid;

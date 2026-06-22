@@ -67,6 +67,7 @@ export function createCategoryState({ setSize = 10, level = 1 } = {}) {
     order: 0, // bumps on every record creation
     peakKnownish: 0, // high-water of (#known + #mastered) — gates the mastery unlock
     peakMastered: 0, // high-water of #mastered — gates the mining unlock
+    peakLevel: Math.max(1, Math.round(level) || 1), // §36 D4: deepest cavern level reached (map frontier)
   };
 }
 
@@ -158,6 +159,10 @@ function bumpPeaks(state) {
   // high-water counts both. Unlocks ratchet up and never fall back (QA I5 precedent).
   state.peakKnownish = Math.max(state.peakKnownish, known + mastered);
   state.peakMastered = Math.max(state.peakMastered, mastered);
+  // §36 D4: high-water of the cavern LEVEL (band) reached — the cavern map's FRONTIER. Lets a child
+  // drop back to an easier level (tap on the map) without the deeper ones they'd reached becoming
+  // "locked" again: levels up to peakLevel stay reachable, only beyond it is locked.
+  state.peakLevel = Math.max(state.peakLevel || 1, state.level || 1);
 }
 
 export function unlocks(state) {
@@ -439,6 +444,49 @@ export function categorySummary(state, pool) {
   };
 }
 
+// §36 D4 (Ian 2026-06-22d): the cavern MAP model. Every 30-word BAND is a cavern LEVEL; this returns
+// one descriptor per level (1..maxBand) with a status for the scrollable map:
+//   current  — band === state.level ("you are here")
+//   locked   — band > the FRONTIER (peakLevel, the deepest level ever reached) — not yet reached
+//   cleared  — within the frontier, not current, every word in it is known/mastered (done)
+//   reached  — within the frontier, not current, some words engaged but not all done
+//   skipped  — within the frontier, not current, NO word engaged (a placement jump leapt over it,
+//              or a level passed without mastering it → go back & master). The "hide-skipped" cue.
+// Using peakLevel (not just level) as the locked boundary lets a child DROP back to an easier level
+// without the deeper ones they already reached re-locking — the whole reached range stays navigable.
+// `total`/`done` are the band's word count and known-or-mastered count (for a per-level progress bar).
+// Pure; iterates the pool once + a record lookup per word. Empty bands (total 0) never occur in the
+// real (contiguous) dataset but stay safe.
+export function cavernLevels(state, pool) {
+  const top = maxBand(pool);
+  const total = new Array(top + 1).fill(0);
+  const done = new Array(top + 1).fill(0);
+  const engaged = new Array(top + 1).fill(false);
+  for (const w of pool || []) {
+    const b = w && Number.isFinite(w.band) ? w.band : 1;
+    if (b < 1 || b > top) continue;
+    total[b] += 1;
+    const rec = getRecord(state, w.word);
+    if (rec) {
+      engaged[b] = true;
+      if (rec.category === CATEGORIES.KNOWN || rec.category === CATEGORIES.MASTERED) done[b] += 1;
+    }
+  }
+  const level = state.level;
+  const frontier = Math.max(level, state.peakLevel || level);
+  const out = [];
+  for (let b = 1; b <= top; b += 1) {
+    let status;
+    if (b === level) status = 'current';
+    else if (b > frontier) status = 'locked';
+    else if (total[b] > 0 && done[b] >= total[b]) status = 'cleared';
+    else if (engaged[b]) status = 'reached';
+    else status = 'skipped';
+    out.push({ band: b, status, total: total[b], done: done[b] });
+  }
+  return out;
+}
+
 // ---- persistence (Map → JSON-safe and back; lossless round-trip) ----
 export function serializeCategoryState(state) {
   return {
@@ -448,6 +496,7 @@ export function serializeCategoryState(state) {
     order: state.order,
     peakKnownish: state.peakKnownish || 0,
     peakMastered: state.peakMastered || 0,
+    peakLevel: state.peakLevel || state.level || 1,
     words: [...state.words.values()].map((r) => ({ ...r })),
   };
 }
@@ -460,6 +509,7 @@ export function deserializeCategoryState(data) {
   state.order = Number.isFinite(data.order) ? data.order : 0;
   state.peakKnownish = Number.isFinite(data.peakKnownish) ? data.peakKnownish : 0;
   state.peakMastered = Number.isFinite(data.peakMastered) ? data.peakMastered : 0;
+  state.peakLevel = Number.isFinite(data.peakLevel) ? data.peakLevel : 0; // §36 D4; re-anchored below
 
   // §C1 migration: pre-band profiles stored each record with an age `tier` but no
   // `band`, and `level` as an age-tier (1–9). Derive each record's band from its
@@ -487,5 +537,7 @@ export function deserializeCategoryState(data) {
   } else {
     state.level = Math.max(1, Math.round(data.level) || 1);
   }
+  // §36 D4: the map frontier is at least the current level (saves predating peakLevel, or any drift).
+  state.peakLevel = Math.max(state.peakLevel || 1, state.level);
   return state;
 }
