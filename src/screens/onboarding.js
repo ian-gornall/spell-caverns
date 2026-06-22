@@ -8,6 +8,7 @@
 import { el, mascot, applyTheme, toast, NO_AUTOFILL } from '../ui.js';
 import { wordsByTier } from '../engine/lexicon.js';
 import * as sync from '../cloud_sync_backend.js';
+import * as push from '../push.js';
 import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
 import { UI } from '../engine/ui_phrases.js';
 
@@ -253,14 +254,50 @@ export function onboardingScreen(ctx) {
     }
   }
 
-  // --- step 5: create the profile -> guaranteed-win first wave --------------
+  // --- step 5: create the profile -> reminder prompt -> guaranteed-win first wave ---
   function ready() {
     const name = chosenName || 'Explorer';
     // Create a NEW profile (first-run, or "add explorer") and make it active.
     ctx.store.addProfile({ name, themeColor: chosenColour, startLevel: chosenLevel });
     ctx.refreshActive();
     applyTheme(chosenColour);
+    // §36 F2: at the END of onboarding (a grown-up just set this explorer up) offer the daily
+    // reminder + ask the OS for notification permission — only where push can actually work
+    // (an installed PWA / supported browser), only on first run, and only if permission hasn't
+    // been decided yet (don't re-nag if already granted/denied). Otherwise, straight to play.
+    const undecided = typeof Notification !== 'undefined' && Notification.permission === 'default';
+    if (firstRun && push.isSupported() && undecided) reminderStep(name);
+    else startDig(name);
+  }
 
+  // --- step 5b (first run, push-capable): the grown-up daily-reminder opt-in (F2) ---
+  // Reminders DEFAULT ON, but OS push permission can't be silently force-enabled — so we ask
+  // here, behind grown-up framing (COPPA). The setting is honest: ON only if permission is
+  // actually granted; declining/"maybe later" turns it off (re-enable anytime in Settings).
+  function reminderStep(name) {
+    const enable = async (e) => {
+      try { e.currentTarget.disabled = true; } catch { /* ignore */ }
+      let ok = false;
+      try { const r = await push.enable(); ok = !!(r && r.ok); } catch { /* ignore */ }
+      ctx.state.settings.reminders = ok;
+      ctx.save();
+      toast(ok ? 'Daily reminder on 💎' : 'No reminder for now — turn it on anytime in Settings.');
+      startDig(name);
+    };
+    const later = () => {
+      ctx.state.settings.reminders = false;
+      ctx.save();
+      startDig(name);
+    };
+    body.replaceChildren(
+      mascot(`One thing for grown-ups: want a gentle daily reminder so ${name} keeps their streak?`),
+      el('button', { class: 'btn primary onboard-go', onClick: enable }, '🔔 Yes, remind us'),
+      el('button', { class: 'btn onboard-go', onClick: later }, 'Maybe later'),
+      el('p', { class: 'field-hint', style: { maxWidth: '440px' } }, 'Grown-ups only — one friendly notification a day. Change it anytime in Settings.'),
+    );
+  }
+
+  function startDig(name) {
     const lineTxt = `Let's dig, ${name}! Tap the word you hear — you've got this!`;
     body.replaceChildren(
       mascot(lineTxt),

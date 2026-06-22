@@ -39,6 +39,8 @@ function defaultSettings() {
     themeColor: '#7AA2FF',
     readableText: false,
     dailyGoalGems: 250,
+    reminders: true, // §36 F2: daily reminder defaults ON; a grown-up is prompted for OS
+    // notification permission at the END of onboarding (push can't be silently force-enabled).
   };
 }
 
