@@ -88,8 +88,11 @@ if (!res.wrongByConstruction) issues.push(`FAIL: build was not actually wrong (b
 // "Keep the letters that fit" and leaves the chip empty.
 const oneShotChip = /Next word/i.test(res.chip);
 const retryVerdict = /Keep the letters that fit/i.test(res.verdict);
+// the spoken + shown phrase must NOT imply a retry (Ian: it said "give it another go" — wrong)
+const retryPhrase = /again|another|try again|once more/i.test(res.verdict);
 if (!oneShotChip) issues.push(`FAIL: expected a one-shot "Next word" chip, got chip="${res.chip}" verdict="${res.verdict}"`);
 if (retryVerdict) issues.push('FAIL: diagnostic showed the RETRY verdict "Keep the letters that fit" (old behaviour)');
+if (retryPhrase) issues.push(`FAIL: diagnostic miss phrase implies a retry: "${res.verdict}" (one-shot must move ON)`);
 
 // the word must ADVANCE (old behaviour would stay on `before` to retry)
 await page.waitForTimeout(1400);

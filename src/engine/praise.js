@@ -107,13 +107,24 @@ export const COMBO_PHRASES = [
   'Power surge!',
 ];
 
-// Spoken (gently) on a wrong answer — encouragement, no scolding.
+// Spoken (gently) on a wrong answer in NORMAL Craft — where the child keeps the fitting letters and
+// RETRIES — so "try again" is the right frame here.
 export const GENTLE_PHRASES = [
   'Almost!',
   'Try again!',
   'So close!',
   "You've got this!",
   'Give it another go!',
+];
+
+// §36 #1: spoken + shown on a miss in the ONE-SHOT placement diagnostic, where the child moves
+// straight to the NEXT word (no retry). FORWARD-moving + non-shaming — must never imply trying again.
+export const NEXT_WORD_PHRASES = [
+  'Good try!',
+  'Nice try!',
+  'On we go!',
+  "Let's keep going!",
+  'Good effort!',
 ];
 
 // Pick one element using an injected rng (defaults to Math.random).

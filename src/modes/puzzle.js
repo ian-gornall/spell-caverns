@@ -15,7 +15,7 @@ import { fillLearning, recordCraft, repairWords, seedFromPlacement } from '../en
 import { createPlacement, nextWord as placementNext, submit as placementSubmit, result as placementResult, serialize as placementSerialize } from '../engine/placement.js';
 import { byRank } from '../engine/lexicon.js';
 import { mulberry32 } from '../engine/distractors.js';
-import { gradeAnswer, projectedScore, GENTLE_PHRASES } from '../engine/praise.js';
+import { gradeAnswer, projectedScore, GENTLE_PHRASES, NEXT_WORD_PHRASES } from '../engine/praise.js';
 import { recordAnswer } from '../engine/progress.js';
 import { scrambleTray, gradeBuild, isProperWord, displayCase } from '../engine/puzzle.js';
 
@@ -494,7 +494,9 @@ export function startPuzzle(ctx, params = {}) {
     earned += pts;
     ctx.store.addGems(pts);
     audio.sfx('great');
-    const phrase = pickGentle();
+    // §36 #1: a FORWARD-moving phrase (NOT GENTLE_PHRASES' "try again") — the diagnostic is one shot,
+    // so the spoken + shown copy must move the child ON, never imply retrying this word.
+    const phrase = NEXT_WORD_PHRASES[Math.floor(rng() * NEXT_WORD_PHRASES.length)];
     audio.speakPraise(phrase);
     flashVerdict(phrase, `+${pts} 💎 · Next word`, '#9D8DF1');
     updateCombo(null);

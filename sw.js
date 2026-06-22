@@ -220,7 +220,11 @@
 //      tap to go back & master) / locked (beyond the peakLevel frontier). engine/categories.cavernLevels
 //      (pure) + a new peakLevel high-water (so dropping back doesn't re-lock reached levels). Tapping a
 //      level re-aims the set there (setLevelAndRefill) + crafts it. Replaces the old mastery-DEPTH strip.
-const VERSION = 'csc-v59';
+// csc-v60: §36 #1 copy fix (Ian) — a one-shot diagnostic MISS used GENTLE_PHRASES, which could say
+//      "Give it another go!"/"Try again!" — implying a retry the diagnostic does NOT allow. New
+//      praise.NEXT_WORD_PHRASES (forward-moving, e.g. "Let's keep going!") used in puzzle.diagnosticMiss
+//      for the spoken + shown copy. qa_diag_oneshot now also fails on any retry-implying miss phrase.
+const VERSION = 'csc-v60';
 
 const CORE = [
   '/',

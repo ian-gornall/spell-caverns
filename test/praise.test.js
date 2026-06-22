@@ -16,6 +16,7 @@ import {
   CRAFT_MULT,
   COMBO_PHRASES,
   GENTLE_PHRASES,
+  NEXT_WORD_PHRASES,
   gradeAnswer,
   projectedScore,
 } from '../src/engine/praise.js';
@@ -74,6 +75,19 @@ test('SPEED_TIERS is an ordered, well-formed tier table', () => {
 });
 
 // ------------------------------------------------------------ gradeAnswer shape
+// §36 #1 (Ian 2026-06-22d): the ONE-SHOT placement diagnostic advances to the NEXT word on a miss —
+// the child does NOT retry. So its consolation copy (shown AND spoken) must NEVER imply "try again":
+// the normal-Craft GENTLE_PHRASES ("Try again!", "Give it another go!") are wrong there. NEXT_WORD_PHRASES
+// are forward-moving instead.
+test('NEXT_WORD_PHRASES are forward-moving — none imply retrying the same word', () => {
+  assert.ok(Array.isArray(NEXT_WORD_PHRASES) && NEXT_WORD_PHRASES.length >= 3);
+  for (const p of NEXT_WORD_PHRASES) {
+    assert.equal(typeof p, 'string');
+    assert.ok(p.length > 2);
+    assert.doesNotMatch(p, /again|another|once more|retry/i, `"${p}" implies a retry`);
+  }
+});
+
 test('gradeAnswer always returns the spec fields', () => {
   const correct = gradeAnswer({ correct: true, responseMs: 800, combo: 1, rng: mulberry32(1) });
   const wrong = gradeAnswer({ correct: false, responseMs: 800, combo: 4, rng: mulberry32(1) });

@@ -2,9 +2,14 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • building sw **csc-v59** (NOT YET DEPLOYED — prod is csc-v56).
+> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • building sw **csc-v60** (NOT YET DEPLOYED — prod is csc-v56).
 >
-> **🆕 SESSION 2026-06-22d — §36 NEXT-STEPS #1, #2, #4 + #3 (D4) ✅ BUILT + QA'd locally (now csc-v59). NOT YET
+> **FIX (csc-v60):** the one-shot diagnostic MISS copy used GENTLE_PHRASES ("Give it another go!" — implies a retry
+> the diagnostic forbids). Now uses `praise.NEXT_WORD_PHRASES` (forward-moving, e.g. "Let's keep going!") for the
+> spoken + shown line; qa_diag_oneshot now also fails on any retry-implying miss phrase. Behaviour was already
+> one-shot (the word advances) — only the copy was wrong.
+>
+> **🆕 SESSION 2026-06-22d — §36 NEXT-STEPS #1, #2, #4 + #3 (D4) ✅ BUILT + QA'd locally (now csc-v60). NOT YET
 > DEPLOYED — held for Ian's review.** All done test-first; 319 unit tests + smoke + qa_placement + qa_diag_oneshot +
 > qa_caps + qa_caps_mastery + qa_boss_debug + qa_cavernmap + qa_level + qa_overflow all green. **Only #5 (real-device
 > pass) remains** — that's Ian's. Commits: 65b8f2c (#1/#2), db13d8f (#4), 186d157 (D4 bosses+debug), + this (D4 map).
@@ -64,8 +69,8 @@
 > - **⚠️ REMAINING:** **#5 OWED real-device pass** on audio + diagnostic + re-rank + caps + ALL of csc-v57→v59 (the
 >   one-shot diagnostic, the proper-noun caps in Craft+Mastery, bosses-every-10, the cavern map + tap-to-go-back) —
 >   that's Ian's. Plus the tentative **D4 "maybe" big boss at level-end** (confirm before building).
-> - **DEPLOY when Ian approves:** versions bumped (`sw.js` + `version.js` → **csc-v59**); push `main` → Git-CD
->   builds + deploys; verify `check_deploy.mjs csc-v59` + `qa_prod.mjs`. All of #1/#2/#4/D4 are one deployable unit.
+> - **DEPLOY when Ian approves:** versions bumped (`sw.js` + `version.js` → **csc-v60**); push `main` → Git-CD
+>   builds + deploys; verify `check_deploy.mjs csc-v60` + `qa_prod.mjs`. All of #1/#2/#4/D4 are one deployable unit.
 >
 > **🆕 SESSION 2026-06-22c — C1 DIAGNOSTIC + AoA RE-RANK + AUDIO-ASSET REPAIR ✅ SHIPPED (csc-v56).** A very
 > large session, committed + deployed. Summary of everything done (details below + in the §C1 banner):
