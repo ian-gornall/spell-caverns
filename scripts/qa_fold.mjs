@@ -36,31 +36,42 @@ const onboard = async (page) => {
   await clickText(page, /let.?s go/); await page.waitForSelector('.onboard-name');
   await page.fill('.onboard-name', 'Ada');
   await clickText(page, /that.?s me/); await page.waitForSelector('.colour-grid');
-  await clickText(page, /perfect/); await page.waitForSelector('.level-grid');
-  await page.locator('.level-card').nth(4).click();
+  await clickText(page, /perfect/); await page.waitForSelector('.age-grid'); // §C1: age, not a level picker
+  await page.locator('.age-grid .age-btn').nth(2).click(); // age 7
   await page.waitForTimeout(150);
   await clickText(page, /let.?s dig/);
   await page.waitForTimeout(500);
   if (await page.locator('button:has-text("Just this one")').count()) { await clickText(page, /just this one/); await page.waitForTimeout(400); }
+  if (await page.locator('button:has-text("Maybe later")').count()) { await clickText(page, /maybe later/); await page.waitForTimeout(300); }
   await page.waitForSelector('button:has-text("Start digging")', { timeout: 8000 });
 };
 
 const toReward = async (page) => {
-  // launch the rhythm "Practice" wave from home (unlocks audio + starts the loop)
-  await page.locator('.menu-card.play.practice').click({ timeout: 4000 }).catch(() => {});
-  await page.waitForSelector('.tiles', { timeout: 8000 });
-  for (let i = 0; i < 60; i++) {
+  // §C1: reach a reward via CRAFT (always open). Mining/rhythm is GATED until words are mastered,
+  // so a fresh explorer's Craft is the placement diagnostic — building words drives the ±100 walk
+  // to a reward; later it's a normal craft round. Either way we land on a .reward (with .reward .row).
+  await page.locator('.menu-card.craft.hero').click({ timeout: 4000 }).catch(() => {});
+  await page.waitForSelector('.puzzle .slot, .reward', { timeout: 8000 });
+  let hinted = null;
+  for (let i = 0; i < 40; i++) {
     if (await page.locator('.reward').count()) return true;
-    // only click when the tiles are unlocked (not mid-feedback) and the correct one is present
-    const ok = await page.evaluate(() => {
-      const tiles = document.querySelector('.tiles');
-      if (!tiles || tiles.classList.contains('locked')) return false;
-      const w = window.__rhythmCurrent && window.__rhythmCurrent.word;
-      const t = [...document.querySelectorAll('.tile')].find((x) => x.textContent === w);
-      if (t) { t.click(); return true; }
-      return false;
+    const cur = await page.evaluate(() => window.__puzzleCurrent || null);
+    if (!cur || !cur.word) { await page.waitForTimeout(200); continue; }
+    if (cur.word.length > 5 && hinted !== cur.word) { // a hinted miss → faster convergence
+      hinted = cur.word;
+      const h = page.locator('.puzzle-controls .btn.ghost').first();
+      if (await h.count()) await h.click();
+    }
+    await page.evaluate(() => {
+      const w = window.__puzzleCurrent?.word; if (!w) return;
+      for (let p = 0; p < w.length; p++) {
+        const slot = document.querySelectorAll('.slots .slot')[p];
+        if (slot && slot.classList.contains('filled')) continue;
+        const t = [...document.querySelectorAll('.tray-tile')].find((x) => !x.classList.contains('used') && x.textContent === w[p]);
+        if (t) t.click();
+      }
     });
-    await page.waitForTimeout(ok ? 700 : 300);
+    await page.waitForTimeout(850);
   }
   return (await page.locator('.reward').count()) > 0;
 };

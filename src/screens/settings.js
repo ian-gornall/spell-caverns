@@ -13,7 +13,7 @@ import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
 import { setLevelAndRefill } from '../engine/categories.js';
 import { byRank } from '../engine/lexicon.js';
-import { COLOURS, levelGrid, LEVELS } from './onboarding.js';
+import { COLOURS } from './onboarding.js';
 import { APP_VERSION } from '../version.js';
 import { swCacheVersion } from '../pwa.js';
 
@@ -229,21 +229,45 @@ export function settingsScreen(ctx) {
     }),
   );
 
-  // starting level (per-profile) — re-aim where the engine introduces NEW words at any
-  // time (§21-B). Writes state.startLevel; the next session reflects it. Reuses the same
-  // level cards as onboarding. (This sets the FLOOR for new material; the game still
-  // adapts up/down and surfaces craft-missed words for repair.)
-  const curLevel = ctx.state.startLevel || 1;
-  const curLevelLabel = (LEVELS.find((l) => l.tier === curLevel) || {}).label || `Tier ${curLevel}`;
-  const levelGridEl = levelGrid(curLevel, (tier) => {
-    ctx.state.startLevel = tier;
-    // §30: re-aim the working set NOW — old learning words are set aside and the set refills
-    // with fresh words at the new level (otherwise the picker left craft serving the old words).
-    setLevelAndRefill(ctx.state.categories, tier, byRank().filter((w) => w.word.length >= 3));
+  // §C1 starting level (per-profile). The level is now a CAVERN LEVEL (a 30-word band found by
+  // the placement diagnostic), not an age picker. A grown-up can RE-TEST (re-run the diagnostic
+  // next Craft) or nudge the level ±1 band — the game still adapts up/down and revisits tricky
+  // words. Writes state.categories.level (+ keeps startLevel in sync for display).
+  const curBand = ctx.state.categories.level || 1;
+  const levelPool = () => byRank().filter((w) => w.word.length >= 3);
+  const nudgeLevel = (delta) => {
+    const next = Math.max(1, (ctx.state.categories.level || 1) + delta);
+    setLevelAndRefill(ctx.state.categories, next, levelPool());
+    ctx.state.startLevel = ctx.state.categories.level;
     ctx.save();
-    const lbl = (LEVELS.find((l) => l.tier === tier) || {}).label || `Tier ${tier}`;
-    toast(`New words now start around “${lbl}”. ⛏️`);
-  });
+    ctx.nav('settings'); // re-render the read-out
+  };
+  const levelControlEl = el(
+    'div',
+    { class: 'level-control' },
+    el(
+      'div',
+      { class: 'level-stepper' },
+      el('button', { class: 'btn ghost', onClick: () => nudgeLevel(-1) }, '➖ Easier'),
+      el('span', { class: 'level-readout' }, `Cavern level ${curBand}`),
+      el('button', { class: 'btn ghost', onClick: () => nudgeLevel(1) }, 'Harder ➕'),
+    ),
+    el(
+      'button',
+      {
+        class: 'btn',
+        style: { marginTop: '10px', width: '100%' },
+        onClick: () => {
+          // reset placement so the NEXT crafting round re-diagnoses the right level
+          ctx.state.placement = { done: false, age: (ctx.state.placement && ctx.state.placement.age) || null };
+          ctx.save();
+          toast('Re-testing — the next crafting round finds the right level. ✨');
+          ctx.nav('puzzle');
+        },
+      },
+      '🔁 Re-test starting level',
+    ),
+  );
 
   // session length
   const lenSeg = el(
@@ -1103,9 +1127,9 @@ export function settingsScreen(ctx) {
         el(
           'div',
           { class: 'field' },
-          el('label', {}, `Starting level — ${curLevelLabel}`),
-          el('p', { class: 'field-hint' }, 'Where new words begin. The game still adapts up and down and revisits tricky words.'),
-          levelGridEl,
+          el('label', {}, `Starting level — Cavern level ${curBand}`),
+          el('p', { class: 'field-hint' }, 'Found by a quick spelling check when an explorer starts. Re-test any time, or nudge it easier/harder. The game still adapts and revisits tricky words.'),
+          levelControlEl,
         ),
         el('div', { class: 'field' }, el('label', {}, 'Difficulty'), diffSeg),
         el(

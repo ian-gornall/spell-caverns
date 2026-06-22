@@ -1,6 +1,6 @@
-// scripts/qa_level.mjs — verify the §30 bug fix: picking a new Starting Level in Settings
-// re-aims the learning set (old words → tricky, refilled from the new level). Run: npm start
-// then: node scripts/qa_level.mjs
+// scripts/qa_level.mjs — verify the §C1 Settings level NUDGE: stepping the cavern level
+// (➖ Easier / Harder ➕, which replaced the 9-card picker) re-aims the learning set (old
+// words → tricky, refilled from the new band). Run: npm start then: node scripts/qa_level.mjs
 import { chromium } from 'playwright';
 const URL = process.env.URL || 'http://localhost:5173';
 const browser = await chromium.launch();
@@ -35,13 +35,14 @@ try {
   const before = await readCats();
   console.log('BEFORE level change:', before);
 
-  // Settings → pick a higher level card
+  // Settings → nudge the cavern level HARDER a few times (the new ➕ stepper)
   await page.locator('.menu-card', { hasText: 'Settings' }).first().click();
-  await page.waitForSelector('.level-card', { timeout: 6000 });
-  const cards = page.locator('.level-card');
-  const n = await cards.count();
-  await cards.nth(Math.min(n - 1, 3)).click(); // a clearly different (higher) level
-  await page.waitForTimeout(400);
+  await page.waitForSelector('.level-stepper', { timeout: 6000 });
+  for (let i = 0; i < 3; i++) {
+    await page.locator('.level-stepper .btn', { hasText: 'Harder' }).click();
+    await page.waitForTimeout(300); // nudgeLevel re-renders Settings each step
+    await page.waitForSelector('.level-stepper', { timeout: 4000 });
+  }
   const after = await readCats();
   console.log('AFTER level change:', after);
 

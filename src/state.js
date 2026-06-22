@@ -52,7 +52,12 @@ function defaultProfile(id, over = {}) {
     version: 1,
     profile: { name: over.name || 'Explorer', onboarded: !!over.onboarded },
     settings: { ...defaultSettings(), ...(over.themeColor ? { themeColor: over.themeColor } : {}) },
-    startLevel: over.startLevel || 1, // level-select anchor (per profile)
+    startLevel: over.startLevel || 1, // cavern-level (band) anchor (per profile); set by placement
+    // §C1 placement diagnostic: a NEW explorer's first Craft IS the placement walk. `done`=false
+    // funnels them through it (in modes/puzzle.js) until the band is found; `age` (asked in
+    // onboarding) seeds the walk's start position. (storedToState defaults RETURNING profiles
+    // that pre-date placement to done:true, so an existing player is never re-diagnosed.)
+    placement: { done: false, age: over.age || null },
     kidLock: over.kidLock || null, // optional per-kid lock (a picture/PIN code) — set later
     snapshots: [], // dated rollback points for parent revert
     gems: 0,
@@ -88,6 +93,9 @@ function storedToState(p) {
     records: { ...base.records, ...(p.records || {}) },
     catalog: { ...base.catalog, ...(p.catalog || {}) },
     snapshots: Array.isArray(p.snapshots) ? p.snapshots : [],
+    // §C1: a stored profile that PRE-DATES placement has no `placement` field → it's an
+    // existing player who's already been served words, so mark them placed (never re-diagnose).
+    placement: p.placement || { done: true, age: null },
     tracker: deserializeTracker(p.tracker),
     // revive the §30 category machine (absent on pre-§30 saves → a fresh one; words
     // re-categorise through play, while the continuous tracker keeps its history).

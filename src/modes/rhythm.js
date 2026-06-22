@@ -494,7 +494,7 @@ export function startRhythm(ctx, params = {}) {
       el('h2', {}, 'Wave complete!'),
       el('div', { class: 'earned' }, `+${earned} gems mined`),
       progressLine,
-      el('p', { style: { color: 'var(--ink-dim)' } }, `Total: 💎 ${state.gems || 0}  ·  Depth ⛏️ ${ctx.depth()}`),
+      el('p', { style: { color: 'var(--ink-dim)' } }, `Total: 💎 ${state.gems || 0}  ·  Level ⛏️ ${(state.categories && state.categories.level) || 1}`),
       el('div', { class: 'row' }, ...buttons),
     );
 

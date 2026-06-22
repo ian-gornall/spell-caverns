@@ -162,7 +162,13 @@ function splitIntoN(samples, rate, n) {
   }
   if (st >= 0) runs.push([st, silent.length]);
   const interior = runs.filter((r) => r[0] > 0 && r[1] < silent.length);
-  if (interior.length < n - 1) return { segs: [], ok: false };
+  // §C1 fix: require EXACTLY n-1 interior silences. The old `< n-1` accepted MORE gaps and then
+  // took the n-1 LARGEST as cuts — but a multi-syllable word's internal pause can be larger than a
+  // true between-word gap, so the cuts landed mid-word and every clip in the batch shifted by one
+  // (each segment still passed the duration check, so `ok` stayed true → SILENT corruption; this is
+  // what made documents.mp3 say "purpose"). When the gap count is ambiguous, bail so processBatch
+  // bisects down to smaller batches (ultimately BATCH_SIZE=1, which never splits → always correct).
+  if (interior.length !== n - 1) return { segs: [], ok: false };
   interior.sort((a, b) => b[1] - b[0] - (a[1] - a[0]));
   const cuts = interior
     .slice(0, n - 1)
@@ -253,10 +259,14 @@ function targets() {
 }
 
 function saveManifest() {
+  // Map a Windows-reserved-name alias file back to its LOGICAL slug (con_.mp3 → "con") so the
+  // manifest keeps the word the app actually asks for (audio.js maps the slug → con_.mp3 on fetch).
+  const RESERVED_ALIAS = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])_$/i;
   const listSlugs = (sub) => {
     const dir = path.join(AUDIO_DIR, sub);
     if (!fs.existsSync(dir)) return [];
-    return fs.readdirSync(dir).filter((f) => f.endsWith('.mp3')).map((f) => f.replace(/\.mp3$/, '')).sort();
+    return fs.readdirSync(dir).filter((f) => f.endsWith('.mp3')).map((f) => f.replace(/\.mp3$/, ''))
+      .map((s) => (RESERVED_ALIAS.test(s) ? s.slice(0, -1) : s)).sort();
   };
   const m = {
     format: 'mp3',

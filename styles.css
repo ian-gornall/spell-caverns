@@ -2561,6 +2561,61 @@ select {
   width: 7px;
   box-shadow: 0 0 14px var(--tier);
 }
+/* §C1: the onboarding AGE question — big tappable number buttons (5–13). Replaces the
+   age-labelled level picker; age only seeds where the placement diagnostic starts. */
+.age-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+}
+.age-btn {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: var(--ink);
+  border-radius: 18px;
+  background: linear-gradient(155deg, #1d2649, #161d3a);
+  border: 2px solid var(--panel-border);
+  transition: transform 0.1s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.age-btn:active {
+  transform: scale(0.96);
+}
+.age-btn.on {
+  border-color: var(--accent);
+  background: linear-gradient(155deg, color-mix(in srgb, var(--accent) 24%, #1d2649), #161d3a);
+  box-shadow: 0 0 22px -6px var(--accent);
+  color: #fff;
+}
+/* §C1 Settings: the cavern-level stepper + read-out (replaces the 9-card level picker). */
+.level-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.level-readout {
+  flex: 1;
+  text-align: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+/* §C1 debug: the placement-diagnostic word-rank readout (placement mode only). */
+.placement-debug {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.72rem;
+  color: var(--ink-dim, #8593a3);
+  text-align: center;
+  padding: 2px 8px;
+  opacity: 0.8;
+}
 .level-label {
   font-weight: 800;
   font-size: 1.15rem;

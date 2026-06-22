@@ -21,10 +21,10 @@ import {
 } from '../src/engine/categories.js';
 import { recommendNext } from '../src/engine/selection.js';
 
-// A pool with enough tier-1 words to reach the setSize unlock thresholds.
+// A pool with enough band-1 words to reach the setSize unlock thresholds.
 const POOL = Array.from({ length: 12 }, (_, i) => ({
   word: `w${String.fromCharCode(97 + i)}`, // wa, wb, wc, ...
-  tier: 1,
+  band: 1,
   pattern: 'p',
   rank: i + 1,
   sentence: `A w${String.fromCharCode(97 + i)}.`,

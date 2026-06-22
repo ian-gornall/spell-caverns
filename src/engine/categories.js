@@ -2,7 +2,12 @@
 //
 // §30 (Ian 2026-06-19d) layers DISCRETE categories on top of the continuous
 // mastery score in progress.js (which still drives gems / speed / recency — this
-// module owns "what state is each word in" and "what's in the working set"):
+// module owns "what state is each word in" and "what's in the working set").
+//
+// §C1 (Ian 2026-06-22): the working-set LEVEL is a 30-word BAND (a "cavern level",
+// `floor(pos/30)+1` over the frequency list), NOT the age `tier`. Every word carries
+// a `band` (from lexicon.byRank); selection/refill key off it. `tier` stays only as
+// age metadata. The placement diagnostic (engine/placement.js) picks the starting band.
 //
 //     new → learning → known → mastered      (+ `tricky`, a demotion/overflow bucket)
 //
@@ -16,11 +21,11 @@
 //                (on overflow when a known/mastered word re-enters, OR on a level demotion).
 //                It is the demotion/overflow pool — never a proactive target. GROWN-UP-ONLY
 //                in the UI (a child never sees a "tricky/hard" label).
-//   - refill priority when a learning slot frees: (1) a NEW unseen word at the current
-//                level → (2) an on-level-or-lower TRICKY word (preferring one whose pattern
-//                the learner has since mastered — the well-timed reintroduction) → (3) level
-//                UP and draw from the higher tier. Tricky words resurface ONLY via (2)/(3),
-//                never on their own.
+//   - refill priority when a learning slot frees: (1) a NEW unseen word in the current
+//                level (a 30-word BAND / cavern level) → (2) an on-level-or-lower TRICKY
+//                word (preferring one whose pattern the learner has since mastered — the
+//                well-timed reintroduction) → (3) level UP and draw from the next band.
+//                Tricky words resurface ONLY via (2)/(3), never on their own.
 //   - unlock chain: craft (always) → mastery (after `setSize` reached KNOWN) → mining (after
 //                `setSize` reached MASTERED). Unlocks NEVER regress (gated on high-water peaks).
 //
@@ -57,15 +62,18 @@ export function createCategoryState({ setSize = 10, level = 1 } = {}) {
   };
 }
 
-// ---- pool helpers (the pool is an array of dataset entries {word,tier,pattern,rank}) ----
+// ---- pool helpers (pool entries = dataset rows {word,tier,pattern,rank,pos,band}) ----
+// NOTE (§C1): `level` is a 30-word BAND (cavern level), and `band` is the level bucket
+// — NOT the age `tier`. `tier` stays as word metadata (difficulty priors, printables);
+// every selection/level decision below keys off `band` (attached by lexicon.byRank).
 function poolIndex(pool) {
   const m = new Map();
   for (const w of pool || []) if (w && typeof w.word === 'string' && !m.has(w.word)) m.set(w.word, w);
   return m;
 }
-function maxTier(pool) {
+function maxBand(pool) {
   let mx = 1;
-  for (const w of pool || []) if (Number.isFinite(w.tier) && w.tier > mx) mx = w.tier;
+  for (const w of pool || []) if (Number.isFinite(w.band) && w.band > mx) mx = w.band;
   return mx;
 }
 
@@ -75,7 +83,8 @@ function ensureRecord(state, word, poolEntry) {
   if (!rec) {
     rec = {
       word,
-      tier: poolEntry && Number.isFinite(poolEntry.tier) ? poolEntry.tier : state.level,
+      tier: poolEntry && Number.isFinite(poolEntry.tier) ? poolEntry.tier : 0, // age metadata only
+      band: poolEntry && Number.isFinite(poolEntry.band) ? poolEntry.band : state.level, // the level bucket
       pattern: (poolEntry && poolEntry.pattern) || '',
       rank: poolEntry && Number.isFinite(poolEntry.rank) ? poolEntry.rank : Infinity,
       category: CATEGORIES.LEARNING,
@@ -111,9 +120,9 @@ const learningCount = (state) => {
 function accuracy(rec) {
   return rec.craftAttempts ? rec.craftCorrect / rec.craftAttempts : 1;
 }
-// "Harder" first: lowest accuracy, then higher tier, then more struggle (attempts), then oldest.
+// "Harder" first: lowest accuracy, then higher band (deeper), then more struggle, then oldest.
 function harder(a, b) {
-  return accuracy(a) - accuracy(b) || b.tier - a.tier || b.craftAttempts - a.craftAttempts || a.order - b.order;
+  return accuracy(a) - accuracy(b) || b.band - a.band || b.craftAttempts - a.craftAttempts || a.order - b.order;
 }
 
 // Park the single hardest learning word (excluding `exclude`) as tricky. Returns it or null.
@@ -157,33 +166,33 @@ function patternMastered(state, pattern) {
   return false;
 }
 
-// Pick ONE refill candidate at/below the current level, or null if none exists there.
-//   priority: (1) lowest-rank NEW word at tier === level
-//             (2) an on-level-or-lower TRICKY word (pattern-mastered first, then closest tier)
+// Pick ONE refill candidate at/below the current level (band), or null if none exists there.
+//   priority: (1) lowest-rank NEW word in band === level
+//             (2) an on-level-or-lower TRICKY word (pattern-mastered first, then closest band)
 function pickRefill(state, idx) {
-  // (1) new unseen at the current level
+  // (1) new unseen in the current band
   let bestNew = null;
   for (const entry of idx.values()) {
-    if (entry.tier !== state.level || state.words.has(entry.word)) continue;
+    if (entry.band !== state.level || state.words.has(entry.word)) continue;
     if (!bestNew || (entry.rank ?? Infinity) < (bestNew.rank ?? Infinity)) bestNew = entry;
   }
   if (bestNew) return { kind: 'new', entry: bestNew };
 
-  // (2) tricky at/below the level — prefer pattern-mastered, then highest tier (closest), then rank
-  const tricky = [...state.words.values()].filter((r) => r.category === CATEGORIES.TRICKY && r.tier <= state.level);
+  // (2) tricky at/below the level — prefer pattern-mastered, then highest band (closest), then rank
+  const tricky = [...state.words.values()].filter((r) => r.category === CATEGORIES.TRICKY && r.band <= state.level);
   if (tricky.length) {
     tricky.sort((a, b) => {
       const pm = (patternMastered(state, b.pattern) ? 1 : 0) - (patternMastered(state, a.pattern) ? 1 : 0);
-      return pm || b.tier - a.tier || (a.rank ?? Infinity) - (b.rank ?? Infinity) || a.order - b.order;
+      return pm || b.band - a.band || (a.rank ?? Infinity) - (b.rank ?? Infinity) || a.order - b.order;
     });
     return { kind: 'tricky', rec: tricky[0] };
   }
   return null;
 }
 
-// Are there NEW unseen words strictly above the current level (so a level-up can help)?
+// Are there NEW unseen words strictly above the current level/band (so a level-up can help)?
 function hasNewAbove(state, idx) {
-  for (const entry of idx.values()) if (entry.tier > state.level && !state.words.has(entry.word)) return true;
+  for (const entry of idx.values()) if (entry.band > state.level && !state.words.has(entry.word)) return true;
   return false;
 }
 
@@ -191,7 +200,7 @@ function hasNewAbove(state, idx) {
 // when the current level (and below, via tricky) is exhausted but higher tiers have new words.
 export function fillLearning(state, pool) {
   const idx = poolIndex(pool);
-  const top = maxTier(pool);
+  const top = maxBand(pool);
   let guard = 0;
   while (learningCount(state) < state.setSize && guard++ < 5000) {
     const pick = pickRefill(state, idx);
@@ -293,10 +302,10 @@ export function recordDraw(state, word, correct) {
 
 // ---- adaptive level primitives (the WHEN-to-move policy lives in the selection layer) ----
 // Push DOWN a level: park the now-above-level (or, failing that, the single hardest) learning
-// words as tricky, lower the level, and refill from the lower tier.
+// words as tricky, lower the level (band), and refill from the lower band.
 export function demoteLevel(state, pool) {
   const newLevel = Math.max(1, state.level - 1);
-  const above = [...state.words.values()].filter((r) => r.category === CATEGORIES.LEARNING && r.tier > newLevel);
+  const above = [...state.words.values()].filter((r) => r.category === CATEGORIES.LEARNING && r.band > newLevel);
   if (above.length) above.forEach((r) => (r.category = CATEGORIES.TRICKY));
   else evictHardestToTricky(state);
   state.level = newLevel;
@@ -310,16 +319,48 @@ export function demoteLevel(state, pool) {
 // the set is refilled with fresh words at the new level — so changing the level IMMEDIATELY
 // changes the words served (bug fix 2026-06-19f: the old picker left the learning set stale).
 export function setLevelAndRefill(state, level, pool) {
-  state.level = clampLevel(level, pool ? maxTier(pool) : 9);
+  state.level = clampLevel(level, pool ? maxBand(pool) : 9999);
   for (const r of state.words.values()) if (r.category === CATEGORIES.LEARNING) r.category = CATEGORIES.TRICKY;
   state.recent = [];
   if (pool) fillLearning(state, pool);
   return state;
 }
 
-// Push UP a level: newly-freed slots will draw from the higher tier (existing words stay).
+// §C1: seed the working set from a placement diagnostic. Aims the level at the entered
+// band (parking any prior learning as tricky), then banks every diagnostic answer onto
+// its word so the child "starts with progress" (Ian): a CORRECT word below the entered
+// band is treated as tested-out (→ KNOWN); a CORRECT word at/above the band shows one
+// craft pip (LEARNING); a MISS at/above the band is live LEARNING; a MISS below the band
+// becomes TRICKY (resurfaces later). Finally tops the learning set up to setSize.
+export function seedFromPlacement(state, responses, enteredBand, pool) {
+  state.level = clampLevel(enteredBand, pool ? maxBand(pool) : 9999);
+  for (const r of state.words.values()) if (r.category === CATEGORIES.LEARNING) r.category = CATEGORIES.TRICKY;
+  state.recent = [];
+  const idx = poolIndex(pool);
+  for (const resp of Array.isArray(responses) ? responses : []) {
+    if (!resp || typeof resp.word !== 'string') continue;
+    const entry = idx.get(resp.word);
+    const band = entry && Number.isFinite(entry.band) ? entry.band : state.level;
+    // BELOW the placed level → the diagnostic only tested OUT of these; the high level already
+    // means they're not served. We do NOT mark them known/mastered — the child crafted each once,
+    // not proven (Ian 2026-06-22b: "I never repeated one, so I can't have mastered them"). Skip.
+    if (band < state.level) continue;
+    // AT/ABOVE the placed level → live learning with PARTIAL progress (one craft = 1 pip toward
+    // known, not known): a clean diagnostic build counts as the first of the two needed for known.
+    const rec = ensureRecord(state, resp.word, entry);
+    rec.craftAttempts += 1;
+    if (resp.correct) rec.craftCorrect += 1;
+    rec.category = CATEGORIES.LEARNING;
+    rec.craftStreak = resp.correct ? 1 : 0;
+  }
+  if (pool) fillLearning(state, pool);
+  bumpPeaks(state);
+  return state;
+}
+
+// Push UP a level: newly-freed slots will draw from the next band (existing words stay).
 export function promoteLevel(state, pool) {
-  const top = pool ? maxTier(pool) : 9;
+  const top = pool ? maxBand(pool) : 9999;
   state.level = clampLevel(state.level + 1, top);
   state.recent = [];
   if (pool) fillLearning(state, pool);
@@ -392,13 +433,36 @@ export function deserializeCategoryState(data) {
   const state = createCategoryState();
   if (!data || typeof data !== 'object') return state;
   state.setSize = Math.max(1, Math.round(data.setSize) || 10);
-  state.level = Math.max(1, Math.round(data.level) || 1);
   state.recent = Array.isArray(data.recent) ? data.recent.map(Boolean) : [];
   state.order = Number.isFinite(data.order) ? data.order : 0;
   state.peakKnownish = Number.isFinite(data.peakKnownish) ? data.peakKnownish : 0;
   state.peakMastered = Number.isFinite(data.peakMastered) ? data.peakMastered : 0;
+
+  // §C1 migration: pre-band profiles stored each record with an age `tier` but no
+  // `band`, and `level` as an age-tier (1–9). Derive each record's band from its
+  // saved `rank` (band = the 30-word group it lives in), then — for legacy state —
+  // re-anchor `level` to the DEEPEST band the child is currently LEARNING so the new
+  // band-based refill continues from their actual frontier (never loses progress).
+  let legacy = false;
   for (const r of Array.isArray(data.words) ? data.words : []) {
-    if (r && typeof r.word === 'string') state.words.set(r.word, { ...r });
+    if (!r || typeof r.word !== 'string') continue;
+    const rec = { ...r };
+    if (!Number.isFinite(rec.band)) {
+      legacy = true;
+      rec.band = Number.isFinite(rec.rank)
+        ? Math.floor((rec.rank - 1) / 30) + 1
+        : Number.isFinite(rec.tier) && rec.tier > 0
+          ? rec.tier
+          : 1;
+    }
+    state.words.set(rec.word, rec);
+  }
+  if (legacy) {
+    let lv = 1;
+    for (const r of state.words.values()) if (r.category === CATEGORIES.LEARNING && r.band > lv) lv = r.band;
+    state.level = lv;
+  } else {
+    state.level = Math.max(1, Math.round(data.level) || 1);
   }
   return state;
 }

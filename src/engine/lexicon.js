@@ -6,6 +6,12 @@
 // under `node --test`.
 import { WORDS, PATTERNS } from '../../data/words.js';
 
+// §C1/D4 cavern levels: the frequency-ordered list is grouped into fixed bands of
+// BAND_SIZE consecutive words. A word's `band` (1-based) is its cavern level — the
+// unit the categories engine serves from and the placement diagnostic enters at.
+export const BAND_SIZE = 30;
+export const bandForPos = (pos) => Math.floor(pos / BAND_SIZE) + 1;
+
 // Fast membership test of "is this string a real word in the dataset?".
 // Used by the distractor + nonsense engines to avoid accidentally producing a
 // real word when they want a wrong/invented one.
@@ -26,10 +32,13 @@ export function getWord(word) {
   return WORDS.find((w) => w.word === word);
 }
 
-// WORDS is already rank-sorted (rank 1 = most common). Return a shallow copy so
-// callers can sort/slice without mutating the shared dataset array.
+// WORDS is already rank-sorted (rank 1 = most common). Return FRESH entries (not the
+// shared dataset objects) each carrying their 0-based list `pos` and 30-word `band`
+// (cavern level), so the categories engine + placement diagnostic agree on which
+// 30-word group a word belongs to. Callers can sort/slice/filter freely; filtering
+// preserves each word's full-list `pos`/`band` (so a band may have <30 servable words).
 export function byRank() {
-  return WORDS.slice();
+  return WORDS.map((w, i) => ({ ...w, pos: i, band: bandForPos(i) }));
 }
 
 export { WORDS, PATTERNS };

@@ -25,7 +25,9 @@ test('dataset is non-empty and the expected size', () => {
 test('every word entry has the required, well-typed fields', () => {
   for (const w of WORDS) {
     assert.equal(typeof w.word, 'string');
-    assert.ok(w.word.length > 0 && w.word === w.word.toLowerCase(), `bad word: ${w.word}`);
+    // words are lowercase EXCEPT proper nouns, which are Capitalized (first letter upper) — §C1
+    const lc = w.word.toLowerCase();
+    assert.ok(w.word.length > 0 && (w.word === lc || w.word === lc[0].toUpperCase() + lc.slice(1)), `bad word: ${w.word}`);
     assert.equal(typeof w.rank, 'number');
     assert.ok(Number.isInteger(w.tier) && w.tier >= 1 && w.tier <= 9, `bad tier on ${w.word}`);
     assert.ok(Array.isArray(w.syllables) && w.syllables.length > 0, `bad syllables on ${w.word}`);
@@ -51,7 +53,7 @@ test('sentences almost always contain the exact word (regression guard)', () => 
   // its sentence. A handful of entries use a morphological variant (rights/right)
   // or are off-topic; that is a known minor content issue, not an integrity bug.
   // We guard the *property* so a bad re-merge that breaks it at scale is caught.
-  const omit = WORDS.filter((w) => !w.sentence.toLowerCase().includes(w.word));
+  const omit = WORDS.filter((w) => !w.sentence.toLowerCase().includes(w.word.toLowerCase()));
   const rate = omit.length / WORDS.length;
   assert.ok(
     rate <= 0.01,
@@ -78,7 +80,7 @@ test('word strings are unique (no duplicate entries)', () => {
   }
 });
 
-test('WORDS is frequency-ordered: rank is non-decreasing', () => {
+test('WORDS is AoA-ordered (earliest-acquired first): rank is non-decreasing', () => {
   let prev = -Infinity;
   for (const w of WORDS) {
     assert.ok(w.rank >= prev, `rank dropped at "${w.word}" (${w.rank} < ${prev})`);
@@ -171,8 +173,9 @@ test('byRank returns a sorted shallow copy that does not alias WORDS', () => {
     prev = w.rank;
   }
   // mutating the copy must not disturb the shared dataset
+  const firstBefore = WORDS[0].word;
   a.reverse();
-  assert.equal(WORDS[0].word, 'the');
+  assert.equal(WORDS[0].word, firstBefore);
 });
 
 // ------------------------------------------------------------- coverage (supplement)

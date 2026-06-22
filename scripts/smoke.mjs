@@ -83,111 +83,78 @@ try {
   await page.click('.onboard-go'); // -> colour
   await page.waitForSelector('.colour-grid .colour-swatch', { timeout: 4000 });
   await page.locator('.colour-swatch').nth(1).click();
-  await page.click('.onboard-go'); // -> level select
-  await page.waitForSelector('.level-card', { timeout: 4000 });
-  await page.click('.onboard-go'); // "Let's dig!" -> family-sync step (first run)
+  await page.click('.onboard-go'); // -> §C1 AGE step (replaces the age-labelled level picker)
+  await page.waitForSelector('.age-grid .age-btn', { timeout: 4000 });
+  const ageBtns = await page.locator('.age-grid .age-btn').count();
+  if (ageBtns === 9) ok('onboarding asks the age (9 buttons, 5–13) instead of a level picker');
+  else fail(`age step expected 9 buttons, got ${ageBtns}`);
+  await page.click('.age-grid .age-btn:nth-child(3)'); // age 7
+  await page.click('.onboard-go.level-cta'); // "Let's dig!" -> family-sync step (first run)
   await page.waitForSelector('text=Just this one', { timeout: 4000 });
-  await page.click('text=Just this one'); // skip sync -> ready (creates the profile)
+  await page.click('text=Just this one'); // skip sync -> reminder? -> ready (creates the profile)
+  if (await page.locator('text=Maybe later').count()) await page.click('text=Maybe later'); // skip the reminder opt-in
   await page.waitForSelector('.onboard-go.big', { timeout: 4000 });
-  await page.click('.onboard-go.big'); // -> guaranteed-win first wave (rhythm firstRun)
-  await page.waitForSelector('.rhythm .tile', { timeout: 5000 });
-  const fwDots = await page.locator('.rhythm .dots .dot').count();
-  if (fwDots === 5) ok('onboarding launched a short guaranteed-win first wave (5 words)');
-  else fail(`first wave expected 5 words, got ${fwDots}`);
-  // §30: mining/rhythm is otherwise GATED until words are KNOWN (asserted later), so we
-  // exercise the rhythm LOOP here on the guaranteed-win first-run wave already on screen
-  // (it's reached via buildFirstWave, which is not subject to the known-words gate).
-  const tileCount = await page.locator('.rhythm .tile').count();
-  // §27 youngest-tier anti-imprinting clamp (recognitionOptionCount): tier 1-2 words show
-  // only 2 options on purpose, so the cold-start first round can legitimately render 2 tiles.
-  if (tileCount >= 2) ok(`rhythm round rendered ${tileCount} answer tiles`);
-  else fail(`expected >=2 tiles, got ${tileCount}`);
+  await page.click('.onboard-go.big'); // "Start digging!" -> §C1 placement diagnostic (Craft, NOT locked Mining)
 
-  const sentence = (await page.locator('.sentence').textContent())?.trim();
-  if (sentence && sentence.includes('_')) ok(`blanked sentence shown: "${sentence}"`);
-  else fail(`sentence missing its blank: "${sentence}"`);
-
-  // helper: read the current target word from the off-DOM test hook
-  const target = async () => (await page.evaluate(() => window.__rhythmCurrent || null));
+  // helper: read the current gem count (used here + in the puzzle section below)
   const gemText = async () => parseInt((await page.locator('.gem-count').first().textContent()) || '0', 10);
 
-  // --- a CORRECT tap: click the tile whose text EXACTLY equals the target word ---
-  let cur = await target();
-  const gemsBefore = await gemText();
-  const clickExact = async (word) => {
-    const ts = page.locator('.rhythm .tile');
-    const c = await ts.count();
-    for (let i = 0; i < c; i++) {
-      if ((await ts.nth(i).textContent())?.trim() === word) {
-        await ts.nth(i).click({ timeout: 1500 });
-        return true;
+  // §C1/D1: the FIRST activity is the placement diagnostic, played as ORDINARY Craft so the
+  // child never knows it's different (D1: no longer drops into locked Mining). Verify it runs
+  // in placement mode, then drive the ±100 walk to completion — a clean build on short words, a
+  // hinted "miss" on longer ones — so the explorer is PLACED at a cavern band before continuing.
+  await page.waitForSelector('.screen.puzzle .slot', { timeout: 6000 });
+  const diag0 = await page.evaluate(() => window.__puzzleCurrent || null);
+  if (diag0 && diag0.placement) ok('first run launches the placement diagnostic (Craft, not locked Mining)');
+  else fail(`first activity not in placement mode: ${JSON.stringify(diag0)}`);
+  const diagGemsBefore = await gemText();
+  let hintedWord = null;
+  // §C1: the diagnostic spans MULTIPLE 6-word sessions — keep playing (clicking "Craft again"
+  // between sessions) until the profile is PLACED (3 misses in one band).
+  const isPlaced = () => page.evaluate(() => {
+    const c = JSON.parse(localStorage.getItem('crystal-spell-caverns:v1'));
+    const p = c.profiles.find((x) => x.id === c.activeId);
+    return !!(p.placement && p.placement.done);
+  });
+  for (let guard = 0; guard < 80; guard++) {
+    if (await isPlaced()) break;
+    if ((await page.locator('.reward').count()) > 0) { // between-session reward → continue
+      await page.locator('.reward .btn.primary').first().click();
+      await page.waitForSelector('.screen.puzzle .slot, .reward', { timeout: 6000 }).catch(() => {});
+      await page.waitForTimeout(300);
+      continue;
+    }
+    const c = await page.evaluate(() => window.__puzzleCurrent || null);
+    if (!c || !c.word) {
+      await page.waitForTimeout(150);
+      continue;
+    }
+    if (c.word.length > 5 && hintedWord !== c.word) {
+      hintedWord = c.word;
+      const h = page.locator('.puzzle-controls .btn.ghost').first();
+      if (await h.count()) await h.click(); // a hinted build = NOT a clean build = a "miss"
+    }
+    // fill empty slots in index order, skipping filled (hint-locked) ones so placement stays aligned
+    await page.evaluate(() => {
+      const w = window.__puzzleCurrent?.word;
+      if (!w) return;
+      for (let p = 0; p < w.length; p++) {
+        const slot = document.querySelectorAll('.slots .slot')[p];
+        if (slot && slot.classList.contains('filled')) continue;
+        const t = [...document.querySelectorAll('.tray-tile')].find((x) => !x.classList.contains('used') && x.textContent === w[p]);
+        if (t) t.click();
       }
-    }
-    return false;
-  };
-  if (!(await clickExact(cur.word))) fail(`no tile matched the target word "${cur.word}"`);
-  await page.waitForTimeout(250);
-  const verdict1 = (await page.locator('.verdict').textContent())?.trim();
-  const gemsAfter = await gemText();
-  if (gemsAfter > gemsBefore) ok(`correct tap mined gems (${gemsBefore} -> ${gemsAfter}), praise "${verdict1}"`);
-  else fail(`gems did not increase after correct tap (${gemsBefore} -> ${gemsAfter}); verdict "${verdict1}"`);
-
-  // wait for advance to the next word
-  await page.waitForFunction((prev) => window.__rhythmCurrent && window.__rhythmCurrent.index > prev, cur.index, { timeout: 4000 });
-  ok('loop advanced to the next word after correct tap');
-
-  // --- a WRONG tap: click a tile whose text != the target word ---
-  cur = await target();
-  const tiles = page.locator('.rhythm .tile');
-  const n = await tiles.count();
-  let wrongClicked = false;
-  for (let i = 0; i < n; i++) {
-    const txt = (await tiles.nth(i).textContent())?.trim();
-    if (txt !== cur.word) {
-      await tiles.nth(i).click();
-      wrongClicked = true;
-      break;
-    }
+    });
+    await page.waitForTimeout(900);
   }
-  if (!wrongClicked) fail('could not find a wrong tile to click');
-  await page.waitForTimeout(250);
-  // The verdict text is now the (random) spoken phrase; the WRONG branch is pinned
-  // by its deterministic chip ("The gem was…") + the revealed correct spelling.
-  const verdict2 = (await page.locator('.verdict').textContent())?.trim();
-  const chip2 = (await page.locator('.verdict-chip').textContent())?.trim();
-  const revealed = await page.locator('.rhythm .tile.reveal').count();
-  if (/gem was/i.test(chip2 || '')) ok(`wrong tap stayed gentle (phrase "${verdict2}", chip "${chip2}")`);
-  else fail(`wrong tap not handled as a miss: verdict "${verdict2}", chip "${chip2}"`);
-  if (revealed >= 1) ok('correct spelling was revealed on the wrong tap');
-  else fail('correct spelling was not revealed after a wrong tap');
-
-  // --- play out the rest of the wave to the reward screen ---
-  // Click the CORRECT tile each time: deterministic and quick (correct advances
-  // faster), so the loop reliably reaches the wave reward.
-  for (let guard = 0; guard < 120; guard++) {
-    if ((await page.locator('.reward').count()) > 0) break;
-    const unlocked = await page.locator('.rhythm .tiles:not(.locked) .tile').count();
-    if (unlocked > 0) {
-      const c = await target();
-      try {
-        if (!c || !(await clickExact(c.word))) {
-          await page.locator('.rhythm .tiles:not(.locked) .tile').first().click({ timeout: 1000 });
-        }
-      } catch {
-        /* tiles locked mid-poll — retry next iteration */
-      }
-    }
-    await page.waitForTimeout(250);
-  }
-  await page.waitForSelector('.reward', { timeout: 12000 });
-  const rewardText = (await page.locator('.reward h2').textContent())?.trim();
-  ok(`reached wave-complete reward: "${rewardText}"`);
-
-  // --- the mining (practice) reward STEERS to crafting (§B): the primary CTA opens a
-  //     craft round ("prove the words you just practised"), not another mining wave ---
-  await page.click('.reward .btn.primary');
-  await page.waitForSelector('.puzzle .slot', { timeout: 8000 });
-  ok('mining reward primary CTA steers into a crafting round (§B nudge)');
+  const placed = await page.evaluate(() => {
+    const c = JSON.parse(localStorage.getItem('crystal-spell-caverns:v1'));
+    const p = c.profiles.find((x) => x.id === c.activeId);
+    return { done: p.placement && p.placement.done, band: p.categories && p.categories.level };
+  });
+  if (placed.done === true && placed.band >= 1)
+    ok(`placement diagnostic placed the explorer at cavern level ${placed.band} (gems +${(await gemText()) - diagGemsBefore})`);
+  else fail(`placement not finalised: ${JSON.stringify(placed)}`);
 
   // --- pre-generated TTS clip wiring: a clip is a valid, loadable MP3 in-browser ---
   const clipOk = await page.evaluate(async () => {

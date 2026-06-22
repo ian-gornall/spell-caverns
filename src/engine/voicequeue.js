@@ -56,6 +56,27 @@ export function createVoiceQueue() {
         pump();
       });
     },
+    // §C1 audio-lag fix: a NEW word/narration supersedes any STALE dictation WITHOUT cutting
+    // praise. Drops PENDING non-protected (dictation/narration) jobs, and if the ACTIVE job is
+    // itself a plain dictation (not praise), force-finishes it so the caller can hard-stop its
+    // audio and start the new word now. Protected (praise) jobs — active or pending — are kept,
+    // so the new word simply queues right behind any praise still being spoken. (Without this,
+    // solving a word before its long clip finishes left a stale dictation that the next word's
+    // say() couldn't preempt — because queued praise bumped protectedCount — so the audio lagged
+    // the display and played the WRONG word; worst in the placement diagnostic's harder words.)
+    preemptDictation() {
+      const kept = [];
+      for (const p of queue) {
+        if (p.protected) kept.push(p);
+        else { try { p.resolve(); } catch { /* ignore */ } }
+      }
+      queue = kept;
+      if (busy && !activeProtected && activeFinish) {
+        const f = activeFinish;
+        activeFinish = null;
+        f(); // force-finish the stale active dictation (busy → false, pumps any kept praise)
+      }
+    },
     // Drop everything pending and force-finish the active job (so awaiters resolve and
     // the chain doesn't hang). Callers pair this with a hard-stop of the actual audio.
     clear() {

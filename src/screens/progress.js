@@ -58,8 +58,11 @@ export function progressScreen(ctx) {
           el(
             'div',
             { class: 'stat haul-tile depth' },
-            el('span', { class: 'big-num' }, `⛏️ ${ctx.depth()}`),
-            el('span', { class: 'haul-label' }, 'cavern depth'),
+            // §C1: show the CAVERN LEVEL (the 30-word band the diagnostic placed them at / they've
+            // climbed to) — that's the "where am I" number. (cavern DEPTH = mastery zones, separate;
+            // unifying the two is the D4 cavern-map redesign.)
+            el('span', { class: 'big-num' }, `⛏️ ${(ctx.state.categories && ctx.state.categories.level) || 1}`),
+            el('span', { class: 'haul-label' }, 'cavern level'),
           ),
           el(
             'div',

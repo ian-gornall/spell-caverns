@@ -29,3 +29,17 @@ deploy/
 
 # EMNIST training data cache (scripts/train_recognizer.mjs)
 scripts/_emnist/
+
+# AoA re-rank datasets (Kuperman/Brysbaert via OSF) — large, regenerable; see scripts/rerank_aoa.mjs header.
+_aoa/
+# §C1 audio-repair: original clip backups (replaced by the remap/regen) — local only.
+_audio_clip_backups/
+# Whisper clip-audit + remap scratch (regenerable: scripts/audit_clips.mjs / remap_clips.mjs / clip_regen_plan.mjs).
+scripts/_clip_audit.json
+scripts/_clip_audit_verify.json
+scripts/_regen_targets.json
+scripts/_remapped.json
+# Placement-diagnostic QA screenshots (scratch).
+scripts/qa_placement/
+# Pre-existing archived scripts (not part of the app).
+scripts/_arch/

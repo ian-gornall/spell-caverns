@@ -38,6 +38,12 @@ function slug(s) {
     .replace(/^_+|_+$/g, '');
 }
 
+// Windows can't name a file after a reserved device name (con, prn, aux, nul, com1-9, lpt1-9),
+// so such word clips are stored with a trailing '_' (con → con_.mp3); the manifest keeps the
+// LOGICAL slug. Map slug → on-disk filename for the fetch. (Only "con" occurs in the dataset.)
+const WIN_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+const clipFile = (s) => (WIN_RESERVED.test(s) ? s + '_' : s);
+
 // Load audio/manifest.json. Absent manifest => Web Speech only (no error). CRUCIALLY this
 // RETRIES on failure: a single transient miss (offline blip, or a load that happened before
 // the clips finished deploying) must NOT permanently strand a long-lived (installed-PWA)
@@ -256,6 +262,9 @@ function playClip(el, url, { onDone, onFail, rate = 1 } = {}) {
   const a = el || new Audio();
   const done = onceFn(onDone);
   const fail = onceFn(onFail);
+  // Off-DOM test hook: the ACTUAL clip URL that starts playing (so QA can confirm the audio
+  // file matches the displayed word — catches a slug/clip mismatch __spokenLog can't see).
+  try { (window.__clipLog = window.__clipLog || []).push(url); } catch { /* ignore */ }
   try {
     a.pause(); // B1: clear any prior playback on this reused element before re-loading
     a.onended = done;
@@ -285,15 +294,14 @@ export function say(word, { onDone } = {}) {
   }
   const s = slug(text);
   const rate = settings.voiceRate ?? 0.85; // dictation speed (configurable; default a bit slow)
-  // A new dictation/narration SUPERSEDES a currently-playing one (e.g. an onboarding
-  // step advance, or an idle re-dictate) — stop it and speak now. But NEVER cut praise:
-  // when any protected (praise) job is in flight we fall through and queue, so praise
-  // always finishes before the next word (the §36 B2 fix). protectedCount===0 means the
-  // active + pending jobs are all interruptible dictation/narration.
-  if (voiceQueue.busy && voiceQueue.protectedCount === 0) {
-    voiceQueue.clear();
-    hardStopAudio();
-  }
+  // A new dictation/narration SUPERSEDES any stale dictation (a word solved before its clip
+  // finished, an onboarding step advance, an idle re-dictate) — drop it and speak now. But
+  // NEVER cut praise: preemptDictation preserves protected (praise) jobs, so a new word simply
+  // queues right behind any praise still being spoken (the §36 B2 guarantee). We only hard-stop
+  // the audio when we actually preempted a PLAYING dictation (not while praise is mid-phrase).
+  const preemptedPlaying = voiceQueue.busy && !voiceQueue.activeProtected;
+  voiceQueue.preemptDictation();
+  if (preemptedPlaying) hardStopAudio();
   voiceQueue.enqueue((finish) => {
     // `done` fires the caller's onDone AND releases the queue for the next utterance,
     // exactly once. (stop()/clear() force-finishes the queue WITHOUT calling cb.)
@@ -301,6 +309,10 @@ export function say(word, { onDone } = {}) {
       cb();
       finish();
     });
+    // Off-DOM test hook (like __puzzleCurrent): record words that ACTUALLY start playing
+    // (a preempted/dropped stale dictation never reaches here), so QA can verify the spoken
+    // sequence stays in display order — i.e. audio never lags onto the WRONG word (§C1 fix).
+    try { (window.__spokenLog = window.__spokenLog || []).push(text); } catch { /* ignore */ }
     // A fixed interface line (§32.A) — Geo's narration, the geode prompts. These are
     // sentences (no slug-collision with a single dictation word) and should speak at a
     // NATURAL pace, NOT the slowed dictation rate. Checked first; words next.
@@ -311,7 +323,7 @@ export function say(word, { onDone } = {}) {
         onFail: () => speakTTS(text, { rate: 1, pitch: 1.02, onDone: done }),
       });
     } else if (manifest && manifest.words.has(s)) {
-      clipEl = playClip(clipEl, `/audio/words/${s}.mp3`, {
+      clipEl = playClip(clipEl, `/audio/words/${clipFile(s)}.mp3`, {
         rate,
         onDone: done,
         onFail: () => speakTTS(text, { rate, pitch: 1.02, onDone: done }),

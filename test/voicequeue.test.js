@@ -51,6 +51,32 @@ test('clear() drops pending jobs and force-finishes the active one', async () =>
   assert.equal(q.busy, false, 'queue idle after clear');
 });
 
+test('preemptDictation force-finishes a stale dictation + drops pending words, but keeps praise', async () => {
+  const q = createVoiceQueue();
+  const events = [];
+  const wordA = q.enqueue((done) => { events.push('A-start'); void done; }); // active stale dictation (held)
+  const praise = q.enqueue((done) => { events.push('praise-start'); setTimeout(() => { events.push('praise-end'); done(); }, 10); }, { protected: true });
+  const staleB = q.enqueue(() => { events.push('B-start'); }); // pending stale word
+  q.preemptDictation(); // a NEW word supersedes: drop A (stale) + B (pending word), keep praise
+  const wordC = q.enqueue((done) => { events.push('C-start'); done(); });
+  await Promise.all([wordA, praise, staleB, wordC]);
+  assert.ok(!events.includes('B-start'), 'pending stale word is dropped, not spoken');
+  assert.deepEqual(events, ['A-start', 'praise-start', 'praise-end', 'C-start']);
+});
+
+test('preemptDictation never cuts a praise that is actively playing', async () => {
+  const q = createVoiceQueue();
+  const events = [];
+  let finishPraise;
+  const praise = q.enqueue((done) => { events.push('praise-start'); finishPraise = done; }, { protected: true });
+  q.preemptDictation(); // supersede while praise is mid-phrase — must NOT cut it
+  const word = q.enqueue((done) => { events.push('word-start'); done(); });
+  assert.equal(events.includes('word-start'), false, 'word waits for the active praise');
+  finishPraise();
+  await Promise.all([praise, word]);
+  assert.deepEqual(events, ['praise-start', 'word-start']);
+});
+
 test('a job that throws still advances the queue', async () => {
   const q = createVoiceQueue();
   const order = [];

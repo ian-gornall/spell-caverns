@@ -186,7 +186,20 @@
 //      next word; E1-E4 auto-hint cap + manual Pause + no-hints-while-paused + background-tab gating
 //      (visibleTimeout); C2 "to next depth"; C3 Repair unified on the §30 categories + yellow light;
 //      F1 mining 2 tiles; F2 daily reminder default ON + end-of-onboarding permission prompt.
-const VERSION = 'csc-v54';
+// csc-v55: §C1 PLACEMENT DIAGNOSTIC + cavern-level (band) model. A new explorer's first Craft IS
+//      a placement walk (engine/placement.js, NEW — precached above): ask age → walk the frequency
+//      list ±100 by clean-build/miss → enter the 30-word "cavern level" (band) where 3 misses land,
+//      seeding the §30 categories engine there. The categories LEVEL is now a band (not the age
+//      tier); selection/refill key off `band` (lexicon.byRank attaches pos+band). Onboarding asks
+//      AGE (not a level picker); first-run no longer drops into locked Mining (fixes D1). Settings
+//      level = a cavern-level stepper + "Re-test". Legacy saves migrate (band from rank, level re-anchored).
+// csc-v56: AoA word RE-RANK (data/words.js now child age-of-acquisition order, not adult frequency)
+//      + PROPER NOUNS capitalized + AUDIO-ASSET REPAIR (58 mislabeled clips fixed via Whisper
+//      remap/regen + 4 from Ian's WAVs; con→con_.mp3 alias; splitIntoN hardened; 0 missing clips)
+//      + voicequeue preemptDictation lag fix + C1 diagnostic refined (multi-session walk, places at
+//      3-in-band, no false known/mastered, header shows CAVERN LEVEL/band). New precached file: none
+//      beyond v55's placement.js. Audio manifest + clips changed → bump busts the runtime cache.
+const VERSION = 'csc-v56';
 
 const CORE = [
   '/',
@@ -223,6 +236,7 @@ const CORE = [
   '/src/engine/session.js',
   '/src/engine/categories.js',
   '/src/engine/selection.js',
+  '/src/engine/placement.js',
   '/src/engine/handwriting.js',
   '/src/engine/nonsense.js',
   '/src/engine/puzzle.js',

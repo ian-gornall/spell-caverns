@@ -123,11 +123,12 @@ export function render(screenNode) {
 }
 
 // Shared header: a back chevron (optional), a title (optional), an optional Pause
-// button (play screens, §36 E2), and the live gem + cavern-depth readout.
-// `ctx.depth()` computes depth from mastery.
+// button (play screens, §36 E2), and the live gem + cavern-LEVEL readout.
+// §C1: the header shows the CAVERN LEVEL (the 30-word band the learner is on) — the "where
+// am I" number — not the mastery-based depth (which still drives the geode boss internally).
 export function header(ctx, { title, onBack, onPause } = {}) {
   const gems = ctx.state.gems || 0;
-  const depth = ctx.depth ? ctx.depth() : 1;
+  const level = (ctx.state && ctx.state.categories && ctx.state.categories.level) || 1;
   return el(
     'header',
     { class: 'app-header' },
@@ -146,11 +147,11 @@ export function header(ctx, { title, onBack, onPause } = {}) {
       ),
       el(
         'div',
-        { class: 'stat depth', title: 'Cavern depth' },
+        { class: 'stat depth', title: 'Cavern level' },
         el('span', { class: 'icon' }, '⛏️'),
-        // the word "Depth" is hidden on phones (CSS) to keep the header from clipping —
-        // the ⛏️ icon + number still reads as the cavern depth there.
-        el('span', {}, el('span', { class: 'depth-word' }, 'Depth '), String(depth)),
+        // the word "Level" is hidden on phones (CSS) to keep the header from clipping —
+        // the ⛏️ icon + number still reads as the cavern level there.
+        el('span', {}, el('span', { class: 'depth-word' }, 'Level '), String(level)),
       ),
     ),
   );

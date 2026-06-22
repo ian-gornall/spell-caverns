@@ -33,6 +33,7 @@ import {
   demoteLevel,
   promoteLevel,
   setLevelAndRefill,
+  seedFromPlacement,
   unlocks,
   learningProgress,
   categorySummary,
@@ -44,18 +45,18 @@ import {
 
 // A small, dense fixture pool: 5 tier-1 (short-a), 4 tier-2 (sh), 3 tier-3 (ight).
 const POOL = [
-  { word: 'cat', tier: 1, pattern: 'short-a', rank: 1 },
-  { word: 'bat', tier: 1, pattern: 'short-a', rank: 2 },
-  { word: 'hat', tier: 1, pattern: 'short-a', rank: 3 },
-  { word: 'map', tier: 1, pattern: 'short-a', rank: 4 },
-  { word: 'rat', tier: 1, pattern: 'short-a', rank: 5 },
-  { word: 'ship', tier: 2, pattern: 'sh', rank: 6 },
-  { word: 'shop', tier: 2, pattern: 'sh', rank: 7 },
-  { word: 'fish', tier: 2, pattern: 'sh', rank: 8 },
-  { word: 'dish', tier: 2, pattern: 'sh', rank: 9 },
-  { word: 'light', tier: 3, pattern: 'ight', rank: 10 },
-  { word: 'night', tier: 3, pattern: 'ight', rank: 11 },
-  { word: 'right', tier: 3, pattern: 'ight', rank: 12 },
+  { word: 'cat', band: 1, pattern: 'short-a', rank: 1 },
+  { word: 'bat', band: 1, pattern: 'short-a', rank: 2 },
+  { word: 'hat', band: 1, pattern: 'short-a', rank: 3 },
+  { word: 'map', band: 1, pattern: 'short-a', rank: 4 },
+  { word: 'rat', band: 1, pattern: 'short-a', rank: 5 },
+  { word: 'ship', band: 2, pattern: 'sh', rank: 6 },
+  { word: 'shop', band: 2, pattern: 'sh', rank: 7 },
+  { word: 'fish', band: 2, pattern: 'sh', rank: 8 },
+  { word: 'dish', band: 2, pattern: 'sh', rank: 9 },
+  { word: 'light', band: 3, pattern: 'ight', rank: 10 },
+  { word: 'night', band: 3, pattern: 'ight', rank: 11 },
+  { word: 'right', band: 3, pattern: 'ight', rank: 12 },
 ];
 
 // Fresh small state + filled learning set (setSize 3, level 1).
@@ -215,10 +216,10 @@ test('unlock chain: mastery after setSize KNOWN, mining after setSize MASTERED �
 test('refill levels UP when the current level has no more new words (and none below)', () => {
   // Only 2 tier-1 words → setSize 3 cannot be filled from level 1 alone.
   const tiny = [
-    { word: 'cat', tier: 1, pattern: 'short-a', rank: 1 },
-    { word: 'bat', tier: 1, pattern: 'short-a', rank: 2 },
-    { word: 'ship', tier: 2, pattern: 'sh', rank: 6 },
-    { word: 'shop', tier: 2, pattern: 'sh', rank: 7 },
+    { word: 'cat', band: 1, pattern: 'short-a', rank: 1 },
+    { word: 'bat', band: 1, pattern: 'short-a', rank: 2 },
+    { word: 'ship', band: 2, pattern: 'sh', rank: 6 },
+    { word: 'shop', band: 2, pattern: 'sh', rank: 7 },
   ];
   const st = createCategoryState({ setSize: 3, level: 1 });
   fillLearning(st, tiny);
@@ -231,11 +232,11 @@ test('tricky reintroduction: an on-level-or-lower tricky word is reused BEFORE l
   // tier-1 words exhaust after the working set + one refill; a tier-2 word ('ship') exists so a
   // freed slot COULD level up — but an on-level tricky word must be reused first instead.
   const p = [
-    { word: 'cat', tier: 1, pattern: 'short-a', rank: 1 },
-    { word: 'bat', tier: 1, pattern: 'short-a', rank: 2 },
-    { word: 'hat', tier: 1, pattern: 'short-a', rank: 3 },
-    { word: 'map', tier: 1, pattern: 'short-a', rank: 4 },
-    { word: 'ship', tier: 2, pattern: 'sh', rank: 9 },
+    { word: 'cat', band: 1, pattern: 'short-a', rank: 1 },
+    { word: 'bat', band: 1, pattern: 'short-a', rank: 2 },
+    { word: 'hat', band: 1, pattern: 'short-a', rank: 3 },
+    { word: 'map', band: 1, pattern: 'short-a', rank: 4 },
+    { word: 'ship', band: 2, pattern: 'sh', rank: 9 },
   ];
   const st = createCategoryState({ setSize: 3, level: 1 });
   fillLearning(st, p); // cat,bat,hat
@@ -264,8 +265,8 @@ test('demoteLevel parks above-level words as tricky, lowers the level, and refil
   demoteLevel(st, POOL);
   assert.equal(st.level, 1);
   assert.equal(learningWords(st).length, 3);
-  // the tier-2 words it could no longer hold became tricky; learning now holds tier-1 words
-  assert.ok(learningWords(st).every((w) => POOL.find((p) => p.word === w).tier <= 1));
+  // the band-2 words it could no longer hold became tricky; learning now holds band-1 words
+  assert.ok(learningWords(st).every((w) => POOL.find((p) => p.word === w).band <= 1));
   assert.ok(trickyWords(st).length >= 1);
 });
 
@@ -284,7 +285,7 @@ test('setLevelAndRefill re-aims the set: old learning words → tricky, refilled
   assert.equal(st.level, 2);
   oldLearning.forEach((w) => assert.equal(getCat(st, w), CATEGORIES.TRICKY)); // set aside
   assert.equal(learningWords(st).length, 3); // refilled
-  assert.ok(learningWords(st).every((w) => POOL.find((p) => p.word === w).tier === 2)); // from the new level
+  assert.ok(learningWords(st).every((w) => POOL.find((p) => p.word === w).band === 2)); // from the new level
 });
 
 test('learningProgress reports a 2-step progress toward known for each learning word', () => {
@@ -323,4 +324,62 @@ test('serialize → deserialize is a lossless round-trip of the whole state mach
   assert.deepEqual(knownWords(round).sort(), knownWords(st).sort());
   assert.deepEqual(learningWords(round).sort(), learningWords(st).sort());
   assert.deepEqual(unlocks(round), unlocks(st));
+});
+
+// §C1 placement (Ian 2026-06-22b): the diagnostic PLACES a level — it must NOT claim mastery.
+// seedFromPlacement aims the working set at the entered band; words BELOW the band are skipped
+// (tested out by the high level, NOT marked known/mastered — a single craft isn't proof); words
+// AT/above the band become live LEARNING with at most a 1-pip partial (a clean build = 1 of 2).
+test('seedFromPlacement places the level without crediting known/mastered for single crafts', () => {
+  const st = createCategoryState({ setSize: 3 });
+  const responses = [
+    { word: 'cat', correct: true, band: 1 }, // below band → skipped (NOT known)
+    { word: 'ship', correct: true, band: 2 }, // AT band → learning, 1 pip
+    { word: 'shop', correct: false, band: 2 }, // AT band miss → learning, streak 0
+    { word: 'map', correct: false, band: 1 }, // below band → skipped (NOT tricky)
+  ];
+  seedFromPlacement(st, responses, 2, POOL);
+  assert.equal(st.level, 2);
+  // below-band words are NOT recorded — they stay NEW, never claimed as known/mastered
+  assert.equal(getCat(st, 'cat'), CATEGORIES.NEW);
+  assert.equal(getCat(st, 'map'), CATEGORIES.NEW);
+  // NOTHING is known or mastered straight out of the diagnostic
+  assert.equal(knownWords(st).length, 0);
+  assert.equal(masteredWords(st).length, 0);
+  // at-band words are live learning with a partial (clean = 1 pip, miss = 0)
+  assert.equal(getCat(st, 'ship'), CATEGORIES.LEARNING);
+  assert.equal(st.words.get('ship').craftStreak, 1);
+  assert.equal(st.words.get('shop').craftStreak, 0);
+  assert.equal(learningWords(st).length, 3); // filled at band 2 (ship/shop/fish)
+  assert.ok(learningWords(st).every((w) => POOL.find((p) => p.word === w).band === 2));
+});
+
+// §C1 backward-compat: profiles saved BEFORE the band change carry an age `tier` on
+// each record (no `band`) and stored `level` as an age-tier. Deserialize must derive
+// each record's band from its `rank` and re-anchor `level` to the deepest LEARNING
+// band so band-based refill continues from the child's real frontier (never lost).
+test('§C1 migration: a pre-band saved profile derives bands from rank + re-anchors level', () => {
+  const legacy = {
+    setSize: 3,
+    level: 5, // an OLD age-tier value (1–9), NOT a band
+    recent: [],
+    order: 3,
+    peakKnownish: 1,
+    peakMastered: 0,
+    words: [
+      { word: 'apple', tier: 4, rank: 200, pattern: 'x', category: 'known', craftStreak: 2, craftAttempts: 2, craftCorrect: 2, order: 1 },
+      { word: 'planet', tier: 5, rank: 905, pattern: 'y', category: 'learning', craftStreak: 1, craftAttempts: 1, craftCorrect: 1, order: 2 },
+      { word: 'gem', tier: 5, rank: 950, pattern: 'z', category: 'learning', craftStreak: 0, craftAttempts: 0, craftCorrect: 0, order: 3 },
+    ],
+  };
+  const st = deserializeCategoryState(legacy);
+  // band = floor((rank-1)/30)+1 for each migrated record
+  assert.equal(st.words.get('apple').band, 7); // rank 200
+  assert.equal(st.words.get('planet').band, 31); // rank 905
+  assert.equal(st.words.get('gem').band, 32); // rank 950
+  // level re-anchored to the deepest LEARNING band (gem=32), not the stale age-tier 5
+  assert.equal(st.level, 32);
+  // categories preserved (progress not lost)
+  assert.deepEqual(knownWords(st), ['apple']);
+  assert.equal(learningWords(st).length, 2);
 });

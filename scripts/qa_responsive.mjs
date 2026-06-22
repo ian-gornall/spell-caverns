@@ -91,13 +91,13 @@ for (const d of DEVICES) {
   });
   await capture('puzzle', '.tray');
 
-  // SETTINGS (has the new level grid)
+  // SETTINGS (§C1: now a cavern-level stepper, not the old level grid)
   await page.goto(URL, { waitUntil: 'networkidle' });
   await page.evaluate(() => {
     const b = [...document.querySelectorAll('button, .menu-card')].find((x) => /settings|⚙/i.test(x.textContent));
     if (b) b.click();
   });
-  await capture('settings', '.level-grid');
+  await capture('settings', '.level-stepper');
 
   // PROGRESS
   await page.goto(URL, { waitUntil: 'networkidle' });
@@ -107,14 +107,15 @@ for (const d of DEVICES) {
   });
   await capture('progress', '.screen');
 
-  // ONBOARDING level-select (clear storage)
+  // ONBOARDING age step (§C1: the age question replaced the level-select) — clear storage
   await page.evaluate(() => localStorage.clear());
   await page.goto(URL, { waitUntil: 'networkidle' });
-  await page.click('.onboard-go').catch(() => {});
+  if (await page.locator('.tap-to-start').count()) await page.click('.tap-to-start').catch(() => {});
+  await page.click('.onboard-go').catch(() => {}); // welcome -> name
   await page.fill('.onboard-name', 'Sam').catch(() => {});
-  await page.click('.onboard-go').catch(() => {});
-  await page.click('.onboard-go').catch(() => {}); // colour
-  await capture('onboard-levels', '.level-grid');
+  await page.click('.onboard-go').catch(() => {}); // name -> colour
+  await page.click('.onboard-go').catch(() => {}); // colour -> age
+  await capture('onboard-age', '.age-grid');
 
   console.log(`\n=== ${d.label} (${d.w}x${d.h}) ===`);
   for (const s of shots) console.log(`  ${s.name.padEnd(16)} horiz=${s.o.horiz} vScroll=${s.o.vScroll} ${s.o.wide.length ? '⚠ ' + s.o.wide.join(' | ') : 'ok'}`);

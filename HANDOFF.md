@@ -2,7 +2,76 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • current live sw **csc-v54**.
+> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • deploying sw **csc-v56**.
+>
+> **🆕 SESSION 2026-06-22c — C1 DIAGNOSTIC + AoA RE-RANK + AUDIO-ASSET REPAIR ✅ SHIPPED (csc-v56).** A very
+> large session, committed + deployed. Summary of everything done (details below + in the §C1 banner):
+> - **§C1 PLACEMENT DIAGNOSTIC** (see next banner). Refined per Ian's live testing: the diagnostic is now a
+>   chain of normal **6-word Craft sessions** (each looks like normal play) whose adaptive **±100 walk PERSISTS
+>   across sessions** (saved on the profile, `placement.serialize`/`restore`) until **3 misses land in one
+>   30-word band** → then it places. **No repeated words** (walk dedups across sessions); the `?debug=1` rank
+>   readout persists every session until placed. The diagnostic does **NOT credit known/mastered** (a single
+>   craft isn't mastery — Ian: "I never repeated one"): `seedFromPlacement` only places the level + banks ≤1
+>   craft pip on at-band words; below-band words are skipped (the high level already excludes them). Age
+>   buttons are now **2–5 … 13+** (open-ended). The header / reward / Progress now show the **CAVERN LEVEL**
+>   (the band, e.g. "⛏️ Level 47") — "where you are" — NOT the mastery depth (which still drives the geode boss
+>   internally). qa_placement / smoke updated for multi-session; 310 tests + smoke + overflow green.
+> - **WORD LIST RE-RANKED BY AGE-OF-ACQUISITION** (Ian: adult frequency was wrong — "storm before relations").
+>   `data/words.js` is now ordered by child AoA (Kuperman/Brysbaert 2012, free OSF datasets in `_aoa/`, 95%
+>   coverage, gaps placed by frequency) via `scripts/rerank_aoa.mjs`. Leads with `mom, yes, water, dog…`; storm
+>   (645) now ≪ relations (1998); tiers re-derived from AoA. **Clips are keyed by word → unaffected.**
+>   `merge.mjs` now WARNS to run rerank_aoa after it (or the order reverts to frequency).
+> - **PROPER NOUNS CAPITALIZED** (Ian): 88 words (Europe, Texas, January, Smith, English…) capitalized in
+>   word + sentences + first syllable, via rerank_aoa's `PROPER` set. Spelling-safe (craft/draw lowercase the
+>   target; audio slug lowercase → clips/grading unaffected). EXCLUDED ambiguous (may/march/august/states/united).
+> - **AUDIO-ASSET REPAIR** — root-caused a pre-existing `gen_audio` batch-split bug (`documents.mp3` literally
+>   said "purpose"; ~2 batches misaligned). Audited ALL 2,916 clips with **Whisper** (`scripts/audit_clips.mjs`,
+>   in-browser transformers.js, no installs): 47 clips **content-remapped** (`remap_clips.mjs`, verified), 8
+>   **regenerated** via Gemini (one-word-per-request), 4 (`con`+3 contractions `they're/there's/you're`) from
+>   **Ian's WAV recordings** (`con`→`con_.mp3` alias since Windows blocks `con.mp3` — `audio.js`+`gen_audio`
+>   map it). Hardened `splitIntoN` so it can't recur. **All 2,916 words now have a correct clip (0 missing).**
+> - **VOICE-QUEUE preemption fix** (`engine/voicequeue.js` `preemptDictation`): a new word now supersedes a
+>   stale dictation without cutting praise (a real lag bug, separate from the clip bug).
+> - **Global CLAUDE.md:** added a hard **5-minute monitoring rule** (poll any shell job ≤5 min, even short ones).
+> - **⚠️ NEXT STEPS (Ian — do NOT code yet, just recorded):**
+>   1. **Diagnostic retry on a miss:** if a student gets a word wrong in the diagnostic, they're not given
+>      another chance to spell it — it advances to the next word. Give them another chance to spell it.
+>   2. **"To next depth" → "to next level":** rename the Progress label/CTA (currently "to next depth",
+>      `screens/progress.js`) to "to next level" AND make it accurate for the cavern LEVEL (band) — words to
+>      the next band — not the mastery depth.
+>   3. **D4 (depth/level/cavern-map):** fully unify the mastery-"depth" (geode boss, 8 zones) with the cavern
+>      LEVEL (band) into the 100-level cavern map. The header now shows the band as a stopgap; the boss still
+>      uses mastery-depth internally. Confirm: should bosses fire on band-up (reaching a new cavern level)?
+>   4. **Caps in spelling:** proper nouns DISPLAY capitalized but the child still spells them lowercase in
+>      craft/draw (recognizer is case-insensitive). If the capital should be TAUGHT, that's a recognizer/tiles
+>      change. Also: decide the ambiguous words (may/march/august/states/united) left lowercase.
+>   5. **OWED real-device pass** on all of the above (audio, diagnostic, re-rank, caps).
+>
+> **🆕 SESSION 2026-06-22b — §36 C1 PLACEMENT DIAGNOSTIC ✅ SHIPPED in csc-v56 (was: built locally csc-v55).**
+> Built to Ian's design (3 decisions confirmed this session): a NEW explorer's FIRST Craft IS a placement
+> walk, played as ordinary Craft so the child never knows. **Flow:** onboarding asks **AGE** (big 5–13
+> buttons, replaces the age-labelled level picker) → seeds a start word in the frequency list (5→#1, 6→#300,
+> +300/yr) → plays normal Craft, walking **±100** list positions per answer (clean build → up, miss/hint →
+> down, never repeats) until **3 missed words land in one 30-word "cavern level" (band)** → enters there,
+> seeding the §30 categories engine (corrects already banked progress). **Decisions (Ian):** (1) clean build
+> = up; **diagnostic relaxes timers** (no 8s auto-hint, no speed clock) so a slow first-timer isn't mis-placed
+> low; (2) after mastering a band, **climb up** — skipped easier bands treated as tested-out (hide-skipped/
+> backfill deferred to D4); (3) per-word walk shown as a 6-word Craft set. **Engine:** the categories LEVEL is
+> now a **30-word BAND** (`floor(pos/30)+1`, ~97 cavern levels), NOT the age tier — `lexicon.byRank()` attaches
+> `pos`+`band`; `categories.js` selection/refill key off `band` (tier kept as age metadata). New pure
+> `engine/placement.js` (+ `test/placement.test.js`, 12 tests) owns the walk. **Also fixes D1** (first-run no
+> longer drops into locked Mining) and **lays D4's data model**. Settings level → a cavern-level **stepper**
+> (➖/➕) + **Re-test**. **Legacy saves migrate** (band from rank, level re-anchored to the deepest learning
+> band — existing players never re-diagnosed). **QA all green:** 307 unit tests (+13 new); `smoke` (rewritten
+> for the new flow); NEW `qa_placement.mjs` (end-to-end: age step → diagnostic → placed at a band, 0 console
+> errors); `qa_overflow`/`qa_responsive`/`qa_fold`/`qa_mastery`/`qa_s31`/`qa_autofill` green; `qa_phone_audit`
+> = only the 2 documented by-design landscape fails; `qa_level` updated to the stepper. Files: `engine/
+> placement.js` (new), `engine/{categories,lexicon}.js`, `modes/puzzle.js`, `screens/{onboarding,settings}.js`,
+> `state.js`, `styles.css`, `sw.js`+`version.js` (csc-v55, placement.js precached). ⚠️ **NOT DEPLOYED** — held
+> for Ian's local review (per the plan). ⚠️ **OWED:** real-device pass; update the remaining onboarding-WALKING
+> scratch QA scripts to the age step (`qa_s30`, `qa_do`, `qa_explore`, `qa_uiaudio`, `qa_profiles`, `design_qa`,
+> `qa.mjs`) + retire obsolete `qa_levels.mjs` (superseded by `qa_placement.mjs`). **Remaining §36 discuss-first:
+> D2, D3, D4, D5, E5** (C1 + D1 now done).
 >
 > **🆕 SESSION 2026-06-22 — §36 DO-FIRST backlog ✅ SHIPPED + LIVE on prod (csc-v54), verified.**
 > Pushed to `main` → Git-CD built + deployed; `check_deploy.mjs csc-v54` = DEPLOYED ✅ (prod went
@@ -510,8 +579,9 @@ overlay / sub-pixel %·vw round / the browser nudging the layout viewport past t
   - 🟡 Optional later: a British-spelling SETTING so a UK family can opt in — but **American is the default**.
 
 ### C. Learning-model clarity (the confusing parts)
-- **C1. 🟡🛑 DISCUSS-FIRST — diagnostic START-LEVEL placement (do NOT build yet; Ian wants a full design
-  discussion, 2026-06-21c).** Ian: the initial level must come from **DIAGNOSING the student** — specifically
+- **C1. ✅ BUILT + QA'd locally (csc-v55, 2026-06-22b) — see top banner. Designed with Ian (3 decisions),
+  built test-first as `engine/placement.js` + the band-based level model; NOT yet deployed (awaiting review).**
+  Original brief: Ian: the initial level must come from **DIAGNOSING the student** — specifically
   finding the **MOST COMMON word they DON'T know** — not from an age/level picker, and *"I don't think we're
   doing that well"* today. This SUPERSEDES the earlier "drop ages/descriptors from the picker" tweak: the
   picker leaking AGE labels (`screens/onboarding.js` level select) is just a symptom; the real fix is a

@@ -11,7 +11,8 @@
 // reward (positive reinforcement, never shaming). UI module — verified with Playwright.
 import { el, header, burst, toast, createIdleGuard, pulse, fitPlayArea, visibleTimeout } from '../ui.js';
 import { buildCraftPool, buildRepairSession, applyAdaptiveLevel, recommendNext } from '../engine/selection.js';
-import { fillLearning, recordCraft, repairWords } from '../engine/categories.js';
+import { fillLearning, recordCraft, repairWords, seedFromPlacement } from '../engine/categories.js';
+import { createPlacement, nextWord as placementNext, submit as placementSubmit, result as placementResult, serialize as placementSerialize } from '../engine/placement.js';
 import { byRank } from '../engine/lexicon.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { gradeAnswer, projectedScore, GENTLE_PHRASES } from '../engine/praise.js';
@@ -48,21 +49,47 @@ export function startPuzzle(ctx, params = {}) {
 
   // Puzzle is deliberate/slower than rhythm — keep waves short so it never drags.
   const length = Math.min(settings.length || 10, 6);
+
+  // §C1 PLACEMENT DIAGNOSTIC: a new explorer's Craft sessions ARE the placement walk
+  // (engine/placement.js) until they're placed. Each session plays `length` (6) words as an
+  // ordinary-looking Craft set; the adaptive ±100 walk CONTINUES across sessions (its progress
+  // is saved on the profile and resumed) and the diagnostic ends only when 3 misses land in one
+  // 30-word band (or the maxItems safety net) — THEN it seeds the categories engine at that band
+  // and normal play begins (Ian 2026-06-22b). (Repair never runs the diagnostic; timers relaxed.)
+  const placement = !review && !(state.placement && state.placement.done);
+  let walk = null;
+  let sessionCount = 0; // words served in THIS craft session (placement is capped per-session, not total)
+  if (placement) {
+    const saved = state.placement && state.placement.walk;
+    walk = createPlacement(byRank(), saved ? { restore: saved } : { age: state.placement && state.placement.age });
+  }
+  // §C1 debug toggle (Ian): the word-rank readout shows during placement ONLY when ?debug=1 is in
+  // the URL (persisted to localStorage so it survives navigations) — kept OFF for real kids.
+  const DEBUG = (() => {
+    try {
+      if (new URLSearchParams(location.search).has('debug')) { localStorage.setItem('csc_debug', '1'); return true; }
+      return localStorage.getItem('csc_debug') === '1';
+    } catch { return false; }
+  })();
+
   // §30: CRAFT is the productive-struggle hub. The learning set (size = the "Words per dig"
   // setting) is kept full, and the session FOCUSES it (balanced with a little known/tricky).
   // The legacy continuous tracker still rides along for repair + distractor difficulty.
   // Exclude 1-2 letter words: you can't meaningfully BUILD "a"/"of" from tiles (and they'd
   // otherwise lead the set, being the most frequent). This filtered pool is the word source.
   const pool = byRank().filter((w) => w.word.length >= 3);
-  if (!review) {
+  if (!review && !placement) {
     state.categories.setSize = settings.length || state.categories.setSize || 10;
     fillLearning(state.categories, pool);
   }
   // §36 C3: Repair drills the §30 "cracked" words (crafted right before, since missed) so it
   // matches the Repair count + the yellow lights on Progress, not the legacy continuous tracker.
-  const session = review
-    ? buildRepairSession(state.categories, pool, { length, rng })
-    : buildCraftPool(state.categories, pool, { length, rng });
+  // §C1: in placement the word source is the adaptive WALK, not a fixed session list.
+  const session = placement
+    ? []
+    : review
+      ? buildRepairSession(state.categories, pool, { length, rng })
+      : buildCraftPool(state.categories, pool, { length, rng });
   const extra =
     typeof settings.difficulty === 'string' ? EXTRA_BY_DIFF[settings.difficulty] ?? 1 : 1;
 
@@ -78,7 +105,7 @@ export function startPuzzle(ctx, params = {}) {
 
   const hearBtn = el(
     'button',
-    { class: 'hear-again', onClick: () => audio.say(session[index]?.word) },
+    { class: 'hear-again', onClick: () => audio.say(target) },
     el('span', { class: 'spk' }, '🔊'),
     'Hear it again',
   );
@@ -104,10 +131,15 @@ export function startPuzzle(ctx, params = {}) {
     el('div', { class: 'prompt' }, hearRow, sentenceEl, verdictEl, verdictChip),
     el('div', { class: 'answer-zone' }, slotsEl, controlsEl, trayEl),
   );
+  // §C1 DEBUG (Ian 2026-06-22b): during the placement diagnostic ONLY, show the current word's
+  // RANK / list-position / band + the running band-miss tally + jump, so the walk can be verified
+  // (start word, ±100 jumps, "3 misses in a band" convergence). Never shown in normal play.
+  const debugEl = el('div', { class: 'placement-debug' });
   const screen = el(
     'div',
     { class: 'screen puzzle' },
     hdr,
+    placement && DEBUG && debugEl,
     dots,
     el('div', { class: 'combo-wrap' }, comboFill),
     comboLabel,
@@ -143,6 +175,10 @@ export function startPuzzle(ctx, params = {}) {
   function armHintTimers() {
     clearHintTimers();
     if (locked) return;
+    // §C1 Decision 1: during the placement diagnostic, RELAX the timers — no 4s highlight,
+    // no 8s auto-reveal, no speed clock — so a slow/cautious first-time speller isn't
+    // mis-placed too low. The manual 💡 hint still works (using it = NOT a clean build).
+    if (placement) return;
     // thresholds scale by window.__idleTest (same hook the idle guard uses) so QA can drive them fast
     const tScale = (typeof window !== 'undefined' && Number(window.__idleTest)) || 1;
     // visibleTimeout (§36 E4): the highlight + auto-reveal never fire in a backgrounded tab.
@@ -163,7 +199,7 @@ export function startPuzzle(ctx, params = {}) {
   }
   ctx.onLeave(clearHintTimers);
 
-  if (!session.length) {
+  if (!placement && !session.length) {
     sentenceEl.textContent = review
       ? 'No cracked crystals — every gem is sparkling! ✨'
       : 'No words to craft right now — try a different difficulty in Settings.';
@@ -197,10 +233,14 @@ export function startPuzzle(ctx, params = {}) {
   ctx.onLeave(() => guard.stop());
 
   function renderDots() {
+    // §C1: each placement session is a normal-looking `length`-word Craft set — show that many
+    // dots filling with THIS session's words (the walk continues across sessions underneath).
+    const done = placement ? sessionCount : index;
+    const total = placement ? length : session.length;
     dots.replaceChildren(
-      ...session.map((_, i) =>
+      ...Array.from({ length: total }, (_, i) =>
         el('div', {
-          class: 'dot' + (i < index ? ' done' : i === index ? ' current' : ''),
+          class: 'dot' + (i < done ? ' done' : i === done ? ' current' : ''),
         }),
       ),
     );
@@ -440,11 +480,18 @@ export function startPuzzle(ctx, params = {}) {
     // a missed/assisted build = a target. (Recognition/mining never sets this — only craft.)
     recordAnswer(state.tracker, target, firstTry, { responseMs, source: 'craft' });
     ctx.store.recordAnswerStat(firstTry, 'craft'); // clean builds feed the "craft N words" quest
-    // §30 state machine: a clean build advances the word toward KNOWN (2 in a row); an assisted
-    // one resets that streak. Then the adaptive level may nudge up/down (normal play only — a
-    // repair drill of known-hard words shouldn't drag the level down).
-    recordCraft(state.categories, target, firstTry, { pool });
-    if (!review) applyAdaptiveLevel(state.categories, pool);
+    // §C1: during placement the WALK (not the categories machine) decides the level — we record
+    // each answer onto the walk and seed categories ALL AT ONCE when it finishes (finishPlacement),
+    // so corrects already bank progress. Normal play feeds the §30 state machine per word:
+    // a clean build advances toward KNOWN (2 in a row), an assisted one resets the streak, then
+    // the adaptive level may nudge up/down (skipped for a repair drill of known-hard words).
+    if (placement) {
+      placementSubmit(walk, target, firstTry);
+      sessionCount += 1;
+    } else {
+      recordCraft(state.categories, target, firstTry, { pool });
+      if (!review) applyAdaptiveLevel(state.categories, pool);
+    }
 
     if (firstTry) {
       combo += 1;
@@ -488,14 +535,26 @@ export function startPuzzle(ctx, params = {}) {
     ctx.save();
 
     setTimeout(() => {
-      index += 1;
+      if (!placement) index += 1; // placement advances via the walk, not a session index
       present();
     }, 1100);
   }
 
   // --- per-word setup -------------------------------------------------------
   function present() {
-    if (index >= session.length) return finish();
+    // §C1: in placement, words come from the WALK. The walk persists across sessions: PLACE only
+    // when it's done (3 misses in a band, or the safety net); otherwise end the session at `length`
+    // words and resume next time. Outside placement, walk the fixed session list.
+    let entry;
+    if (placement) {
+      if (walk.done) return finishPlacement();
+      if (sessionCount >= length) return endDiagSession();
+      entry = placementNext(walk);
+      if (!entry) return finishPlacement();
+    } else {
+      if (index >= session.length) return finish();
+      entry = session[index];
+    }
     locked = false;
     firstTry = true;
     hintsUsed = 0;
@@ -503,8 +562,16 @@ export function startPuzzle(ctx, params = {}) {
     controlsEl.style.display = ''; // restore Hint/Clear for the new word (QA I8)
     clearTimeout(graceTimer);
     clearHintTimers();
-    const entry = session[index];
     target = entry.word.toLowerCase();
+    // §C1 debug readout (placement only): rank / list-position / band, the running band-miss
+    // tally toward the "3 in a band" stop, the word number, and the jump the last answer caused.
+    if (placement && DEBUG) {
+      const bandMiss = walk.bandMiss.get(entry.band) || 0;
+      const asked = walk.responses.length;
+      const prev = asked ? walk.responses[asked - 1] : null;
+      const jump = prev ? (prev.correct ? '↑ +100 (last clean)' : '↓ −100 (last miss)') : 'start';
+      debugEl.textContent = `🔧 #${entry.rank} · pos ${entry.pos} · band ${entry.band} · band-miss ${bandMiss}/${walk.missesToEnter} · word #${asked + 1} · ${jump}`;
+    }
 
     const letters = scrambleTray(target, { extra, rng });
     trayTiles = letters.map((c, i) => ({ id: i, letter: c, used: false }));
@@ -520,7 +587,7 @@ export function startPuzzle(ctx, params = {}) {
 
     // off-DOM test hook (Playwright) — current target + position, like rhythm's
     try {
-      window.__puzzleCurrent = { word: target, index, total: session.length };
+      window.__puzzleCurrent = { word: target, index, total: session.length, placement, rank: entry.rank, pos: entry.pos, band: entry.band };
     } catch {
       /* ignore */
     }
@@ -530,13 +597,41 @@ export function startPuzzle(ctx, params = {}) {
     armHintTimers();
     audio.say(target, {
       onDone: () => {
-        if (locked) return;
+        if (locked || placement) return; // §C1: no speed clock during the placement diagnostic
         clearTimeout(graceTimer);
         graceTimer = setTimeout(() => {
           if (!locked) startTime = performance.now();
         }, GRACE_MS);
       },
     });
+  }
+
+  // §C1: the placement walk ended (3 misses in one 30-word band, or the safety cap). Seed the
+  // categories engine at the diagnosed band — corrects already banked progress in the tracker —
+  // mark this explorer PLACED so every future Craft is a normal session, then show the SAME
+  // Craft reward so the child never knows the first round was a diagnostic.
+  function finishPlacement() {
+    const res = placementResult(walk);
+    state.categories.setSize = settings.length || state.categories.setSize || 10;
+    seedFromPlacement(state.categories, res.responses, res.enteredBand, pool);
+    // replacing state.placement (no `walk` field) clears the saved diagnostic — they're placed now.
+    state.placement = { done: true, age: (state.placement && state.placement.age) || null, band: res.enteredBand };
+    state.startLevel = res.enteredBand; // keep the per-profile anchor in sync (Settings display)
+    ctx.save();
+    finish();
+  }
+
+  // §C1: a diagnostic craft session ended WITHOUT placing (fewer than 3 misses in any one band so
+  // far). SAVE the walk's progress so the NEXT craft session resumes it, then show the normal Craft
+  // reward — to the child this was just a normal set; "Craft again" keeps the diagnostic going.
+  function endDiagSession() {
+    state.placement = {
+      done: false,
+      age: (state.placement && state.placement.age) || null,
+      walk: placementSerialize(walk),
+    };
+    ctx.save();
+    finish();
   }
 
   function finish() {
@@ -567,7 +662,7 @@ export function startPuzzle(ctx, params = {}) {
       el('h2', {}, review ? (moreToRepair ? 'Crystals repaired!' : 'All crystals sparkling!') : 'Crafting complete!'),
       el('div', { class: 'earned' }, `+${earned} gems crafted`),
       masterCta && el('p', { style: { color: 'var(--gold, #ffd23f)' } }, `You’ve learned ${rec.knownBacklog} word${rec.knownBacklog === 1 ? '' : 's'} — now master ${rec.knownBacklog === 1 ? 'it' : 'them'}! ✍️`),
-      el('p', { style: { color: 'var(--ink-dim)' } }, `Total: 💎 ${state.gems || 0}  ·  Depth ⛏️ ${ctx.depth()}`),
+      el('p', { style: { color: 'var(--ink-dim)' } }, `Total: 💎 ${state.gems || 0}  ·  Level ⛏️ ${(state.categories && state.categories.level) || 1}`),
       el(
         'div',
         { class: 'row' },

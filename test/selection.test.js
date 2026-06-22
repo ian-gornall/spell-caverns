@@ -33,14 +33,14 @@ import {
 } from '../src/engine/selection.js';
 
 const POOL = [
-  { word: 'cat', tier: 1, pattern: 'short-a', rank: 1, sentence: 'A cat.' },
-  { word: 'bat', tier: 1, pattern: 'short-a', rank: 2, sentence: 'A bat.' },
-  { word: 'hat', tier: 1, pattern: 'short-a', rank: 3, sentence: 'A hat.' },
-  { word: 'map', tier: 1, pattern: 'short-a', rank: 4, sentence: 'A map.' },
-  { word: 'rat', tier: 1, pattern: 'short-a', rank: 5, sentence: 'A rat.' },
-  { word: 'pan', tier: 1, pattern: 'short-a', rank: 6, sentence: 'A pan.' },
-  { word: 'ship', tier: 2, pattern: 'sh', rank: 7, sentence: 'A ship.' },
-  { word: 'shop', tier: 2, pattern: 'sh', rank: 8, sentence: 'A shop.' },
+  { word: 'cat', band: 1, pattern: 'short-a', rank: 1, sentence: 'A cat.' },
+  { word: 'bat', band: 1, pattern: 'short-a', rank: 2, sentence: 'A bat.' },
+  { word: 'hat', band: 1, pattern: 'short-a', rank: 3, sentence: 'A hat.' },
+  { word: 'map', band: 1, pattern: 'short-a', rank: 4, sentence: 'A map.' },
+  { word: 'rat', band: 1, pattern: 'short-a', rank: 5, sentence: 'A rat.' },
+  { word: 'pan', band: 1, pattern: 'short-a', rank: 6, sentence: 'A pan.' },
+  { word: 'ship', band: 2, pattern: 'sh', rank: 7, sentence: 'A ship.' },
+  { word: 'shop', band: 2, pattern: 'sh', rank: 8, sentence: 'A shop.' },
 ];
 const rng = () => 0.42; // deterministic shuffle
 

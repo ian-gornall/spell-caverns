@@ -78,6 +78,9 @@ if (problems.length) {
 }
 
 // --- sort by frequency (rank asc), stable tiebreak by word ---
+// NOTE: the SHIPPED order is AGE-OF-ACQUISITION, not frequency (Ian 2026-06-22b). This builds the
+// frequency baseline; `scripts/rerank_aoa.mjs --write` then re-ranks data/words.js by child AoA.
+// ALWAYS run rerank_aoa.mjs AFTER merge.mjs, or the app reverts to the (wrong) adult-frequency order.
 all.sort((a, b) => a.rank - b.rank || (a.word < b.word ? -1 : 1));
 
 // --- write data/words.js ---
@@ -90,6 +93,8 @@ const out =
   `export { PATTERNS };\n` +
   `export const WORDS = [\n${lines}\n];\n`;
 await writeFile('data/words.js', out);
+console.warn('\n⚠️  data/words.js is FREQUENCY-ordered right now. The SHIPPED order is AGE-OF-ACQUISITION —');
+console.warn('   run `node scripts/rerank_aoa.mjs --write` NEXT to re-rank by child AoA (Kuperman 2012).\n');
 
 // --- report ---
 const byTier = {}, byPattern = {};

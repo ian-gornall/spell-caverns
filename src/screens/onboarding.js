@@ -85,7 +85,7 @@ export function onboardingScreen(ctx) {
   const firstRun = ctx.store.profileCount() === 0;
   let chosenName = active?.profile?.name && active.profile.name !== 'Explorer' ? active.profile.name : '';
   let chosenColour = active?.settings?.themeColor || COLOURS[0].value;
-  let chosenLevel = active?.startLevel || 1;
+  let chosenAge = 7; // §C1: asked below; seeds the placement diagnostic's start word (not a level pick)
   applyTheme(chosenColour);
 
   // --- step 0 (first run only): "Tap to start" audio gate (§32.B) -----------
@@ -163,22 +163,49 @@ export function onboardingScreen(ctx) {
         ),
       ),
     );
-    body.replaceChildren(mascot(line), swatches, el('button', { class: 'btn primary onboard-go', onClick: chooseLevel }, 'Perfect! →'));
+    body.replaceChildren(mascot(line), swatches, el('button', { class: 'btn primary onboard-go', onClick: chooseAge }, 'Perfect! →'));
     audio.say(UI.pickColour);
   }
 
-  // --- step 4: where to start (level select) -------------------------------
-  function chooseLevel() {
-    const line = UI.chooseLevel;
-    const cards = levelGrid(chosenLevel, (tier) => {
-      chosenLevel = tier;
-    });
+  // --- step 4: how old are you? (§C1) --------------------------------------
+  // Replaces the old age-labelled LEVEL picker (Ian 2026-06-22): the child's age only seeds
+  // WHERE the placement diagnostic starts walking the frequency list (5→#1, 6→#300, +300/yr).
+  // The real start level is then DIAGNOSED from how they spell — not chosen here.
+  function chooseAge() {
+    const line = "How old are you? Tap your age and we'll find the perfect crystals for you!";
+    // The ends are OPEN ranges (Ian 2026-06-22b): the youngest button covers ages 2–5 (all seed
+    // the easiest start word) and the oldest covers 13+ (the hardest start). The diagnostic then
+    // adapts up/down from there, so an age outside 5–13 is never turned away.
+    const AGES = [
+      { value: 5, label: '2–5' },
+      { value: 6, label: '6' },
+      { value: 7, label: '7' },
+      { value: 8, label: '8' },
+      { value: 9, label: '9' },
+      { value: 10, label: '10' },
+      { value: 11, label: '11' },
+      { value: 12, label: '12' },
+      { value: 13, label: '13+' },
+    ];
+    const pickBtn = (a) =>
+      el(
+        'button',
+        {
+          class: 'age-btn' + (a.value === chosenAge ? ' on' : ''),
+          onClick: (e) => {
+            chosenAge = a.value;
+            [...e.currentTarget.parentNode.children].forEach((c) => c.classList.remove('on'));
+            e.currentTarget.classList.add('on');
+          },
+        },
+        a.label,
+      );
+    const grid = el('div', { class: 'age-grid' }, ...AGES.map(pickBtn));
     body.replaceChildren(
-      mascot('Where should we start?'),
-      el('p', { class: 'field-hint', style: { maxWidth: '460px' } }, "Pick the words that look about right — the game finds the ones you don't know yet and adjusts."),
-      cards,
-      // `level-cta` makes this button STICKY to the bottom on phones (CSS) so it stays visible
-      // while the 9 level cards scroll — otherwise the CTA sits below the fold on a phone.
+      mascot('How old are you?'),
+      el('p', { class: 'field-hint', style: { maxWidth: '460px' } }, "Grown-ups: this just sets a starting point. The game then finds the words they don't know yet and adjusts."),
+      grid,
+      // `level-cta` keeps this button STICKY to the bottom on phones so it stays visible.
       el('button', { class: 'btn primary onboard-go level-cta', onClick: firstRun ? syncStep : ready }, "Let's dig! →"),
     );
     audio.say(line);
@@ -257,8 +284,9 @@ export function onboardingScreen(ctx) {
   // --- step 5: create the profile -> reminder prompt -> guaranteed-win first wave ---
   function ready() {
     const name = chosenName || 'Explorer';
-    // Create a NEW profile (first-run, or "add explorer") and make it active.
-    ctx.store.addProfile({ name, themeColor: chosenColour, startLevel: chosenLevel });
+    // Create a NEW profile (first-run, or "add explorer") and make it active. §C1: `age` seeds
+    // the placement diagnostic (the first Craft session); the real start level is diagnosed there.
+    ctx.store.addProfile({ name, themeColor: chosenColour, age: chosenAge });
     ctx.refreshActive();
     applyTheme(chosenColour);
     // §36 F2: at the END of onboarding (a grown-up just set this explorer up) offer the daily
@@ -298,10 +326,13 @@ export function onboardingScreen(ctx) {
   }
 
   function startDig(name) {
-    const lineTxt = `Let's dig, ${name}! Tap the word you hear — you've got this!`;
+    // §C1/D1: first activity is CRAFT (the placement diagnostic), NOT the locked Mining mode the
+    // old first-run dropped into. The new profile's placement.done=false makes this Craft run the
+    // diagnostic (modes/puzzle.js); it then flows into normal play, seamlessly.
+    const lineTxt = `Let's dig, ${name}! Spell the word you hear — you've got this!`;
     body.replaceChildren(
       mascot(lineTxt),
-      el('button', { class: 'btn primary onboard-go big', onClick: () => ctx.nav('rhythm', { firstRun: true }) }, '⛏️ Start digging!'),
+      el('button', { class: 'btn primary onboard-go big', onClick: () => ctx.nav('puzzle') }, '⛏️ Start digging!'),
     );
     audio.say(UI.letsDig); // name dropped from speech so it's a fixed clip; bubble keeps it
   }
