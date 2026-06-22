@@ -2,8 +2,36 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-21b • current live sw **csc-v53**. **This session (Ian's
-> directives):** **#3 AUDIO TAIL — ✅ COMPLETE + LIVE (csc-v53):** the whole remaining tail generated in ONE
+> `C:\Users\iango\spell`  •  Last updated 2026-06-21d • current live sw **csc-v53**.
+>
+> **🆕 SESSION 2026-06-21d — §36 DO-FIRST backlog BUILT + locally verified, NOT yet deployed
+> (prod still csc-v53; 6 commits sit on local `main` ahead of origin):** Worked the §36 item-#15
+> "do-first" list. **DONE + committed + QA'd locally:** **A1–A8** (CSS bugs: one-shot Geo wink,
+> desktop max-width≤900 @pointer:fine, Progress `.seg` padding, bigger phone geode, real Crystal-Lab
+> button, re-proportioned back button, themed scrollbar + `.play-body overflow-x:clip` to kill the
+> pulse-induced horizontal bar) · **B3** (American spellings: `centre→center`/`programme→program`/
+> `theatre→theater` flipped at SOURCE in `data/chunks/*` + rebuilt `words.js`, British forms demoted to
+> misspellings, **no new audio needed** — clips already on disk + manifest, reused the homophone clip for
+> `pickColour`; UI copy colour→color / practise→practice / catalogued→cataloged swept; +2 data.test
+> guards) · **B1/B2** (a real SERIAL voice queue `src/engine/voicequeue.js` (+8 unit tests) wired through
+> `audio.js` so praise never overlaps the next word; a new dictation preempts a playing one but praise is
+> PROTECTED) · **E1–E4** (auto-hint never reveals the FINAL letter; manual ⏸ Pause button in the play
+> header; no hints while paused; **the confirmed background-tab bug fixed** via `visibleTimeout()` +
+> visibility-gated `createIdleGuard` with onSuspend/onWake) · **C2** (scary "~2800 new to find" →
+> "to next depth") · **C3** (Repair UNIFIED on the §30 categories: `repairWords`/`needsRepair`,
+> `buildRepairSession`, a YELLOW light on missed words, count+pips+drill now reconcile — no more legacy
+> `lapsedWords` mismatch) · **F1** (mining defaults to 2 answer tiles; 3/4 still selectable). **287→293
+> tests green; smoke/overflow/fold/phone-audit/mastery/s31/autofill all green; iPad-portrait
+> --play-scale=1 preserved.** **⏸️ PENDING IAN'S DECISION:** **(1) DEPLOY** — the 6 commits aren't pushed
+> (a prod deploy where the kids play, incl. the C3 learning-model change, was held for sign-off; to ship:
+> bump `sw.js`/`version.js` csc-v53→**csc-v54** + push `main` → Git-CD). **(2) F2** (daily reminder ON by
+> default) — DEFERRED: needs Ian's call on the COPPA-sensitive OS-permission PROMPT TIMING (can't silently
+> force-enable). **NOT STARTED (the "discuss-first" §36 items, all need Ian's design input):** **C1**
+> (diagnostic start-level placement — Ian wants a FULL design discussion), **D1** (first-run flow), **D2**
+> (Crystal Lab redesign), **D3** (set-size 6 fixed + per-dig mining size), **D4** (100-level cavern map +
+> hide skipped levels), **D5** (catalog photos+science), **E5** (screen-time off-ramp). See §36 below.
+>
+> **Earlier this session block (Ian's directives):** **#3 AUDIO TAIL — ✅ COMPLETE + LIVE (csc-v53):** the whole remaining tail generated in ONE
 > approved run (+461 clips → **2918/2918 words**; only the Windows-reserved slug `con` falls back to device
 > TTS). Word audio is now fully shipped. **#13 one-screen experiment — ⏸️ DEFERRED by Ian** ("many new issues
 > introduced") — the test Worker/branch stay as-is but the model is NOT being adopted; stop polling for a
