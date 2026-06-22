@@ -2,12 +2,65 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • sw **csc-v60** — ✅ SHIPPED + LIVE on prod, verified.
+> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • sw **csc-v61** — ✅ SHIPPED + LIVE on prod, verified.
 >
-> **FIX (csc-v60):** the one-shot diagnostic MISS copy used GENTLE_PHRASES ("Give it another go!" — implies a retry
-> the diagnostic forbids). Now uses `praise.NEXT_WORD_PHRASES` (forward-moving, e.g. "Let's keep going!") for the
-> spoken + shown line; qa_diag_oneshot now also fails on any retry-implying miss phrase. Behaviour was already
-> one-shot (the word advances) — only the copy was wrong.
+> **🆕 SESSION 2026-06-22e — §36 STAY-IN-LEVEL ✅ SHIPPED + LIVE on prod (csc-v61), verified.** Pushed `main` →
+> Git-CD built + deployed (prod went csc-v60→**csc-v61** in ~30s); `check_deploy.mjs csc-v61` = DEPLOYED ✅;
+> `qa_prod.mjs` = **ISSUES: none** (boots, home + Mastery render, CNN model loads + drew 'a'→'a', APP_VERSION=csc-v61).
+> Commit `9322fb0` (feat) + a docs(HANDOFF) commit. **NEW next-steps recorded below (Ian 2026-06-22e, ⛔ DO-NOT-CODE-YET).**
+> Built the recorded next-step (was ⛔ DO-NOT-CODE-YET): after the diagnostic places the explorer at a cavern level
+> (band), the game now keeps serving ONLY that band's words and the level NO LONGER JUMPS until the band is MASTERED.
+> Ian's 3 design calls (via AskUserQuestion this session): **(1) clear bar = ALL MASTERED** (drawn from memory in
+> the draw/Mastery mode, NOT merely KNOWN); **(2) REMOVE the adaptive up/down entirely** (level only advances on
+> clearing a band, never auto-drops — the cavern-map tap-to-go-back stays as the manual escape); **(3) the level-end
+> "bigger boss" = NOT YET** (ship gating first). Changes (test-first):
+> - **Removed the adaptive level mover** — `engine/selection.applyAdaptiveLevel`/`adaptiveLevelDecision`/`ADAPT_*`
+>   deleted (this was the "jumping"); the `applyAdaptiveLevel` call dropped from `modes/puzzle.js` (crafting no
+>   longer moves the level). `demoteLevel`/`promoteLevel` kept as tested primitives (promoteLevel now powers advance).
+> - **`engine/categories.fillLearning` no longer auto-climbs** out of the current band when its NEW words run out —
+>   the working set just sits under setSize until the band is mastered (the child masters its known words in draw mode).
+> - **NEW `bandMastered()` + `advanceLevelIfCleared()`** (pure, +2 unit tests): the level advances ONLY when every
+>   word in the current band is MASTERED (climbing past any already-mastered deeper band; never drops). Wired into
+>   `modes/mastery.js` right after a draw success (the only place a word becomes MASTERED). Silent advance (no boss
+>   yet, per Ian); the new level surfaces on Home + the cavern map.
+> - **Reconciled the map/tile to the mastered bar:** `cavernLevels` "cleared" (⭐) + `categorySummary.toNextLevel`
+>   now count MASTERED only (were known-or-mastered) so the map can't show ⭐ / "0 to next level" on a band the game
+>   still serves.
+> - **QA — ALL GREEN:** 319 unit tests (−3 adaptive, +2 new) + smoke + qa_placement + qa_cavernmap + qa_overflow +
+>   qa_level + qa_diag_oneshot + qa_caps + qa_caps_mastery + qa_boss_debug; NEW guard **`qa_stay_in_level.mjs`** seeds
+>   a profile placed at band 20, crafts 5 words CLEAN, and asserts the level stays 20 (OLD code promoted after 4 clean
+>   builds) + every crafted word stayed in band 20 (no climb). `node --check` clean on all changed files. Files:
+>   `engine/{categories,selection}.js`, `modes/{puzzle,mastery}.js`, `sw.js`+`version.js` (csc-v61), `test/{categories,
+>   selection}.test.js`, new `scripts/qa_stay_in_level.mjs`, `.gitignore` (new + prior scratch screenshot dirs).
+> - **✅ DEPLOYED:** csc-v61 is LIVE on prod (commit `9322fb0`, Git-CD on push to `main`; verified check_deploy +
+>   qa_prod). Then **#5 real-device pass**. The tentative D4 "bigger boss at level-end" stays a separate "maybe".
+> - **🆕 NEXT-STEPS (Ian 2026-06-22e, ⛔ DO-NOT-CODE-YET — just recorded; discuss/confirm before building):**
+>   1. **Jackson → capitalize.** Add `Jackson` to the PROPER set (it's a surname/name) so it's stored capitalized
+>      like Williams/Smith and spelled lowercase with an auto-capital first letter. One-line data change: add to
+>      `data/words.js` + the generator's PROPER set in `scripts/rerank_aoa.mjs` (+ a data.test guard). Mirrors the
+>      §36 #4 proper-noun caps work (csc-v60). [Trivial — but Ian said don't code yet; bundle with the next batch.]
+>   2. **Allow TYPING in BOTH Craft and Mastery.** Mastery already has a draw↔type toggle (§30 keyboard fallback);
+>      CRAFT is currently tile-tap only (`modes/puzzle.js`). Add a keyboard input path to Craft too (and make sure
+>      Mastery's type mode is equally first-class). Open Qs: is typing a TOGGLE or always-available alongside tiles?
+>      Does typed Craft still count as a "clean build" for the known/mastery thresholds (see #4)? Files:
+>      `modes/puzzle.js` (+ maybe a shared keypad component reused from `modes/mastery.js`).
+>   3. **Mastery answer tiles — match Craft's proportions.** The built-word slots/tiles in Mastery (the answer row)
+>      should use the SAME sizing/proportions as Craft's tiles for a consistent feel. Pure CSS/layout (`styles.css`
+>      `.slot`/`.lbox` in the mastery mode vs `.slots .slot` in craft) — no engine change. Visual-QA on phone + wide.
+>   4. **Thresholds → ONE correct.** Change KNOWN to **1 clean craft** (was `PROMOTE_STREAK = 2`, twice-in-a-row) and
+>      keep MASTERY at **1 correct draw** (already 1). ⚠️ This LOWERS the bar and INTERACTS with the just-shipped
+>      "all MASTERED to advance a level" gating + the §C1 placement seeding (which banks 1 craft = 1 pip toward the
+>      old 2). Reconcile: `categories.PROMOTE_STREAK`, `seedFromPlacement` pip logic, `recommendNext`, and every test
+>      that assumes 2-in-a-row. Pairs with #5 (retention probing) so a 1-shot "known" doesn't over-promote shaky words.
+>   5. **Retention probing — keep KNOWN/MASTERED at 60%+ accuracy.** Periodically RE-PROBE already known/mastered
+>      words (incl. from EARLIER levels) and, when recent accuracy DIPS below ~60%, fold some of those earlier words
+>      back into the working set until accuracy recovers — spaced-repetition / interleaved review so mastery doesn't
+>      decay while the explorer pushes deeper. Open design Qs for Ian: the exact threshold (60%?), the window it's
+>      measured over, how many old words to re-inject and how they're chosen (lowest-accuracy? oldest-seen? by band?),
+>      and whether a failed probe DEMOTES (known→learning / mastered→known) or just re-queues. Note this is the
+>      inverse pressure to #1's "stay in level" — it deliberately pulls EARLIER words back in, so the two need to
+>      coexist cleanly (probing is review, not a level change). Files: `engine/selection.js` + `engine/categories.js`
+>      (a recent-accuracy signal already exists via `state.recent`; progress.js owns the continuous mastery score).
 >
 > **🆕 SESSION 2026-06-22d — §36 NEXT-STEPS #1, #2, #4 + #3 (D4) ✅ SHIPPED + LIVE on prod (csc-v60), verified.**
 > Pushed `main` → Git-CD built + deployed (prod went csc-v56→**csc-v60** in ~15s); `check_deploy.mjs csc-v60` =
@@ -70,21 +123,14 @@
 >   placed band 47). NOTE: the `cavernMap` panel below still uses mastery-DEPTH language — that's **D4's** job to
 >   unify (left alone deliberately; #2 was scoped to the tile).
 > - **✅ DEPLOYED:** csc-v60 is LIVE on prod (Git-CD on push to `main`; verified via check_deploy + qa_prod).
-> - **🆕 NEXT (Ian 2026-06-22d, ⛔ DO-NOT-CODE-YET — just recorded): STAY WITHIN A LEVEL UNTIL ITS WORDS ARE MASTERED.**
->   After the diagnostic places the explorer at a cavern level (band), the game should keep serving ONLY that level's
->   words until they're all MASTERED — Ian reports it currently JUMPS BETWEEN LEVELS before the assigned one is
->   mastered. Two mechanisms move the level today and BOTH need gating: (1) `engine/selection.applyAdaptiveLevel`
->   (`adaptiveLevelDecision`, MEDIUM aggressiveness) pushes level up/down on the recent craft-result window — this is
->   the "jumping around"; (2) `engine/categories.fillLearning` auto-CLIMBS `state.level` when the current band runs
->   out of NEW unseen words (i.e. once they're merely SEEN/known, before mastery). Desired: don't advance the level
->   until the current band is fully mastered (the cavern-map **`cleared`** idea). ⚠️ **Open design Qs for Ian before
->   building:** (a) does "mastered" mean MASTERED (drawn from memory, the draw/mastery mode) or is KNOWN (2 clean
->   crafts) enough to clear+advance a level? Mastery needs the draw mode, so "all MASTERED" forces the full
->   Craft→Mastery loop on every band before moving on. (b) `cavernLevels` currently marks a band `cleared` when
->   done = KNOWN **or** MASTERED — reconcile that with the chosen bar. (c) does this REPLACE the adaptive up/down
->   entirely (level only ever advances on mastery, never auto-drops), or just gate the UP direction? (d) the §C1
->   diagnostic's ±100 placement walk is separate and stays. Files: `engine/selection.js` (adaptive), `engine/
->   categories.js` (fillLearning climb + a "band mastered?" predicate, pairs with `cavernLevels`).
+> - **✅ DONE (csc-v61, 2026-06-22e — see top banner): STAY WITHIN A LEVEL UNTIL ITS WORDS ARE MASTERED.** The
+>   recorded next-step (was ⛔ DO-NOT-CODE-YET) is BUILT + all-green locally. Ian's design Qs answered this session
+>   via AskUserQuestion: (a) clear bar = **ALL MASTERED** (draw-from-memory, not just KNOWN); (b) `cavernLevels`
+>   `cleared` + `categorySummary.toNextLevel` reconciled to **MASTERED-only**; (c) the adaptive up/down was
+>   **REMOVED entirely** (level only advances on clearing a band, never auto-drops); (d) the diagnostic ±100 walk
+>   stays separate. Both movers gated: `selection.applyAdaptiveLevel` deleted, `categories.fillLearning` no longer
+>   auto-climbs; NEW `bandMastered()`/`advanceLevelIfCleared()` advance only on full-band mastery (wired into
+>   `modes/mastery.js`). ⏸️ NOT yet committed/deployed — awaiting Ian. The level-end "bigger boss" stays a separate "maybe".
 > - **⚠️ REMAINING:** **#5 OWED real-device pass** on a physical iPad for ALL of csc-v57→v60 (the one-shot diagnostic
 >   + its new "keep going" copy, the proper-noun caps in Craft+Mastery, bosses-every-10, the cavern map +
 >   tap-to-go-back) — that's Ian's, now testable on prod. Plus the tentative **D4 "maybe" big boss at level-end**
