@@ -36,6 +36,8 @@ import {
   unlocks,
   learningProgress,
   categorySummary,
+  repairWords,
+  needsRepair,
   serializeCategoryState,
   deserializeCategoryState,
 } from '../src/engine/categories.js';
@@ -93,6 +95,44 @@ test('two correct crafts IN A ROW promote a word to known and refill the freed s
   // the freed learning slot is refilled with the next new tier-1 word (rank 4 = 'map')
   assert.equal(learningWords(st).length, 3);
   assert.ok(learningWords(st).includes('map'));
+});
+
+// ---- §36 C3: repair (cracked words) reconciles with the craft-streak pips ----
+test('a NEVER-correct learning word is NOT repair (it is new learning, not a regression)', () => {
+  const st = fresh();
+  recordCraft(st, 'cat', false, { pool: POOL }); // missed on first attempt
+  assert.equal(needsRepair(st.words.get('cat')), false);
+  assert.deepEqual(repairWords(st), []);
+});
+
+test('a word correct ONCE then missed needs repair (got it, lost it)', () => {
+  const st = fresh();
+  recordCraft(st, 'cat', true, { pool: POOL }); // streak 1, correct 1
+  assert.equal(needsRepair(st.words.get('cat')), false); // making progress, not repair
+  recordCraft(st, 'cat', false, { pool: POOL }); // streak reset to 0, correct still 1
+  assert.equal(needsRepair(st.words.get('cat')), true);
+  assert.deepEqual(repairWords(st), ['cat']);
+});
+
+test('a KNOWN word demoted by a craft miss becomes a repair word (a cracked crystal)', () => {
+  const st = fresh();
+  makeKnown(st, 'cat'); // → known
+  assert.equal(getCat(st, 'cat'), CATEGORIES.KNOWN);
+  recordCraft(st, 'cat', false, { pool: POOL }); // craft miss demotes known → learning
+  assert.equal(getCat(st, 'cat'), CATEGORIES.LEARNING);
+  assert.ok(repairWords(st).includes('cat')); // it had correct crafts, now streak 0 → repair
+});
+
+test('learningProgress carries a needsRepair flag that matches repairWords + summary.repair', () => {
+  const st = fresh();
+  recordCraft(st, 'cat', true, { pool: POOL });
+  recordCraft(st, 'cat', false, { pool: POOL }); // cat now needs repair
+  const prog = learningProgress(st);
+  const catRow = prog.find((p) => p.word === 'cat');
+  assert.equal(catRow.needsRepair, true);
+  assert.equal(prog.filter((p) => p.needsRepair).length, repairWords(st).length);
+  const sum = categorySummary(st, POOL);
+  assert.deepEqual(sum.repair, repairWords(st));
 });
 
 test('a miss resets the in-a-row streak (one correct then a miss does NOT make it known)', () => {

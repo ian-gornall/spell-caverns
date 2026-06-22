@@ -326,12 +326,33 @@ export function promoteLevel(state, pool) {
   return state;
 }
 
+// ---- repair (§36 C3) ----
+// "Needs repair" = a LEARNING word the child got RIGHT before but has since MISSED — i.e. it
+// has at least one correct craft yet is back at a zero streak (a known/mastered word demoted by
+// a craft miss, or a learning word that regressed). These are the "cracked crystals". Driven
+// from the SAME records the green craft-streak pips use, so the Repair count, the pips and the
+// yellow light always reconcile (replacing the legacy continuous tracker's lapsedWords, which
+// didn't match — Ian's confusion). A never-yet-correct learning word is NOT repair (it's just
+// new learning, not a regression).
+export function needsRepair(rec) {
+  return !!rec && rec.category === CATEGORIES.LEARNING && rec.craftStreak === 0 && rec.craftCorrect > 0;
+}
+export function repairWords(state) {
+  return [...state.words.values()].filter(needsRepair).sort((a, b) => a.order - b.order).map((r) => r.word);
+}
+
 // ---- display ----
-// Each learning word with its 2-step progress toward known (kid-visible).
+// Each learning word with its 2-step progress toward known (kid-visible) + a needsRepair flag
+// (a yellow light: a word it got right before but has since missed).
 export function learningProgress(state) {
   return learningWords(state).map((w) => {
     const rec = state.words.get(w);
-    return { word: w, steps: Math.min(rec.craftStreak, PROMOTE_STREAK), needed: PROMOTE_STREAK };
+    return {
+      word: w,
+      steps: Math.min(rec.craftStreak, PROMOTE_STREAK),
+      needed: PROMOTE_STREAK,
+      needsRepair: needsRepair(rec),
+    };
   });
 }
 
@@ -346,6 +367,7 @@ export function categorySummary(state, pool) {
     known: knownWords(state).length,
     mastered: masteredWords(state).length,
     tricky: trickyWords(state),
+    repair: repairWords(state), // §36 C3: cracked words to fix (matches the pips/yellow light)
     newRemaining,
     unlocks: unlocks(state),
     level: state.level,

@@ -10,13 +10,12 @@
 // speed/combo gems; a build that needed help still earns a small "you crafted it"
 // reward (positive reinforcement, never shaming). UI module — verified with Playwright.
 import { el, header, burst, toast, createIdleGuard, pulse, fitPlayArea, visibleTimeout } from '../ui.js';
-import { buildReviewSession } from '../engine/session.js';
-import { buildCraftPool, applyAdaptiveLevel, recommendNext } from '../engine/selection.js';
-import { fillLearning, recordCraft } from '../engine/categories.js';
+import { buildCraftPool, buildRepairSession, applyAdaptiveLevel, recommendNext } from '../engine/selection.js';
+import { fillLearning, recordCraft, repairWords } from '../engine/categories.js';
 import { byRank } from '../engine/lexicon.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { gradeAnswer, projectedScore, GENTLE_PHRASES } from '../engine/praise.js';
-import { recordAnswer, lapsedWords } from '../engine/progress.js';
+import { recordAnswer } from '../engine/progress.js';
 import { scrambleTray, gradeBuild } from '../engine/puzzle.js';
 
 // §30 hint timing: with no CORRECT letter placed, highlight the hint button at 4s and
@@ -59,8 +58,10 @@ export function startPuzzle(ctx, params = {}) {
     state.categories.setSize = settings.length || state.categories.setSize || 10;
     fillLearning(state.categories, pool);
   }
+  // §36 C3: Repair drills the §30 "cracked" words (crafted right before, since missed) so it
+  // matches the Repair count + the yellow lights on Progress, not the legacy continuous tracker.
   const session = review
-    ? buildReviewSession(state.tracker, { length, rng })
+    ? buildRepairSession(state.categories, pool, { length, rng })
     : buildCraftPool(state.categories, pool, { length, rng });
   const extra =
     typeof settings.difficulty === 'string' ? EXTRA_BY_DIFF[settings.difficulty] ?? 1 : 1;
@@ -549,7 +550,7 @@ export function startPuzzle(ctx, params = {}) {
       return ctx.nav('boss', { depth: ctx.store.lastMilestoneDepth() + 1, earned, from: 'puzzle' });
     }
     const grade = earned >= length * 18 ? '🏆' : earned > 0 ? '💎' : '⛏️';
-    const moreToRepair = review && lapsedWords(state.tracker).length > 0;
+    const moreToRepair = review && repairWords(state.categories).length > 0;
     const primary = moreToRepair
       ? el('button', { class: 'btn primary', onClick: () => ctx.nav('puzzle', { review: true }) }, '🔧 Repair more')
       : el('button', { class: 'btn primary', onClick: () => ctx.nav('puzzle') }, '🔨 Craft again');

@@ -5,15 +5,13 @@
 // friendly bar rather than raw numbers), and a tiny recent-days accuracy strip.
 // Buckets are display-only — never a gate.
 import { el, header, toast } from '../ui.js';
-import { summary, lapsedWords } from '../engine/progress.js';
+import { summary } from '../engine/progress.js';
 import { categorySummary } from '../engine/categories.js';
 import { byRank } from '../engine/lexicon.js';
 import { dailyQuests, questProgress, allQuestsDone } from '../engine/quests.js';
 import { catalogSummary } from '../engine/catalog.js';
 
 export function progressScreen(ctx) {
-  const crackedWords = lapsedWords(ctx.state.tracker);
-  const cracked = crackedWords.length;
   const streak = ctx.state.streak || {};
   const records = ctx.state.records || {};
 
@@ -71,7 +69,7 @@ export function progressScreen(ctx) {
           ),
         ),
       ),
-      wordsPanel(ctx, cracked),
+      wordsPanel(ctx),
       cavernMap(ctx),
       questsPanel(ctx),
       el(
@@ -105,17 +103,25 @@ export function progressScreen(ctx) {
 // §30 kid-visible category view: the "Words I'm learning" working set (each with a 2-step
 // progress toward KNOWN) + a known / mastered / new-remaining tally. The `tricky` bucket is
 // GROWN-UP-ONLY (never shown here) — a child never sees a "tricky/hard" label on their words.
-function wordsPanel(ctx, cracked) {
+function wordsPanel(ctx) {
   const pool = byRank().filter((w) => w.word.length >= 3);
   const s = categorySummary(ctx.state.categories, pool);
+  const cracked = s.repair.length; // §36 C3: from categories, so it matches the pips/yellow lights
+  // §36 C2: how many to the next cavern depth (friendly + small) instead of the scary
+  // "~2800 new to find" total. Computed like cavernMap so the two agree.
+  const known = summary(ctx.state.tracker).counts.known;
+  const toNext = WORDS_PER_DEPTH - (known % WORDS_PER_DEPTH);
   const learnList = s.learning.length
     ? el(
         'div',
         { class: 'learn-grid' },
         ...s.learning.map((w) =>
           el(
+            // §36 C3: a YELLOW light on a word the child got right before but has since missed,
+            // so they can SEE which need fixing (matches the Repair count + drill).
             'div',
-            { class: 'learn-word' },
+            { class: 'learn-word' + (w.needsRepair ? ' needs-repair' : '') },
+            w.needsRepair && el('span', { class: 'repair-dot', title: 'Needs repair' }, '🟡'),
             el('span', { class: 'learn-text' }, w.word),
             el(
               'div',
@@ -140,7 +146,7 @@ function wordsPanel(ctx, cracked) {
     { class: 'panel' },
     el('h3', {}, 'Words I’m learning'),
     learnList,
-    el('div', { class: 'seg', style: { marginTop: '12px' } }, tile('🌱', s.known, 'known'), tile('⭐', s.mastered, 'mastered'), tile('✨', s.newRemaining, 'new to find')),
+    el('div', { class: 'seg', style: { marginTop: '12px' } }, tile('🌱', s.known, 'known'), tile('⭐', s.mastered, 'mastered'), tile('🪨', toNext, 'to next depth')),
     cracked > 0 &&
       el(
         'button',

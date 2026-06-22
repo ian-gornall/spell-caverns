@@ -4,8 +4,7 @@
 // and surface a friendly "coming soon" toast (the engine for the Lab exists; the
 // screen comes later in the build order). Progress + Settings are wired.
 import { el, header, toast, createIdleGuard, pulse } from '../ui.js';
-import { lapsedWords } from '../engine/progress.js';
-import { unlocks } from '../engine/categories.js';
+import { unlocks, repairWords } from '../engine/categories.js';
 import { recommendNext } from '../engine/selection.js';
 import { streakIsLive, daysSinceLastPlayed } from '../engine/streak.js';
 import { dailyQuests, questProgress } from '../engine/quests.js';
@@ -13,7 +12,9 @@ import { catalogSummary, affordableLocked } from '../engine/catalog.js';
 
 export function homeScreen(ctx) {
   const name = ctx.state.profile.name || 'Explorer';
-  const cracked = lapsedWords(ctx.state.tracker).length;
+  // §36 C3: "cracked" words now come from the §30 categories (words crafted right before but
+  // since missed) so the Repair count matches the green pips + yellow lights on Progress.
+  const cracked = repairWords(ctx.state.categories).length;
   const owned = ctx.store.ownedCrystals();
   const cat = catalogSummary(owned);
   const canUnlock = affordableLocked(owned, ctx.state.gems || 0).length;

@@ -24,6 +24,7 @@ import {
 } from '../src/engine/categories.js';
 import {
   buildCraftPool,
+  buildRepairSession,
   buildMiningPool,
   buildMasteryPool,
   ADAPT_WINDOW,
@@ -75,6 +76,30 @@ test('buildCraftPool balances in a little KNOWN (review) + TRICKY (repair) when 
   assert.ok([...cats].some((c) => c === CATEGORIES.KNOWN || c === CATEGORIES.TRICKY));
   // never duplicates a word
   assert.equal(new Set(out.map((w) => w.word)).size, out.length);
+});
+
+test('buildRepairSession drills the cracked words first (§36 C3)', () => {
+  const st = createCategoryState({ setSize: 6, level: 1 });
+  fillLearning(st, POOL); // cat,bat,hat,map,rat,pan learning
+  recordCraft(st, 'cat', true, { pool: POOL });
+  recordCraft(st, 'cat', false, { pool: POOL }); // cat now needs repair
+  recordCraft(st, 'bat', true, { pool: POOL });
+  recordCraft(st, 'bat', false, { pool: POOL }); // bat now needs repair
+  const out = buildRepairSession(st, POOL, { length: 6, rng });
+  out.forEach((w) => assert.ok(w.word && w.sentence)); // full dataset entries
+  const words = new Set(out.map((w) => w.word));
+  assert.ok(words.has('cat') && words.has('bat'), 'both cracked words are in the drill');
+  assert.equal(new Set(out.map((w) => w.word)).size, out.length); // no dupes
+});
+
+test('buildRepairSession pads with learning words when few are cracked', () => {
+  const st = createCategoryState({ setSize: 6, level: 1 });
+  fillLearning(st, POOL);
+  recordCraft(st, 'cat', true, { pool: POOL });
+  recordCraft(st, 'cat', false, { pool: POOL }); // only cat is cracked
+  const out = buildRepairSession(st, POOL, { length: 4, rng });
+  assert.equal(out.length, 4, 'padded up to length with other learning words');
+  assert.ok(out.some((w) => w.word === 'cat'));
 });
 
 test('buildMiningPool serves ONLY known-or-better words (no learning / tricky / new)', () => {

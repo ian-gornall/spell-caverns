@@ -19,7 +19,12 @@ await mkdir(OUT, { recursive: true });
 // ---- seed: every mode unlocked, every word LONG (9–13 chars) ----
 const W = (word, tier, pattern, rank, category, extra = {}) => ({
   word, tier, pattern, rank, category,
-  craftStreak: category === 'learning' ? 0 : 2, craftAttempts: 2, craftCorrect: 2, order: rank, ...extra,
+  craftStreak: category === 'learning' ? 0 : 2,
+  // fresh LEARNING words are un-crafted (craftCorrect 0) so they don't read as "needs repair"
+  // (§36 C3: repair = a learning word crafted right before but since missed); known/mastered = proven.
+  craftAttempts: category === 'learning' ? 0 : 2,
+  craftCorrect: category === 'learning' ? 0 : 2,
+  order: rank, ...extra,
 });
 const LEARN = [W('international', 9, 'suffix-tion', 193, 'learning'), W('university', 9, 'suffix', 173, 'learning'),
   W('community', 9, 'suffix', 227, 'learning'), W('government', 7, 'suffix-ment', 321, 'learning')];

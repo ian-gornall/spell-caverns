@@ -1394,6 +1394,16 @@ button.quest {
   background: var(--emerald, #2bb673);
   box-shadow: 0 0 8px rgba(43, 182, 115, 0.7);
 }
+/* §36 C3: a YELLOW light on a word the child got right before but has since missed (needs
+   repair) — a warm amber tint + glow so it stands out as "fix me" among the learning words. */
+.learn-word.needs-repair {
+  border-color: #ffcf4d88;
+  box-shadow: 0 0 10px -2px rgba(255, 195, 64, 0.5);
+}
+.learn-word .repair-dot {
+  font-size: 0.7rem;
+  line-height: 1;
+}
 
 /* ------- crystal lab ------- */
 .lab-body {

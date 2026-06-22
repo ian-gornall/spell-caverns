@@ -19,6 +19,7 @@ import {
   knownWords,
   masteredWords,
   trickyWords,
+  repairWords,
   unlocks,
   demoteLevel,
   promoteLevel,
@@ -64,6 +65,26 @@ export function buildCraftPool(state, pool, opts = {}) {
   shuffle(learn, rng).forEach(add);
   review.forEach(add);
   return shuffle(picked, rng).slice(0, length);
+}
+
+// REPAIR (§36 C3): a focused CRAFT drill of exactly the "cracked" words — the learning words
+// the child got right before but has since missed (categories.repairWords) — so tapping the
+// Repair card drills the same words the yellow lights mark. Pads with other learning words if
+// fewer than `length`, so the drill is never frustratingly tiny. Shuffled (craft = recall).
+export function buildRepairSession(state, pool, opts = {}) {
+  const { length = 6, rng = Math.random } = opts;
+  const repair = entriesFor(pool, repairWords(state));
+  const picked = [];
+  const seen = new Set();
+  const add = (w) => {
+    if (w && !seen.has(w.word) && picked.length < length) {
+      picked.push(w);
+      seen.add(w.word);
+    }
+  };
+  shuffle(repair, rng).forEach(add); // the cracked words LEAD (focus the drill on what broke)
+  shuffle(entriesFor(pool, learningWords(state)), rng).forEach(add); // pad if thin
+  return picked.slice(0, length); // keep cracked-first order (no final reshuffle)
 }
 
 // MINING: recognition practice on words the learner can already produce — KNOWN ∪ MASTERED
