@@ -34,8 +34,11 @@
 >   stale dictation without cutting praise (a real lag bug, separate from the clip bug).
 > - **Global CLAUDE.md:** added a hard **5-minute monitoring rule** (poll any shell job ≤5 min, even short ones).
 > - **⚠️ NEXT STEPS (Ian — do NOT code yet, just recorded):**
->   1. **Diagnostic retry on a miss:** if a student gets a word wrong in the diagnostic, they're not given
->      another chance to spell it — it advances to the next word. Give them another chance to spell it.
+>   1. **Diagnostic = ONE shot per word (Ian 2026-06-22c):** in the diagnostic, a WRONG answer should move
+>      straight to the NEXT word — the student does NOT get another chance to spell it. (Currently a wrong
+>      build behaves like normal Craft: it keeps the fitting letters and lets them retry until correct, then
+>      records the miss. Change the DIAGNOSTIC path so a first wrong build records the miss + advances; keep
+>      normal Craft's retry behavior unchanged.)
 >   2. **"To next depth" → "to next level":** rename the Progress label/CTA (currently "to next depth",
 >      `screens/progress.js`) to "to next level" AND make it accurate for the cavern LEVEL (band) — words to
 >      the next band — not the mastery depth.
