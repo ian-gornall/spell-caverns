@@ -2,11 +2,13 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-21d • current live sw **csc-v53**.
+> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • current live sw **csc-v54**.
 >
-> **🆕 SESSION 2026-06-21d — §36 DO-FIRST backlog BUILT + locally verified, NOT yet deployed
-> (prod still csc-v53; 6 commits sit on local `main` ahead of origin):** Worked the §36 item-#15
-> "do-first" list. **DONE + committed + QA'd locally:** **A1–A8** (CSS bugs: one-shot Geo wink,
+> **🆕 SESSION 2026-06-22 — §36 DO-FIRST backlog ✅ SHIPPED + LIVE on prod (csc-v54), verified.**
+> Pushed to `main` → Git-CD built + deployed; `check_deploy.mjs csc-v54` = DEPLOYED ✅ (prod went
+> csc-v53→csc-v54 in ~45s), `qa_prod.mjs` = **ISSUES: none** (boots, home + Mastery card render, CNN
+> recognizer loads + drew 'a'→'a', APP_VERSION=csc-v54). Worked the §36 item-#15
+> "do-first" list. **DONE + committed + QA'd + LIVE:** **A1–A8** (CSS bugs: one-shot Geo wink,
 > desktop max-width≤900 @pointer:fine, Progress `.seg` padding, bigger phone geode, real Crystal-Lab
 > button, re-proportioned back button, themed scrollbar + `.play-body overflow-x:clip` to kill the
 > pulse-induced horizontal bar) · **B3** (American spellings: `centre→center`/`programme→program`/
@@ -23,13 +25,11 @@
 > `lapsedWords` mismatch) · **F1** (mining defaults to 2 answer tiles; 3/4 still selectable) · **F2**
 > (Ian chose "prompt at end of onboarding": `defaultSettings().reminders=true` + a grown-up-framed
 > permission prompt after the explorer is created, gated on push-supported && `Notification.permission===
-> 'default'`; honest — ON only if granted). **287→293 tests green; smoke/overflow/fold/phone-audit/mastery/
-> s31/autofill all green; iPad-portrait --play-scale=1 preserved.** **⏸️ PENDING IAN'S DECISION — DEPLOY:**
-> the 7 commits aren't pushed — Ian asked to **REVIEW LOCALLY FIRST** (dev server `npm start` →
-> http://localhost:5173). Prod stays csc-v53. A prod deploy (where the kids play, incl. the C3
-> learning-model change) was held for sign-off; to ship: bump `sw.js`/`version.js` csc-v53→**csc-v54** +
-> push `main` → Git-CD, then verify `check_deploy.mjs csc-v54` + `qa_prod.mjs`. ALL §36 do-first items are
-> now DONE locally (A1–A8, B3, B1/B2, E1–E4, C2/C3, F1, F2). **NOT STARTED (the "discuss-first" §36 items, all need Ian's design input):** **C1**
+> 'default'`; honest — ON only if granted). **293 tests green; smoke/overflow/fold/phone-audit/mastery/
+> s31/autofill all green; iPad-portrait --play-scale=1 preserved.** Ian reviewed locally then approved
+> the deploy (csc-v54 now LIVE). ⚠️ **OWED:** a real-device pass on the shipped fixes (the audio
+> no-overlap queue, the ⏸ Pause + background-tab gating, the F2 onboarding reminder prompt) — judged via
+> emulation/screenshots + qa_prod only. **NOT STARTED (the "discuss-first" §36 items, all need Ian's design input):** **C1**
 > (diagnostic start-level placement — Ian wants a FULL design discussion), **D1** (first-run flow), **D2**
 > (Crystal Lab redesign), **D3** (set-size 6 fixed + per-dig mining size), **D4** (100-level cavern map +
 > hide skipped levels), **D5** (catalog photos+science), **E5** (screen-time off-ramp). See §36 below.
