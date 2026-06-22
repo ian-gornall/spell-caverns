@@ -70,6 +70,21 @@
 >   placed band 47). NOTE: the `cavernMap` panel below still uses mastery-DEPTH language — that's **D4's** job to
 >   unify (left alone deliberately; #2 was scoped to the tile).
 > - **✅ DEPLOYED:** csc-v60 is LIVE on prod (Git-CD on push to `main`; verified via check_deploy + qa_prod).
+> - **🆕 NEXT (Ian 2026-06-22d, ⛔ DO-NOT-CODE-YET — just recorded): STAY WITHIN A LEVEL UNTIL ITS WORDS ARE MASTERED.**
+>   After the diagnostic places the explorer at a cavern level (band), the game should keep serving ONLY that level's
+>   words until they're all MASTERED — Ian reports it currently JUMPS BETWEEN LEVELS before the assigned one is
+>   mastered. Two mechanisms move the level today and BOTH need gating: (1) `engine/selection.applyAdaptiveLevel`
+>   (`adaptiveLevelDecision`, MEDIUM aggressiveness) pushes level up/down on the recent craft-result window — this is
+>   the "jumping around"; (2) `engine/categories.fillLearning` auto-CLIMBS `state.level` when the current band runs
+>   out of NEW unseen words (i.e. once they're merely SEEN/known, before mastery). Desired: don't advance the level
+>   until the current band is fully mastered (the cavern-map **`cleared`** idea). ⚠️ **Open design Qs for Ian before
+>   building:** (a) does "mastered" mean MASTERED (drawn from memory, the draw/mastery mode) or is KNOWN (2 clean
+>   crafts) enough to clear+advance a level? Mastery needs the draw mode, so "all MASTERED" forces the full
+>   Craft→Mastery loop on every band before moving on. (b) `cavernLevels` currently marks a band `cleared` when
+>   done = KNOWN **or** MASTERED — reconcile that with the chosen bar. (c) does this REPLACE the adaptive up/down
+>   entirely (level only ever advances on mastery, never auto-drops), or just gate the UP direction? (d) the §C1
+>   diagnostic's ±100 placement walk is separate and stays. Files: `engine/selection.js` (adaptive), `engine/
+>   categories.js` (fillLearning climb + a "band mastered?" predicate, pairs with `cavernLevels`).
 > - **⚠️ REMAINING:** **#5 OWED real-device pass** on a physical iPad for ALL of csc-v57→v60 (the one-shot diagnostic
 >   + its new "keep going" copy, the proper-noun caps in Craft+Mastery, bosses-every-10, the cavern map +
 >   tap-to-go-back) — that's Ian's, now testable on prod. Plus the tentative **D4 "maybe" big boss at level-end**
