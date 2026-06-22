@@ -204,7 +204,15 @@
 //      retry; normal Craft retry is unchanged). modes/puzzle.js diagnosticMiss(). (#2) The Progress
 //      tile reads "to next level" — words in the CURRENT cavern level (band) not yet learned — via
 //      categorySummary.toNextLevel, replacing the mastery-DEPTH "to next depth" count. No new files.
-const VERSION = 'csc-v57';
+// csc-v58: §4 CAPS. Proper nouns (data entries stored capitalized) are SPELLED with lowercase tiles /
+//      lowercase handwriting/keyboard, but the FIRST placed letter DISPLAYS as a capital so the child
+//      sees the correct proper form (e.g. "Williams", "Europe") — engine/puzzle.isProperWord +
+//      displayCase, wired into Craft (modes/puzzle) + Mastery (modes/mastery) display sites. Fixes a
+//      v56 case-split bug: the category machine now keys words case-INSENSITIVELY (engine/categories
+//      recKey/getRecord + engine/selection entriesFor) so a proper noun is ONE record across fill
+//      (cased pool entry) + craft (lowercased target), not a stuck "Williams" + phantom "williams".
+//      Also: "August" capitalized (data/words.js); may/march/states/united stay lowercase. No new files.
+const VERSION = 'csc-v58';
 
 const CORE = [
   '/',

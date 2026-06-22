@@ -59,8 +59,10 @@ console.log(`\ngap words (${gaps.length}) — placed by frequency estimate, samp
 if (!WRITE) { console.log('\nPREVIEW ONLY — nothing written. Re-run with --write to regenerate data/words.js.'); process.exit(0); }
 
 // PROPER NOUNS — capitalize the first letter (Ian 2026-06-22b). Conservative, unambiguous set
-// (excludes words that are ALSO common: may/march/august/states/united/fall/jan). Display only —
-// craft/draw lowercase the target for spelling, and the audio slug is lowercase, so clips/grading
+// (still excludes words that are ALSO common: may/march/states/united/fall/jan). `august` is now
+// INCLUDED (Ian 2026-06-22d: capitalize August, leave the other ambiguous ones lowercase). Display
+// only — craft/draw lowercase the target for spelling, the slot DISPLAY re-capitalizes the first
+// letter (engine/puzzle.isProperWord/displayCase), and the audio slug is lowercase, so clips/grading
 // are unaffected. Capitalizes the word + its occurrences in the sentence.
 const PROPER = new Set([
   // continents / regions / oceans
@@ -77,8 +79,8 @@ const PROPER = new Set([
   'smith', 'louis', 'john', 'michael', 'david', 'williams', 'harry', 'joe', 'jackson', 'james',
   'paul', 'jones', 'richard', 'mary', 'jesus', 'santa', 'google', 'playstation', 'linux',
   'microsoft', 'sony', 'amazon', 'apple', 'disney',
-  // months (unambiguous)
-  'january', 'february', 'april', 'june', 'july', 'september', 'october', 'november', 'december',
+  // months (unambiguous, plus 'august' per Ian 2026-06-22d; 'may'/'march' stay lowercase — too common)
+  'january', 'february', 'april', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
   // days
   'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
   // nationalities / languages (capitalized in English)

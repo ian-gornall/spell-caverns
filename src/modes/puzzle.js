@@ -17,7 +17,7 @@ import { byRank } from '../engine/lexicon.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { gradeAnswer, projectedScore, GENTLE_PHRASES } from '../engine/praise.js';
 import { recordAnswer } from '../engine/progress.js';
-import { scrambleTray, gradeBuild } from '../engine/puzzle.js';
+import { scrambleTray, gradeBuild, isProperWord, displayCase } from '../engine/puzzle.js';
 
 // §30 hint timing: with no CORRECT letter placed, highlight the hint button at 4s and
 // auto-fire a hint at 8s (the timer resets on every correct letter). Auto-fired hints
@@ -159,6 +159,7 @@ export function startPuzzle(ctx, params = {}) {
 
   // --- per-word state -------------------------------------------------------
   let target = '';
+  let isProper = false; // §4 caps: this word's first letter displays as a capital (proper noun)
   let trayTiles = []; // [{ id, letter, used }]
   let slots = []; // [{ tileId, letter, locked } | null]
   let firstTry = true; // false after any wrong submit or hint (no clean-recall credit)
@@ -297,7 +298,8 @@ export function startPuzzle(ctx, params = {}) {
               if (!locked && s && !s.locked) returnSlot(i);
             },
           },
-          s ? s.letter : '',
+          // §4 caps: a proper noun's first slot DISPLAYS a capital (tiles stay lowercase)
+          s ? displayCase(s.letter, i, isProper) : '',
         ),
       ),
     );
@@ -597,6 +599,7 @@ export function startPuzzle(ctx, params = {}) {
     clearTimeout(graceTimer);
     clearHintTimers();
     target = entry.word.toLowerCase();
+    isProper = isProperWord(entry.word); // §4 caps: capitalize the first slot's DISPLAY for proper nouns
     // §C1 debug readout (placement only): rank / list-position / band, the running band-miss
     // tally toward the "3 in a band" stop, the word number, and the jump the last answer caused.
     if (placement && DEBUG) {
@@ -621,7 +624,7 @@ export function startPuzzle(ctx, params = {}) {
 
     // off-DOM test hook (Playwright) — current target + position, like rhythm's
     try {
-      window.__puzzleCurrent = { word: target, index, total: session.length, placement, rank: entry.rank, pos: entry.pos, band: entry.band };
+      window.__puzzleCurrent = { word: target, isProper, index, total: session.length, placement, rank: entry.rank, pos: entry.pos, band: entry.band };
     } catch {
       /* ignore */
     }

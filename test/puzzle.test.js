@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mulberry32 } from '../src/engine/distractors.js';
-import { scrambleTray, gradeBuild } from '../src/engine/puzzle.js';
+import { scrambleTray, gradeBuild, isProperWord, displayCase } from '../src/engine/puzzle.js';
 
 function multiset(arr) {
   const m = {};
@@ -86,4 +86,24 @@ test('gradeBuild marks per-position errors on a complete-but-wrong build', () =>
 
 test('gradeBuild is case-insensitive', () => {
   assert.equal(gradeBuild('Gem', ['G', 'E', 'M']).correct, true);
+});
+
+// §4 caps (Ian 2026-06-22d): proper nouns are SPELLED with lowercase tiles/handwriting (the
+// recognizer is case-insensitive), but the FIRST placed letter DISPLAYS as a capital so the child
+// sees the correct proper form (e.g. "Europe") without ever needing to draw/pick a capital.
+test('isProperWord detects a capitalized data entry (the proper-noun flag)', () => {
+  assert.equal(isProperWord('Europe'), true);
+  assert.equal(isProperWord('August'), true);
+  assert.equal(isProperWord('cat'), false);
+  assert.equal(isProperWord('iphone'), false);
+  assert.equal(isProperWord(''), false);
+  assert.equal(isProperWord(null), false);
+});
+
+test('displayCase uppercases ONLY position 0 of a proper noun (display only; grading unaffected)', () => {
+  assert.equal(displayCase('e', 0, true), 'E'); // first letter of a proper noun → capital
+  assert.equal(displayCase('u', 1, true), 'u'); // any other position stays lowercase
+  assert.equal(displayCase('c', 0, false), 'c'); // common word → unchanged
+  assert.equal(displayCase('', 0, true), ''); // empty slot → unchanged
+  assert.equal(displayCase(null, 0, true), null);
 });

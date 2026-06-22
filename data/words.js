@@ -957,7 +957,7 @@ export const WORDS = [
   {"word":"mighty","rank":952,"tier":2,"pattern":"ight","syllables":["might","y"],"misspellings":["mity","mightey"],"sentence":"A mighty river ran through the cavern."},
   {"word":"fans","rank":953,"tier":2,"pattern":"short-a","syllables":["fans"],"misspellings":[],"sentence":"The fans cheered loudly for their team."},
   {"word":"blink","rank":954,"tier":2,"pattern":"l-blend","syllables":["blink"],"misspellings":["blinck","blinc"],"sentence":"Do not blink or you will miss it."},
-  {"word":"august","rank":955,"tier":2,"pattern":"tricky","syllables":["au","gust"],"misspellings":["augist","agust","augst"],"sentence":"August is the last full month of summer."},
+  {"word":"August","rank":955,"tier":2,"pattern":"tricky","syllables":["Au","gust"],"misspellings":["augist","agust","augst"],"sentence":"August is the last full month of summer."},
   {"word":"may","rank":956,"tier":2,"pattern":"ai-ay","syllables":["may"],"misspellings":["mae","mai"],"sentence":"You may go outside now."},
   {"word":"care","rank":957,"tier":2,"pattern":"silent-e-a","syllables":["care"],"misspellings":["caer","cair","caire"],"sentence":"We care about keeping the river clean."},
   {"word":"might","rank":958,"tier":2,"pattern":"ight","syllables":["might"],"misspellings":["mite","myte","mihgt","miht","myght"],"sentence":"We might find gold today."},

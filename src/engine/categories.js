@@ -49,6 +49,14 @@ const RECENT_MAX = 8;
 
 const clampLevel = (n, max) => Math.min(max, Math.max(1, Math.round(n) || 1));
 
+// §4 caps (Ian 2026-06-22d): words are recorded with the form the UI produces (LOWERCASE — the
+// child spells lowercase; the capital of a proper noun is display-only). Proper nouns are stored
+// CAPITALIZED in the data ("Williams"), so the category Map is keyed by the LOWERCASE word to keep
+// a single identity: fillLearning (cased pool entry) and recordCraft (lowercased target) then hit
+// the SAME record. `rec.word` keeps the cased pool form for display. recKey normalizes any lookup.
+const recKey = (w) => String(w == null ? '' : w).toLowerCase();
+export const getRecord = (state, word) => state.words.get(recKey(word));
+
 // A fresh state machine. `order` is a monotonic counter for stable age tiebreaks.
 export function createCategoryState({ setSize = 10, level = 1 } = {}) {
   return {
@@ -68,7 +76,8 @@ export function createCategoryState({ setSize = 10, level = 1 } = {}) {
 // every selection/level decision below keys off `band` (attached by lexicon.byRank).
 function poolIndex(pool) {
   const m = new Map();
-  for (const w of pool || []) if (w && typeof w.word === 'string' && !m.has(w.word)) m.set(w.word, w);
+  // §4 caps: key by lowercase so a lowercased target ("williams") finds the cased entry ("Williams").
+  for (const w of pool || []) if (w && typeof w.word === 'string' && !m.has(recKey(w.word))) m.set(recKey(w.word), w);
   return m;
 }
 function maxBand(pool) {
@@ -79,10 +88,12 @@ function maxBand(pool) {
 
 // Create (or return) the record for `word`, seeding tier/pattern from the pool.
 function ensureRecord(state, word, poolEntry) {
-  let rec = state.words.get(word);
+  const k = recKey(word);
+  let rec = state.words.get(k);
   if (!rec) {
     rec = {
-      word,
+      // §4 caps: store the cased pool form ("Williams") for display; the Map key (k) is lowercase.
+      word: poolEntry && typeof poolEntry.word === 'string' ? poolEntry.word : word,
       tier: poolEntry && Number.isFinite(poolEntry.tier) ? poolEntry.tier : 0, // age metadata only
       band: poolEntry && Number.isFinite(poolEntry.band) ? poolEntry.band : state.level, // the level bucket
       pattern: (poolEntry && poolEntry.pattern) || '',
@@ -93,14 +104,14 @@ function ensureRecord(state, word, poolEntry) {
       craftCorrect: 0,
       order: ++state.order,
     };
-    state.words.set(word, rec);
+    state.words.set(k, rec);
   }
   return rec;
 }
 
 // ---- category queries ----
 export function getCat(state, word) {
-  const rec = state.words.get(word);
+  const rec = getRecord(state, word);
   return rec ? rec.category : CATEGORIES.NEW;
 }
 const wordsIn = (state, cat) =>
@@ -173,7 +184,7 @@ function pickRefill(state, idx) {
   // (1) new unseen in the current band
   let bestNew = null;
   for (const entry of idx.values()) {
-    if (entry.band !== state.level || state.words.has(entry.word)) continue;
+    if (entry.band !== state.level || state.words.has(recKey(entry.word))) continue;
     if (!bestNew || (entry.rank ?? Infinity) < (bestNew.rank ?? Infinity)) bestNew = entry;
   }
   if (bestNew) return { kind: 'new', entry: bestNew };
@@ -192,7 +203,7 @@ function pickRefill(state, idx) {
 
 // Are there NEW unseen words strictly above the current level/band (so a level-up can help)?
 function hasNewAbove(state, idx) {
-  for (const entry of idx.values()) if (entry.band > state.level && !state.words.has(entry.word)) return true;
+  for (const entry of idx.values()) if (entry.band > state.level && !state.words.has(recKey(entry.word))) return true;
   return false;
 }
 
@@ -245,7 +256,7 @@ function demoteToLearning(state, rec) {
 // Returns a small result describing what changed.
 export function recordCraft(state, word, correct, opts = {}) {
   const idx = poolIndex(opts.pool);
-  const rec = ensureRecord(state, word, idx.get(word));
+  const rec = ensureRecord(state, word, idx.get(recKey(word)));
   rec.craftAttempts += 1;
   if (correct) rec.craftCorrect += 1;
   pushRecent(state, correct);
@@ -286,7 +297,7 @@ export function recordCraft(state, word, correct, opts = {}) {
 //   mastered + success → stays mastered ; mastered + miss → known.
 // A draw on any other category is a no-op (draw mode never serves it).
 export function recordDraw(state, word, correct) {
-  const rec = state.words.get(word);
+  const rec = getRecord(state, word);
   if (!rec) return { word, to: CATEGORIES.NEW, noop: true };
   const before = rec.category;
   if (rec.category === CATEGORIES.KNOWN) {
@@ -339,7 +350,7 @@ export function seedFromPlacement(state, responses, enteredBand, pool) {
   const idx = poolIndex(pool);
   for (const resp of Array.isArray(responses) ? responses : []) {
     if (!resp || typeof resp.word !== 'string') continue;
-    const entry = idx.get(resp.word);
+    const entry = idx.get(recKey(resp.word));
     const band = entry && Number.isFinite(entry.band) ? entry.band : state.level;
     // BELOW the placed level → the diagnostic only tested OUT of these; the high level already
     // means they're not served. We do NOT mark them known/mastered — the child crafted each once,
@@ -387,7 +398,7 @@ export function repairWords(state) {
 // (a yellow light: a word it got right before but has since missed).
 export function learningProgress(state) {
   return learningWords(state).map((w) => {
-    const rec = state.words.get(w);
+    const rec = getRecord(state, w);
     return {
       word: w,
       steps: Math.min(rec.craftStreak, PROMOTE_STREAK),
@@ -408,9 +419,9 @@ export function categorySummary(state, pool) {
   // or the mastery-depth count. (A still-LEARNING/new/tricky band word counts; known/mastered don't.)
   let toNextLevel = 0;
   for (const entry of idx.values()) {
-    if (!state.words.has(entry.word)) newRemaining += 1;
+    if (!state.words.has(recKey(entry.word))) newRemaining += 1;
     if (entry.band === state.level) {
-      const rec = state.words.get(entry.word);
+      const rec = getRecord(state, entry.word);
       if (!(rec && (rec.category === CATEGORIES.KNOWN || rec.category === CATEGORIES.MASTERED))) toNextLevel += 1;
     }
   }
@@ -467,7 +478,7 @@ export function deserializeCategoryState(data) {
           ? rec.tier
           : 1;
     }
-    state.words.set(rec.word, rec);
+    state.words.set(recKey(rec.word), rec); // §4 caps: lowercase key (merges any v56 case-split dupes)
   }
   if (legacy) {
     let lv = 1;

@@ -98,6 +98,25 @@ test('two correct crafts IN A ROW promote a word to known and refill the freed s
   assert.ok(learningWords(st).includes('map'));
 });
 
+// §4 caps (Ian 2026-06-22d): proper nouns are stored CAPITALIZED in the data ("Williams"), but the
+// UI spells/records them LOWERCASED (modes/puzzle.js does entry.word.toLowerCase()). The category
+// machine must treat the word case-INSENSITIVELY so fillLearning (cased pool entry) and recordCraft
+// (lowercased target) hit the SAME record — otherwise a proper noun splits into a stuck "Williams"
+// learning record + a phantom "williams" known record (the v56 capitalization bug).
+test('a proper noun (capitalized in data) is ONE record across fill + lowercased craft (no case split)', () => {
+  const POOL2 = [{ word: 'Sam', band: 1, pattern: 'short-a', rank: 0 }, ...POOL]; // rank 0 → served first
+  const st = createCategoryState({ setSize: 3, level: 1 });
+  fillLearning(st, POOL2); // creates a 'Sam' learning record (lowest-rank new word in band 1)
+  assert.ok(learningWords(st).some((w) => w.toLowerCase() === 'sam'), 'Sam should be in the learning set');
+  recordCraft(st, 'sam', true, { pool: POOL2 }); // the UI crafts with the LOWERCASED target
+  recordCraft(st, 'sam', true, { pool: POOL2 }); // 2 in a row → known
+  const recs = [...st.words.values()].filter((r) => r.word.toLowerCase() === 'sam');
+  assert.equal(recs.length, 1, 'a proper noun must not split into two case-variant records');
+  assert.equal(recs[0].category, CATEGORIES.KNOWN, 'the lowercased craft must progress the SAME record');
+  assert.equal(getCat(st, 'Sam'), CATEGORIES.KNOWN); // lookups are case-insensitive either way
+  assert.equal(getCat(st, 'sam'), CATEGORIES.KNOWN);
+});
+
 // ---- §36 C3: repair (cracked words) reconciles with the craft-streak pips ----
 test('a NEVER-correct learning word is NOT repair (it is new learning, not a regression)', () => {
   const st = fresh();

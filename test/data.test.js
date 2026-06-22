@@ -42,6 +42,19 @@ test('syllables always join back to the exact word', () => {
   }
 });
 
+test('proper-noun capitalization: August is capitalized; the ambiguous common words stay lowercase', () => {
+  const byWord = (w) => WORDS.find((x) => x.word.toLowerCase() === w);
+  // Ian 2026-06-22d: capitalize August (the month), but leave may/march/states/united lowercase
+  // (they're more commonly the everyday word at this age).
+  assert.equal(byWord('august')?.word, 'August', 'August should be capitalized');
+  for (const lower of ['may', 'march', 'states', 'united']) {
+    const e = byWord(lower);
+    if (e) assert.equal(e.word, lower, `${lower} should stay lowercase (ambiguous common word)`);
+  }
+  // a sanity check on a known unambiguous proper noun
+  assert.equal(byWord('europe')?.word, 'Europe');
+});
+
 test('every pattern id is one of the 63 canonical families', () => {
   for (const w of WORDS) {
     assert.ok(PATTERN_IDS.has(w.pattern), `unknown pattern "${w.pattern}" on word "${w.word}"`);

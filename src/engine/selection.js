@@ -23,6 +23,7 @@ import {
   unlocks,
   demoteLevel,
   promoteLevel,
+  getRecord,
 } from './categories.js';
 
 // Adaptive level (MEDIUM aggressiveness — Ian): read the last ADAPT_WINDOW craft results.
@@ -32,8 +33,10 @@ export const ADAPT_WINDOW = 4;
 export const ADAPT_DOWN_MAX = 1; // ≤ this many correct in the window ⇒ weak ⇒ down
 
 const entriesFor = (pool, words) => {
-  const idx = new Map((pool || []).map((w) => [w.word, w]));
-  return words.map((w) => idx.get(w)).filter(Boolean);
+  // §4 caps: case-insensitive so a record word (cased "Williams" or lowercased "williams") always
+  // resolves to its pool entry — proper nouns flow through craft/mining/mastery selection unchanged.
+  const idx = new Map((pool || []).map((w) => [String(w.word).toLowerCase(), w]));
+  return words.map((w) => idx.get(String(w).toLowerCase())).filter(Boolean);
 };
 
 // CRAFT: focus the learning set, reserving up to ~25% of the session for interleaved
@@ -138,7 +141,7 @@ export function recommendNext(state) {
   const masteredCount = masteredWords(state).length;
   // learning words not yet proven to known (streak < PROMOTE_STREAK) = the live craft work
   const learningActive = learningWords(state).filter((w) => {
-    const rec = state.words.get(w);
+    const rec = getRecord(state, w);
     return (rec ? rec.craftStreak : 0) < PROMOTE_STREAK;
   }).length;
   const signals = { knownBacklog, masteredCount, learningActive };

@@ -29,6 +29,7 @@ import { ensureRecognizer, recognizeDrawing } from '../cnn_recognizer.js';
 import { speechSupported, createLetterRecognizer } from '../speech.js';
 import { voiceConsent, setVoiceConsent } from '../state.js';
 import { byRank } from '../engine/lexicon.js';
+import { isProperWord, displayCase } from '../engine/puzzle.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { PRAISE } from '../engine/ui_phrases.js';
 
@@ -224,6 +225,7 @@ export function startMastery(ctx, params = {}) {
   let index = 0;
   let earned = 0;
   let target = '';
+  let isProper = false; // §4 caps: this word's first letter displays as a capital (proper noun)
   let slots = []; // built spelling (letters or null)
   let cur = 0; // active slot (single-canvas + type flows; where the next drawn/typed letter lands)
   let locked = false; // true during the success/advance animation
@@ -526,7 +528,7 @@ export function startMastery(ctx, params = {}) {
     if (!boxGuides[i]) return;
     slots[i] = letter.toLowerCase();
     boxGuides[i].guide.classList.add('filled');
-    boxGuides[i].letterSpan.textContent = slots[i];
+    boxGuides[i].letterSpan.textContent = displayCase(slots[i], i, isProper); // §4 caps
     audio.sfx('tap');
     repaintInk(); // the box's ink gives way to the recognised letter
     updateBoxActive();
@@ -536,7 +538,7 @@ export function startMastery(ctx, params = {}) {
     boxGuides.forEach((g, i) => {
       if (slots[i] != null) {
         g.guide.classList.add('filled');
-        g.letterSpan.textContent = slots[i];
+        g.letterSpan.textContent = displayCase(slots[i], i, isProper); // §4 caps
       } else {
         g.guide.classList.remove('filled', 'locked');
         g.letterSpan.textContent = '';
@@ -699,7 +701,7 @@ export function startMastery(ctx, params = {}) {
             class: 'slot' + (s ? ' filled' : '') + (i === cur ? ' current' : ''),
             onClick: () => redoSlot(i),
           },
-          s || '',
+          displayCase(s, i, isProper) || '', // §4 caps
         ),
       ),
     );
@@ -931,6 +933,7 @@ export function startMastery(ctx, params = {}) {
     peeked = false;
     const entry = session[index];
     target = entry.word.toLowerCase();
+    isProper = isProperWord(entry.word); // §4 caps: capitalize the first letter's DISPLAY for proper nouns
     slots = Array.from({ length: target.length }, () => null);
     cur = 0;
     verdictEl.textContent = '';
@@ -941,7 +944,7 @@ export function startMastery(ctx, params = {}) {
     renderBuilt();
     renderDots();
     try {
-      window.__masteryCurrent = { word: target, index, total: session.length, wide: layoutWide, mode: inputMode };
+      window.__masteryCurrent = { word: target, isProper, index, total: session.length, wide: layoutWide, mode: inputMode };
     } catch {
       /* ignore */
     }

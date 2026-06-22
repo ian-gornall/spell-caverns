@@ -60,3 +60,17 @@ export function gradeBuild(target, built) {
   const correctCount = perPosition.filter((x) => x === true).length;
   return { complete, correct, perPosition, correctCount };
 }
+
+// §4 caps (Ian 2026-06-22d): proper nouns (data entries stored capitalized, e.g. "Europe") are
+// SPELLED with lowercase tiles / lowercase handwriting — the kid never has to pick or draw a
+// capital (and the case-merged EMNIST recognizer couldn't tell C from c anyway). Instead the
+// FIRST placed letter DISPLAYS as a capital so the child SEES the correct proper form build up.
+// Display-only: the stored slot letter stays lowercase, so gradeBuild (case-insensitive) is
+// untouched. isProperWord flags the entry; displayCase transforms a slot letter for rendering.
+export function isProperWord(word) {
+  return typeof word === 'string' && /^[A-Z]/.test(word);
+}
+export function displayCase(letter, index, isProper) {
+  if (!letter || typeof letter !== 'string') return letter;
+  return isProper && index === 0 ? letter.toUpperCase() : letter;
+}

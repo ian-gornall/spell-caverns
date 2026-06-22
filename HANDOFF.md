@@ -4,8 +4,32 @@
 > prior context) can pick up without re-deriving decisions. Project root:
 > `C:\Users\iango\spell`  •  Last updated 2026-06-22 • building sw **csc-v57** (NOT YET DEPLOYED — prod is csc-v56).
 >
-> **🆕 SESSION 2026-06-22d — §36 NEXT-STEPS #1 + #2 ✅ BUILT + QA'd locally (csc-v57). NOT YET DEPLOYED — held for
-> Ian's review.** Both done test-first; 311 unit tests + smoke + qa_placement + qa_diag_oneshot + qa_overflow all green.
+> **🆕 SESSION 2026-06-22d — §36 NEXT-STEPS #1 + #2 + #4 ✅ BUILT + QA'd locally (now csc-v58). NOT YET DEPLOYED —
+> held for Ian's review.** All done test-first; 315 unit tests + smoke + qa_placement + qa_diag_oneshot + qa_caps +
+> qa_caps_mastery + qa_level + qa_overflow all green. (#3 D4 is next — Ian's design answers are recorded below.)
+> - **#4 — PROPER-NOUN CAPS (Ian's design: lowercase tiles/writing, AUTO-capital first letter).** Proper nouns
+>   (stored capitalized in the data, e.g. "Williams"/"Europe") are SPELLED with lowercase tiles / lowercase
+>   handwriting / lowercase keyboard — the child never picks or draws a capital (and the case-merged EMNIST CNN
+>   couldn't tell C from c anyway). Instead the FIRST placed letter DISPLAYS as a capital so the correct proper form
+>   builds up. Pure `engine/puzzle.isProperWord` + `displayCase` (+unit tests), wired into Craft (`modes/puzzle`
+>   slot display) AND Mastery (`modes/mastery` box + slot display). Verified live with screenshots: Craft shows "W i"
+>   (cap W, lower i) with lowercase tiles; Mastery type mode shows "W i l l i a m s" with a lowercase keyboard.
+>   **Also fixed a v56 case-split BUG** found while building: the category machine keyed words by exact case, so a
+>   proper noun split into a STUCK "Williams" learning record + a phantom "williams" known record (fill used the
+>   cased pool entry, craft used the lowercased target). Now the categories Map keys are case-INSENSITIVE
+>   (`engine/categories` `recKey`/`getRecord` + `engine/selection` `entriesFor`); `rec.word` keeps the cased form for
+>   display. +unit test (one record, progresses correctly). **august** capitalized (`data/words.js` + the generator's
+>   PROPER set); **may/march/states/united stay lowercase** (+data.test guard). New guards `qa_caps.mjs` +
+>   `qa_caps_mastery.mjs`. ⚠️ legacy saves with the v56 dual record merge on load (lossy but the dupes were buggy).
+> - **#1 — DIAGNOSTIC = ONE SHOT PER WORD.** In the placement diagnostic, a WRONG full build now records the miss
+>   on the ±100 walk and advances STRAIGHT to the next word — the child does NOT get to keep the fitting letters and
+>   retry. New `diagnosticMiss()` in `modes/puzzle.js`: `wrongSubmit` early-returns to it when `placement` is true;
+>   it banks the SAME bookkeeping a hinted-to-correct miss did (walk `submit(...,false)` + legacy tracker +
+>   answer-stat) and gives the gentle "+5 💎 · Next word" consolation (non-shaming; the child never knows it's a
+>   diagnostic). **Normal Craft's keep-the-fitting-letters retry is UNCHANGED** (the placement branch is the only
+>   new path); clean/hinted builds still complete via `solve()`. NEW guard `scripts/qa_diag_oneshot.mjs` drives the
+>   diagnostic, deliberately builds the first word WRONG, and asserts the one-shot "Next word" chip + that the word
+>   advances (the old retry behaviour would stay put). Verified live: "tube" built "etub" → advanced to "happened".
 > - **#1 — DIAGNOSTIC = ONE SHOT PER WORD.** In the placement diagnostic, a WRONG full build now records the miss
 >   on the ±100 walk and advances STRAIGHT to the next word — the child does NOT get to keep the fitting letters and
 >   retry. New `diagnosticMiss()` in `modes/puzzle.js`: `wrongSubmit` early-returns to it when `placement` is true;
@@ -22,13 +46,18 @@
 >   qa_placement extended to assert the tile reads "to next level" with a number (showed "🪨 30 to next level" at the
 >   placed band 47). NOTE: the `cavernMap` panel below still uses mastery-DEPTH language — that's **D4's** job to
 >   unify (left alone deliberately; #2 was scoped to the tile).
-> - **⚠️ REMAINING NEXT STEPS (from 2026-06-22c, still open):** **#3 D4** (unify mastery-depth + cavern-level into the
->   100-level cavern map; confirm: bosses fire on band-up?) · **#4 caps in spelling** (proper nouns display
->   capitalized but child spells lowercase — decide if the capital is TAUGHT; decide the ambiguous may/march/august/
->   states/united) · **#5 OWED real-device pass** on audio + diagnostic + re-rank + caps + these two changes. #3 and
->   #4 need Ian's design input before building; #5 is Ian's.
-> - **DEPLOY when Ian approves:** versions already bumped (`sw.js` + `version.js` → csc-v57); push `main` → Git-CD
->   builds + deploys; verify `check_deploy.mjs csc-v57` + `qa_prod.mjs`.
+> - **⚠️ REMAINING NEXT STEPS:** **#3 D4** (NEXT — Ian's design answers below) · **#5 OWED real-device pass** on
+>   audio + diagnostic + re-rank + caps + all of csc-v57/v58 (Ian's).
+> - **#3 D4 — IAN'S DESIGN ANSWERS (2026-06-22d, recorded; not yet built):** (a) **Bosses fire every 10 MASTERED
+>   words** (change `WORDS_PER_DEPTH` 8→10 + the boss trigger; stays mastery-based, NOT band-up). (b) **"maybe a
+>   larger boss at the END of a level"** (a bigger boss on completing a cavern level/band — tentative "maybe"). (c)
+>   **Add a DEBUG FLAG to trigger/test bosses** (e.g. `?boss=N` / a dev hook) so the boss screens can be exercised
+>   without grinding to the milestone. Plus the already-decided D4 spec: the scrollable ~100-level cavern map (current
+>   level big, tap to zoom, reached levels scrollable above, locked greyed below) with **hide-skipped** (a placement
+>   jump leaves the skipped lower levels locked too, to pull the child back to master the easier words). Unify the
+>   `cavernMap` panel (still mastery-DEPTH language) onto this.
+> - **DEPLOY when Ian approves:** versions bumped (`sw.js` + `version.js` → **csc-v58**); push `main` → Git-CD
+>   builds + deploys; verify `check_deploy.mjs csc-v58` + `qa_prod.mjs`. (Consider deploying #1/#2/#4 now and D4 after.)
 >
 > **🆕 SESSION 2026-06-22c — C1 DIAGNOSTIC + AoA RE-RANK + AUDIO-ASSET REPAIR ✅ SHIPPED (csc-v56).** A very
 > large session, committed + deployed. Summary of everything done (details below + in the §C1 banner):
