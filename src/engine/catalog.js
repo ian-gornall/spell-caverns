@@ -34,31 +34,31 @@ export const RARITIES = {
 export const CRYSTAL_SPECIES = [
   // --- common ---
   { id: 'quartz', name: 'Quartz', hue: 200, facets: 6, rarity: 'common', fact: 'One of the most common minerals on Earth.' },
-  { id: 'amethyst', name: 'Amethyst', hue: 280, facets: 6, rarity: 'common', fact: 'Purple quartz — its colour comes from iron.' },
+  { id: 'amethyst', name: 'Amethyst', hue: 280, facets: 6, rarity: 'common', fact: 'Purple quartz — its color comes from iron.' },
   { id: 'citrine', name: 'Citrine', hue: 46, facets: 6, rarity: 'common', fact: 'A sunny yellow kind of quartz.' },
   { id: 'rose-quartz', name: 'Rose Quartz', hue: 335, facets: 6, rarity: 'common', fact: 'Soft pink quartz, popular for carvings.' },
   { id: 'jade', name: 'Jade', hue: 140, facets: 7, rarity: 'common', fact: 'A tough green stone prized for carving.' },
-  { id: 'agate', name: 'Agate', hue: 25, facets: 7, rarity: 'common', fact: 'Famous for its colourful banded layers.' },
+  { id: 'agate', name: 'Agate', hue: 25, facets: 7, rarity: 'common', fact: 'Famous for its colorful banded layers.' },
   { id: 'pyrite', name: 'Pyrite', hue: 50, facets: 5, rarity: 'common', fact: "Shiny and gold — nicknamed 'fool's gold'." },
   { id: 'fluorite', name: 'Fluorite', hue: 170, facets: 6, rarity: 'common', fact: 'Some fluorite glows under ultraviolet light.' },
   // --- rare ---
   { id: 'emerald', name: 'Emerald', hue: 150, facets: 6, rarity: 'rare', fact: 'A deep-green form of the mineral beryl.' },
   { id: 'sapphire', name: 'Sapphire', hue: 222, facets: 7, rarity: 'rare', fact: 'A blue gem, second only to diamond in hardness.' },
-  { id: 'topaz', name: 'Topaz', hue: 40, facets: 6, rarity: 'rare', fact: 'Comes in many colours, often golden.' },
+  { id: 'topaz', name: 'Topaz', hue: 40, facets: 6, rarity: 'rare', fact: 'Comes in many colors, often golden.' },
   { id: 'garnet', name: 'Garnet', hue: 352, facets: 7, rarity: 'rare', fact: 'Usually deep red — the January birthstone.' },
-  { id: 'aquamarine', name: 'Aquamarine', hue: 185, facets: 6, rarity: 'rare', fact: 'Sea-blue beryl, the colour of ocean water.' },
+  { id: 'aquamarine', name: 'Aquamarine', hue: 185, facets: 6, rarity: 'rare', fact: 'Sea-blue beryl, the color of ocean water.' },
   { id: 'peridot', name: 'Peridot', hue: 90, facets: 6, rarity: 'rare', fact: 'An olive-green gem born deep in the Earth.' },
   { id: 'turquoise', name: 'Turquoise', hue: 178, facets: 7, rarity: 'rare', fact: 'A blue-green stone loved for thousands of years.' },
   { id: 'lapis', name: 'Lapis Lazuli', hue: 230, facets: 8, rarity: 'rare', fact: 'Deep blue rock once ground up to make paint.' },
   // --- epic ---
   { id: 'ruby', name: 'Ruby', hue: 356, facets: 8, rarity: 'epic', fact: 'Red corundum — one of the hardest gems.' },
-  { id: 'opal', name: 'Opal', hue: 190, facets: 8, rarity: 'epic', fact: 'Flashes many colours when it catches the light.' },
+  { id: 'opal', name: 'Opal', hue: 190, facets: 8, rarity: 'epic', fact: 'Flashes many colors when it catches the light.' },
   { id: 'moonstone', name: 'Moonstone', hue: 215, facets: 7, rarity: 'epic', fact: 'Shimmers with a soft, floating blue glow.' },
-  { id: 'tourmaline', name: 'Tourmaline', hue: 320, facets: 8, rarity: 'epic', fact: 'A single crystal can show several colours.' },
+  { id: 'tourmaline', name: 'Tourmaline', hue: 320, facets: 8, rarity: 'epic', fact: 'A single crystal can show several colors.' },
   { id: 'malachite', name: 'Malachite', hue: 160, facets: 7, rarity: 'epic', fact: 'Bright green with swirling banded patterns.' },
   // --- legendary ---
   { id: 'diamond', name: 'Diamond', hue: 198, facets: 8, rarity: 'legendary', fact: 'The hardest natural material on Earth.' },
-  { id: 'alexandrite', name: 'Alexandrite', hue: 130, facets: 8, rarity: 'legendary', fact: 'Amazingly, it changes colour in different light!' },
+  { id: 'alexandrite', name: 'Alexandrite', hue: 130, facets: 8, rarity: 'legendary', fact: 'Amazingly, it changes color in different light!' },
   { id: 'star-sapphire', name: 'Star Sapphire', hue: 235, facets: 8, rarity: 'legendary', fact: 'Shows a glowing six-rayed star on its surface.' },
 ];
 

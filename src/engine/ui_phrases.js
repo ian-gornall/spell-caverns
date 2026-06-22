@@ -21,7 +21,7 @@ export const UI = {
   // onboarding — the create-an-explorer flow (the very first run)
   welcome: "Hi! I'm Geo, your crystal guide. Ready to dig for gems with me?",
   askName: 'What should I call you, explorer?',
-  pickColour: 'Pick your crystal colour!',
+  pickColour: 'Pick your crystal color!',
   chooseLevel:
     "Where should we start digging? Pick the words that look about right — I'll figure out the rest from there.",
   syncAsk: 'Do you play on more than one tablet?',

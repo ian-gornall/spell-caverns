@@ -93,6 +93,38 @@ test('PATTERN_BY_ID resolves every id to its family record', () => {
   }
 });
 
+// ------------------------------------------------------- American spellings (§36 B3)
+// The app defaults to American spelling. Three genuine British target words slipped
+// through (centre/programme/theatre); they were flipped to American with the British
+// form demoted to a misspelling. Lock that in so a re-merge can't reintroduce them.
+test('British target spellings are flipped to American (§36 B3)', () => {
+  const flips = [
+    { brit: 'centre', amer: 'center' },
+    { brit: 'programme', amer: 'program' },
+    { brit: 'theatre', amer: 'theater' },
+  ];
+  for (const { brit, amer } of flips) {
+    assert.ok(REAL_WORDS.has(amer), `American "${amer}" should be a target word`);
+    assert.ok(!REAL_WORDS.has(brit), `British "${brit}" should NOT be a target word`);
+    // the British form should survive as the wrong alternative
+    const entry = getWord(amer);
+    assert.ok(entry.misspellings.includes(brit), `"${amer}" should list "${brit}" as a misspelling`);
+  }
+});
+
+test('no obvious British-only spellings remain as TARGET words (§36 B3)', () => {
+  // clear British-only forms a US dataset should never use as the correct answer
+  const british = [
+    'colour', 'favour', 'honour', 'neighbour', 'labour', 'humour', 'behaviour', 'flavour',
+    'harbour', 'rumour', 'vapour', 'odour', 'parlour', 'saviour',
+    'centre', 'metre', 'litre', 'fibre', 'theatre', 'calibre', 'spectre', 'lustre',
+    'defence', 'offence', 'pretence', 'catalogue', 'dialogue', 'analogue',
+    'practise', 'organise', 'recognise', 'aluminium', 'aeroplane', 'jewellery', 'grey',
+  ];
+  const present = british.filter((w) => REAL_WORDS.has(w));
+  assert.equal(present.length, 0, `British target spellings present: ${present.join(', ')}`);
+});
+
 // ------------------------------------------------------------- lexicon helpers
 test('REAL_WORDS is the full set of correct spellings', () => {
   assert.equal(REAL_WORDS.size, WORDS.length);

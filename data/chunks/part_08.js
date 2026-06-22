@@ -197,7 +197,7 @@ export const WORDS = [
   { word:"pattern", rank:2196, tier:6, pattern:"double-cons", syllables:["pat","tern"], misspellings:["patern","patturn","patteren","pattrn"], sentence:"Can you copy the pattern of shapes across the page?" },
   { word:"boat", rank:2197, tier:3, pattern:"oa-ow-long", syllables:["boat"], misspellings:["bote","boet","bowt"], sentence:"We paddled the small boat across the calm lake." },
   { word:"named", rank:2198, tier:3, pattern:"silent-e-a", syllables:["named"], misspellings:["naimed","nameed","namd"], sentence:"She named her pet hamster Pebble." },
-  { word:"theatre", rank:2199, tier:8, pattern:"ture-sure", syllables:["the","a","tre"], misspellings:["theater","theetre","theattre","theature"], sentence:"Our class went to the theatre to watch a play about explorers." },
+  { word:"theater", rank:2199, tier:8, pattern:"schwa-er-or-ar", syllables:["the","a","ter"], misspellings:["theatre","theeter","theattre","theature"], sentence:"Our class went to the theater to watch a play about explorers." },
   { word:"laser", rank:2200, tier:7, pattern:"schwa-er-or-ar", syllables:["la","ser"], misspellings:["lazer","lasor","layser","lazor"], sentence:"The scientist used a laser beam to measure the distance to the wall." },
   { word:"earlier", rank:2201, tier:7, pattern:"suffix-er-est", syllables:["ear","li","er"], misspellings:["erlier","eariler","earliar","earlyer"], sentence:"We woke up earlier than usual to watch the sunrise." },
   { word:"manufacturers", rank:2202, tier:9, pattern:"advanced-multisyllable", syllables:["man","u","fac","tur","ers"], misspellings:["manufacturors","manufactuers","mannufacturers","manufacterers"], sentence:"The manufacturers printed the instructions on the box." },

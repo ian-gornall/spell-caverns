@@ -458,7 +458,7 @@ export function startRhythm(ctx, params = {}) {
       );
     } else {
       buttons.push(
-        el('button', { class: 'btn', onClick: () => ctx.nav('rhythm') }, '⛏️ Keep practising'),
+        el('button', { class: 'btn', onClick: () => ctx.nav('rhythm') }, '⛏️ Keep practicing'),
       );
     }
     buttons.push(

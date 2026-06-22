@@ -176,7 +176,7 @@ export const WORDS = [
   { word:"austin", rank:2425, skip:true, tier:6, pattern:"multisyllable", syllables:["aus","tin"], misspellings:["austen","ostin"], sentence:"Austin is the capital city of Texas." },
   { word:"favorites", rank:2426, tier:6, pattern:"multisyllable", syllables:["fa","vor","ites"], misspellings:["favourites","favorits","favorates"], sentence:"My favorites are pizza and chocolate cake." },
   { word:"toronto", rank:2427, skip:true, tier:7, pattern:"schwa-er-or-ar", syllables:["to","ron","to"], misspellings:["toranto","toronoto","torontoo"], sentence:"Toronto is a large city in Canada." },
-  { word:"theater", rank:2428, tier:6, pattern:"multisyllable", syllables:["the","a","ter"], misspellings:["theeter","theator","teatre"], sentence:"We watched the play at the theater downtown." },
+  { word:"theater", rank:2428, tier:6, pattern:"multisyllable", syllables:["the","a","ter"], misspellings:["theatre","theeter","theator"], sentence:"We watched the play at the theater downtown." },
   { word:"springs", rank:2429, tier:2, pattern:"r-blend", syllables:["springs"], misspellings:["sprins","spings","springes"], sentence:"Cool water bubbles up from the springs in the cave." },
   { word:"missouri", rank:2430, skip:true, tier:9, pattern:"advanced-multisyllable", syllables:["mis","sou","ri"], misspellings:["missori","misouri","missuri"], sentence:"Missouri is a state in the middle of the United States." },
   { word:"andrew", rank:2431, skip:true, tier:1, pattern:"easy-sight", syllables:["an","drew"], misspellings:[], sentence:"" },

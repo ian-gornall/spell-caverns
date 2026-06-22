@@ -1136,7 +1136,7 @@ export function settingsScreen(ctx) {
           nameInput,
           el('p', { class: 'field-hint' }, 'A nickname is perfect — no real name needed.'),
         ),
-        el('div', { class: 'field' }, el('label', {}, 'Crystal colour'), colourRow),
+        el('div', { class: 'field' }, el('label', {}, 'Crystal color'), colourRow),
         el(
           'div',
           { class: 'field' },

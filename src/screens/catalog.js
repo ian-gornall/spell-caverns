@@ -120,7 +120,7 @@ export function catalogScreen(ctx) {
           'p',
           { class: 'quest-note', style: { marginTop: '8px' } },
           sum.owned === sum.total
-            ? '🏆 Master collector — every mineral catalogued!'
+            ? '🏆 Master collector — every mineral cataloged!'
             : 'Spend mined 💎 gems to unlock minerals. Tap a glowing one to collect it!',
         ),
       ),

@@ -495,7 +495,7 @@ export function startLab(ctx) {
         'div',
         { class: 'lab-stage lab-saved' },
         el('div', { class: 'lab-emoji' }, '✨'),
-        el('h2', { class: 'lab-title' }, 'Specimen catalogued!'),
+        el('h2', { class: 'lab-title' }, 'Specimen cataloged!'),
         imageData && el('img', { class: 'lab-preview', src: imageData, alt: specimenName }),
         el('div', { class: 'lab-word' }, specimenName),
         el('div', { class: 'earned' }, `+${SPECIMEN_GEMS} gems · ${state.specimens.length} in your collection`),

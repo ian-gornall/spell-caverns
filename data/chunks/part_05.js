@@ -92,7 +92,7 @@ export const WORDS = [
   {"word":"considered","rank":1341,"tier":7,"pattern":"ending-ed-ing","syllables":["con","sid","ered"],"misspellings":["considerd","consitered","considerred","consedered"],"sentence":"We considered which cave to visit first."},
   {"word":"told","rank":1342,"tier":3,"pattern":"oa-ow-long","syllables":["told"],"misspellings":["tolled","towld","toled"],"sentence":"She told us a story about a hidden gem."},
   {"word":"traffic","rank":1343,"tier":6,"pattern":"double-cons","syllables":["traf","fic"],"misspellings":["trafic","traffik","trafik","trafficc"],"sentence":"There was a lot of traffic on the way to the museum."},
-  {"word":"programme","rank":1344,"tier":6,"pattern":"double-cons","syllables":["pro","gramme"],"misspellings":["program","programe","progamme","programm"],"sentence":"We joined a programme to learn about rocks."},
+  {"word":"program","rank":1344,"tier":6,"pattern":"multisyllable","syllables":["pro","gram"],"misspellings":["programme","programe","progamme","programm"],"sentence":"We joined a program to learn about rocks."},
   {"word":"joined","rank":1345,"tier":4,"pattern":"oi-oy","syllables":["joined"],"misspellings":["joind","joyned","joinned","joened"],"sentence":"We joined the club for young rock hunters."},
   {"word":"input","rank":1346,"tier":6,"pattern":"multisyllable","syllables":["in","put"],"misspellings":["inputt","inpput","inpute"],"sentence":"We gave our input on which cave to explore."},
   {"word":"strategy","rank":1347,"tier":9,"pattern":"greek-roots","syllables":["strat","e","gy"],"misspellings":["stratagy","stratergy","strategey","stradegy"],"sentence":"We made a strategy to find the most gems."},

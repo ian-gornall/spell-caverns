@@ -10,7 +10,7 @@ export const WORDS = [
   { word:"final", rank:759, tier:4, pattern:"schwa-er-or-ar", syllables:["fi","nal"], misspellings:["finel","finnal","fianl"], sentence:"The final question on the test was about rocks and minerals." },
   { word:"tickets", rank:760, tier:4, pattern:"double-cons", syllables:["tick","ets"], misspellings:["tikets","tickits","tikkits"], sentence:"We bought tickets to see the dinosaur exhibit at the museum." },
   { word:"thing", rank:761, tier:2, pattern:"ck-ng", syllables:["thing"], misspellings:["thng","theing"], sentence:"The best thing about summer is swimming at the lake." },
-  { word:"centre", rank:762, tier:5, pattern:"schwa-er-or-ar", syllables:["cen","tre"], misspellings:["sentre","centar","centere","ceneter"], sentence:"The gem centre had hundreds of shiny minerals on display." },
+  { word:"center", rank:762, tier:5, pattern:"schwa-er-or-ar", syllables:["cen","ter"], misspellings:["centre","sentre","centar","centere"], sentence:"The gem center had hundreds of shiny minerals on display." },
   { word:"requirements", rank:763, tier:8, pattern:"advanced-multisyllable", syllables:["re","quire","ments"], misspellings:["requirments","requiremants","reqirements","requierments"], sentence:"She checked the requirements before signing up for the science club." },
   { word:"via", rank:764, tier:4, pattern:"multisyllable", syllables:["vi","a"], misspellings:["veia","vya","veea"], sentence:"The message was sent via email to the whole class." },
   { word:"cheap", rank:765, tier:3, pattern:"ee-ea", syllables:["cheap"], misspellings:["cheep","chep","chepe"], sentence:"The box of crayons was cheap at the dollar store." },

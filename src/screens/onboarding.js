@@ -140,7 +140,7 @@ export function onboardingScreen(ctx) {
   // --- step 3: crystal colour ----------------------------------------------
   function chooseColour() {
     const who = chosenName || 'explorer';
-    const line = `Nice to meet you, ${who}! Pick your crystal colour.`;
+    const line = `Nice to meet you, ${who}! Pick your crystal color.`;
     const swatches = el(
       'div',
       { class: 'colour-grid' },

@@ -202,7 +202,7 @@ export function printablesScreen(ctx) {
     el(
       'div',
       { class: 'field' },
-      el('label', {}, 'What to practise'),
+      el('label', {}, 'What to practice'),
       sourceSeg,
       subWrap,
     ),
