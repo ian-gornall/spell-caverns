@@ -2,7 +2,33 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • deploying sw **csc-v56**.
+> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • building sw **csc-v57** (NOT YET DEPLOYED — prod is csc-v56).
+>
+> **🆕 SESSION 2026-06-22d — §36 NEXT-STEPS #1 + #2 ✅ BUILT + QA'd locally (csc-v57). NOT YET DEPLOYED — held for
+> Ian's review.** Both done test-first; 311 unit tests + smoke + qa_placement + qa_diag_oneshot + qa_overflow all green.
+> - **#1 — DIAGNOSTIC = ONE SHOT PER WORD.** In the placement diagnostic, a WRONG full build now records the miss
+>   on the ±100 walk and advances STRAIGHT to the next word — the child does NOT get to keep the fitting letters and
+>   retry. New `diagnosticMiss()` in `modes/puzzle.js`: `wrongSubmit` early-returns to it when `placement` is true;
+>   it banks the SAME bookkeeping a hinted-to-correct miss did (walk `submit(...,false)` + legacy tracker +
+>   answer-stat) and gives the gentle "+5 💎 · Next word" consolation (non-shaming; the child never knows it's a
+>   diagnostic). **Normal Craft's keep-the-fitting-letters retry is UNCHANGED** (the placement branch is the only
+>   new path); clean/hinted builds still complete via `solve()`. NEW guard `scripts/qa_diag_oneshot.mjs` drives the
+>   diagnostic, deliberately builds the first word WRONG, and asserts the one-shot "Next word" chip + that the word
+>   advances (the old retry behaviour would stay put). Verified live: "tube" built "etub" → advanced to "happened".
+> - **#2 — "to next depth" → "to next LEVEL".** The Progress tile now shows words to the next cavern LEVEL (band) —
+>   the words in the CURRENT band the child hasn't learned yet — not the old mastery-DEPTH count. New pure
+>   `categorySummary.toNextLevel` (`engine/categories.js`, +1 unit test): counts band==level pool words that aren't
+>   yet known/mastered (reaches 0 when the level is cleared). `screens/progress.js` uses it + the relabelled tile.
+>   qa_placement extended to assert the tile reads "to next level" with a number (showed "🪨 30 to next level" at the
+>   placed band 47). NOTE: the `cavernMap` panel below still uses mastery-DEPTH language — that's **D4's** job to
+>   unify (left alone deliberately; #2 was scoped to the tile).
+> - **⚠️ REMAINING NEXT STEPS (from 2026-06-22c, still open):** **#3 D4** (unify mastery-depth + cavern-level into the
+>   100-level cavern map; confirm: bosses fire on band-up?) · **#4 caps in spelling** (proper nouns display
+>   capitalized but child spells lowercase — decide if the capital is TAUGHT; decide the ambiguous may/march/august/
+>   states/united) · **#5 OWED real-device pass** on audio + diagnostic + re-rank + caps + these two changes. #3 and
+>   #4 need Ian's design input before building; #5 is Ian's.
+> - **DEPLOY when Ian approves:** versions already bumped (`sw.js` + `version.js` → csc-v57); push `main` → Git-CD
+>   builds + deploys; verify `check_deploy.mjs csc-v57` + `qa_prod.mjs`.
 >
 > **🆕 SESSION 2026-06-22c — C1 DIAGNOSTIC + AoA RE-RANK + AUDIO-ASSET REPAIR ✅ SHIPPED (csc-v56).** A very
 > large session, committed + deployed. Summary of everything done (details below + in the §C1 banner):
@@ -33,15 +59,11 @@
 > - **VOICE-QUEUE preemption fix** (`engine/voicequeue.js` `preemptDictation`): a new word now supersedes a
 >   stale dictation without cutting praise (a real lag bug, separate from the clip bug).
 > - **Global CLAUDE.md:** added a hard **5-minute monitoring rule** (poll any shell job ≤5 min, even short ones).
-> - **⚠️ NEXT STEPS (Ian — do NOT code yet, just recorded):**
->   1. **Diagnostic = ONE shot per word (Ian 2026-06-22c):** in the diagnostic, a WRONG answer should move
->      straight to the NEXT word — the student does NOT get another chance to spell it. (Currently a wrong
->      build behaves like normal Craft: it keeps the fitting letters and lets them retry until correct, then
->      records the miss. Change the DIAGNOSTIC path so a first wrong build records the miss + advances; keep
->      normal Craft's retry behavior unchanged.)
->   2. **"To next depth" → "to next level":** rename the Progress label/CTA (currently "to next depth",
->      `screens/progress.js`) to "to next level" AND make it accurate for the cavern LEVEL (band) — words to
->      the next band — not the mastery depth.
+> - **⚠️ NEXT STEPS (#1 + #2 DONE 2026-06-22d in csc-v57 — see top banner; #3–#5 still open):**
+>   1. ✅ **DONE (csc-v57).** Diagnostic = ONE shot per word: a wrong build records the miss + advances, no
+>      retry (`modes/puzzle.js` `diagnosticMiss`; normal Craft retry unchanged; guard `qa_diag_oneshot.mjs`).
+>   2. ✅ **DONE (csc-v57).** "to next depth" → "to next level": Progress tile shows words to the next cavern
+>      LEVEL (band) via new `categorySummary.toNextLevel`. (cavernMap panel's depth language is D4's job.)
 >   3. **D4 (depth/level/cavern-map):** fully unify the mastery-"depth" (geode boss, 8 zones) with the cavern
 >      LEVEL (band) into the 100-level cavern map. The header now shows the band as a stopgap; the boss still
 >      uses mastery-depth internally. Confirm: should bosses fire on band-up (reaching a new cavern level)?

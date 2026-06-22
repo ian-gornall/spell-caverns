@@ -199,7 +199,12 @@
 //      + voicequeue preemptDictation lag fix + C1 diagnostic refined (multi-session walk, places at
 //      3-in-band, no false known/mastered, header shows CAVERN LEVEL/band). New precached file: none
 //      beyond v55's placement.js. Audio manifest + clips changed → bump busts the runtime cache.
-const VERSION = 'csc-v56';
+// csc-v57: §36 next-steps #1 + #2. (#1) The PLACEMENT diagnostic is now ONE shot per word — a WRONG
+//      build records the miss and advances STRAIGHT to the next word (no keep-the-fitting-letters
+//      retry; normal Craft retry is unchanged). modes/puzzle.js diagnosticMiss(). (#2) The Progress
+//      tile reads "to next level" — words in the CURRENT cavern level (band) not yet learned — via
+//      categorySummary.toNextLevel, replacing the mastery-DEPTH "to next depth" count. No new files.
+const VERSION = 'csc-v57';
 
 const CORE = [
   '/',

@@ -169,6 +169,26 @@ if (placed.startLevel !== placed.level) issues.push('FAIL: startLevel not synced
 if (!(placed.learning > 0)) issues.push('FAIL: learning set is empty after placement');
 if (!audioInOrder) issues.push('FAIL: spoken audio played a STALE word out of display order (the wrong-word bug)');
 
+// --- §36 next-step #2: the Progress tile reads "to next level" (cavern band), not "to next depth" -
+await page.waitForSelector('.reward', { timeout: 6000 }).catch(() => {});
+const progBtn = page.locator('.reward .btn', { hasText: 'Progress' });
+if (await progBtn.count()) await progBtn.first().click();
+await page.waitForSelector('.screen .panel', { timeout: 6000 }).catch(() => {});
+const tileInfo = await page.evaluate(() => {
+  const stats = [...document.querySelectorAll('.seg .stat')];
+  const t = stats.find((x) => /to next level/i.test(x.textContent));
+  const depthTile = stats.find((x) => /to next depth/i.test(x.textContent));
+  return {
+    found: !!t,
+    num: t ? ((t.querySelector('.big-num') || {}).textContent || '').trim() : '',
+    staleDepth: !!depthTile,
+  };
+});
+console.log('progress tile     :', tileInfo.found ? `"${tileInfo.num}" to next level ✅` : 'NOT FOUND ❌');
+if (!tileInfo.found) issues.push('FAIL: Progress "to next level" tile not found (label not renamed?)');
+else if (!/\d/.test(tileInfo.num)) issues.push(`FAIL: "to next level" tile shows no number ("${tileInfo.num}")`);
+if (tileInfo.staleDepth) issues.push('FAIL: Progress still shows the old "to next depth" tile');
+
 console.log('\n' + (issues.length ? `ISSUES (${issues.length}):\n- ` + issues.join('\n- ') : 'ISSUES: none ✅'));
 await browser.close();
 process.exit(issues.length ? 1 : 0);

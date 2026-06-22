@@ -312,6 +312,23 @@ test('categorySummary reports learning list + known/mastered/tricky/new-remainin
   assert.ok(Array.isArray(s.tricky)); // present in the data; the SCREEN gates it to grown-ups
 });
 
+// §36 next-step #2 (Ian 2026-06-22c): the Progress tile shows "words to next LEVEL" — words in
+// the CURRENT cavern level (band === state.level) the child hasn't yet learned (known/mastered),
+// NOT the old mastery-depth count. It reaches 0 when every word in the band is learned.
+test('categorySummary.toNextLevel = words in the current cavern level (band) not yet known/mastered', () => {
+  const st = fresh(); // level 1; band 1 has 5 words (cat,bat,hat,map,rat), none learned yet
+  let s = categorySummary(st, POOL);
+  assert.equal(s.level, 1);
+  assert.equal(s.toNextLevel, 5); // all 5 band-1 words still to learn
+  makeKnown(st, 'cat'); // cat → known (counts as learned)
+  s = categorySummary(st, POOL);
+  assert.equal(s.toNextLevel, 4);
+  recordDraw(st, 'cat', true); // cat → mastered (still learned)
+  makeKnown(st, 'bat'); // bat → known
+  s = categorySummary(st, POOL);
+  assert.equal(s.toNextLevel, 3); // 2 of 5 band-1 words learned
+});
+
 test('serialize → deserialize is a lossless round-trip of the whole state machine', () => {
   const st = fresh();
   makeKnown(st, 'cat');

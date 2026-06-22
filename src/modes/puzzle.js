@@ -450,6 +450,11 @@ export function startPuzzle(ctx, params = {}) {
   function wrongSubmit(g) {
     firstTry = false;
     combo = 0;
+    // §C1 one-shot diagnostic (Ian 2026-06-22c): in the PLACEMENT diagnostic a word gets ONE try —
+    // a wrong full build records the miss on the walk and advances straight to the NEXT word (no
+    // keep-the-fitting-letters retry). Normal Craft keeps the retry behaviour below; a clean or
+    // hinted build still completes via solve() either way (this is only the wrong-build path).
+    if (placement) return diagnosticMiss();
     audio.sfx('miss');
     const phrase = pickGentle();
     audio.speakPraise(phrase);
@@ -469,6 +474,35 @@ export function startPuzzle(ctx, params = {}) {
     slotsEl.classList.remove('shake');
     void slotsEl.offsetWidth;
     slotsEl.classList.add('shake');
+  }
+
+  // §C1 one-shot diagnostic miss: record the miss + advance, no retry. Banks the same bookkeeping
+  // a hinted-to-correct build did (walk + legacy tracker + answer stat), so placement signal and
+  // distractor difficulty are unchanged; gives the gentle "good try" consolation so the child never
+  // feels punished and never knows the first round is a diagnostic. The walk decides the next word.
+  function diagnosticMiss() {
+    locked = true;
+    clearHintTimers();
+    controlsEl.style.display = 'none'; // Hint/Clear are meaningless once we've moved on
+    recordAnswer(state.tracker, target, false, { source: 'craft' }); // legacy tracker (distractor difficulty)
+    ctx.store.recordAnswerStat(false, 'craft'); // counts as an answered (not-clean) word
+    placementSubmit(walk, target, false); // the ±100 walk steps DOWN on a miss
+    sessionCount += 1;
+    const pts = CONSOLATION_GEMS; // gentle, non-shaming — same as a build that needed help
+    earned += pts;
+    ctx.store.addGems(pts);
+    audio.sfx('great');
+    const phrase = pickGentle();
+    audio.speakPraise(phrase);
+    flashVerdict(phrase, `+${pts} 💎 · Next word`, '#9D8DF1');
+    updateCombo(null);
+    slots.forEach((s) => {
+      if (s) s.locked = true;
+    });
+    render();
+    bumpGems();
+    ctx.save();
+    setTimeout(present, 1100);
   }
 
   function solve() {

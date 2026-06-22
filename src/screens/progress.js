@@ -110,10 +110,10 @@ function wordsPanel(ctx) {
   const pool = byRank().filter((w) => w.word.length >= 3);
   const s = categorySummary(ctx.state.categories, pool);
   const cracked = s.repair.length; // §36 C3: from categories, so it matches the pips/yellow lights
-  // §36 C2: how many to the next cavern depth (friendly + small) instead of the scary
-  // "~2800 new to find" total. Computed like cavernMap so the two agree.
-  const known = summary(ctx.state.tracker).counts.known;
-  const toNext = WORDS_PER_DEPTH - (known % WORDS_PER_DEPTH);
+  // §36 next-step #2 (Ian 2026-06-22c): words to the next cavern LEVEL (band) — the words in the
+  // CURRENT level the child hasn't learned yet — friendly + accurate to the band model (was the
+  // mastery-DEPTH count, and before that the scary "~2800 new to find" whole-dataset total).
+  const toNext = s.toNextLevel;
   const learnList = s.learning.length
     ? el(
         'div',
@@ -149,7 +149,7 @@ function wordsPanel(ctx) {
     { class: 'panel' },
     el('h3', {}, 'Words I’m learning'),
     learnList,
-    el('div', { class: 'seg', style: { marginTop: '12px' } }, tile('🌱', s.known, 'known'), tile('⭐', s.mastered, 'mastered'), tile('🪨', toNext, 'to next depth')),
+    el('div', { class: 'seg', style: { marginTop: '12px' } }, tile('🌱', s.known, 'known'), tile('⭐', s.mastered, 'mastered'), tile('🪨', toNext, 'to next level')),
     cracked > 0 &&
       el(
         'button',

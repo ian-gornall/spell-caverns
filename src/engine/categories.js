@@ -402,7 +402,18 @@ export function learningProgress(state) {
 export function categorySummary(state, pool) {
   const idx = poolIndex(pool);
   let newRemaining = 0;
-  for (const entry of idx.values()) if (!state.words.has(entry.word)) newRemaining += 1;
+  // §36 next-step #2 (Ian 2026-06-22c): "words to the next LEVEL" = words in the CURRENT cavern
+  // level (band === state.level) the child hasn't yet learned (known or mastered). Reaches 0 when
+  // the whole band is learned — a friendly, accurate goal vs the old whole-dataset "new remaining"
+  // or the mastery-depth count. (A still-LEARNING/new/tricky band word counts; known/mastered don't.)
+  let toNextLevel = 0;
+  for (const entry of idx.values()) {
+    if (!state.words.has(entry.word)) newRemaining += 1;
+    if (entry.band === state.level) {
+      const rec = state.words.get(entry.word);
+      if (!(rec && (rec.category === CATEGORIES.KNOWN || rec.category === CATEGORIES.MASTERED))) toNextLevel += 1;
+    }
+  }
   return {
     learning: learningProgress(state),
     known: knownWords(state).length,
@@ -410,6 +421,7 @@ export function categorySummary(state, pool) {
     tricky: trickyWords(state),
     repair: repairWords(state), // §36 C3: cracked words to fix (matches the pips/yellow light)
     newRemaining,
+    toNextLevel,
     unlocks: unlocks(state),
     level: state.level,
     setSize: state.setSize,
