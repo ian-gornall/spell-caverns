@@ -2,17 +2,20 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • building sw **csc-v60** (NOT YET DEPLOYED — prod is csc-v56).
+> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • sw **csc-v60** — ✅ SHIPPED + LIVE on prod, verified.
 >
 > **FIX (csc-v60):** the one-shot diagnostic MISS copy used GENTLE_PHRASES ("Give it another go!" — implies a retry
 > the diagnostic forbids). Now uses `praise.NEXT_WORD_PHRASES` (forward-moving, e.g. "Let's keep going!") for the
 > spoken + shown line; qa_diag_oneshot now also fails on any retry-implying miss phrase. Behaviour was already
 > one-shot (the word advances) — only the copy was wrong.
 >
-> **🆕 SESSION 2026-06-22d — §36 NEXT-STEPS #1, #2, #4 + #3 (D4) ✅ BUILT + QA'd locally (now csc-v60). NOT YET
-> DEPLOYED — held for Ian's review.** All done test-first; 319 unit tests + smoke + qa_placement + qa_diag_oneshot +
-> qa_caps + qa_caps_mastery + qa_boss_debug + qa_cavernmap + qa_level + qa_overflow all green. **Only #5 (real-device
-> pass) remains** — that's Ian's. Commits: 65b8f2c (#1/#2), db13d8f (#4), 186d157 (D4 bosses+debug), + this (D4 map).
+> **🆕 SESSION 2026-06-22d — §36 NEXT-STEPS #1, #2, #4 + #3 (D4) ✅ SHIPPED + LIVE on prod (csc-v60), verified.**
+> Pushed `main` → Git-CD built + deployed (prod went csc-v56→**csc-v60** in ~15s); `check_deploy.mjs csc-v60` =
+> DEPLOYED ✅; `qa_prod.mjs` = **ISSUES: none** (boots, home + Mastery render, CNN model loads + drew 'a'→'a',
+> APP_VERSION=csc-v60). All done test-first; 320 unit tests + smoke + qa_placement + qa_diag_oneshot + qa_caps +
+> qa_caps_mastery + qa_boss_debug + qa_cavernmap + qa_level + qa_overflow all green. **Only #5 (real-device pass)
+> remains** — that's Ian's. Commits: 65b8f2c (#1/#2), db13d8f (#4), 186d157 (D4 bosses+debug), a5ccb50 (D4 map),
+> 5fb32cb (diagnostic copy fix).
 > - **#3 D4 — DEPTH / LEVEL / CAVERN-MAP.** Built to Ian's answers: **(a)** geode bosses now fire every **10 MASTERED**
 >   words (was 8) — the divisor is centralized as `engine/narrative.WORDS_PER_DEPTH` + `depthForMastered()` (app.js
 >   depth() + progress.js share it, no more drift). **(b)** NEW scrollable **CAVERN MAP** on Progress (`screens/
@@ -66,11 +69,11 @@
 >   qa_placement extended to assert the tile reads "to next level" with a number (showed "🪨 30 to next level" at the
 >   placed band 47). NOTE: the `cavernMap` panel below still uses mastery-DEPTH language — that's **D4's** job to
 >   unify (left alone deliberately; #2 was scoped to the tile).
-> - **⚠️ REMAINING:** **#5 OWED real-device pass** on audio + diagnostic + re-rank + caps + ALL of csc-v57→v59 (the
->   one-shot diagnostic, the proper-noun caps in Craft+Mastery, bosses-every-10, the cavern map + tap-to-go-back) —
->   that's Ian's. Plus the tentative **D4 "maybe" big boss at level-end** (confirm before building).
-> - **DEPLOY when Ian approves:** versions bumped (`sw.js` + `version.js` → **csc-v60**); push `main` → Git-CD
->   builds + deploys; verify `check_deploy.mjs csc-v60` + `qa_prod.mjs`. All of #1/#2/#4/D4 are one deployable unit.
+> - **✅ DEPLOYED:** csc-v60 is LIVE on prod (Git-CD on push to `main`; verified via check_deploy + qa_prod).
+> - **⚠️ REMAINING:** **#5 OWED real-device pass** on a physical iPad for ALL of csc-v57→v60 (the one-shot diagnostic
+>   + its new "keep going" copy, the proper-noun caps in Craft+Mastery, bosses-every-10, the cavern map +
+>   tap-to-go-back) — that's Ian's, now testable on prod. Plus the tentative **D4 "maybe" big boss at level-end**
+>   (Ian said "maybe" — confirm before building).
 >
 > **🆕 SESSION 2026-06-22c — C1 DIAGNOSTIC + AoA RE-RANK + AUDIO-ASSET REPAIR ✅ SHIPPED (csc-v56).** A very
 > large session, committed + deployed. Summary of everything done (details below + in the §C1 banner):
