@@ -271,9 +271,19 @@ function specimenPanel(ctx) {
         ),
       )
     : el(
-        'p',
-        { style: { color: 'var(--ink-dim)' } },
-        'Visit the 🔮 Crystal Lab to invent, spell and draw your first crystal!',
+        'div',
+        { style: { textAlign: 'center' } },
+        el(
+          'p',
+          { style: { color: 'var(--ink-dim)' } },
+          'Invent, spell and draw your first crystal!',
+        ),
+        // A6: this used to be dead text. Make it a real button into the Crystal Lab.
+        el(
+          'button',
+          { class: 'btn primary', style: { marginTop: '10px' }, onClick: () => ctx.nav('lab') },
+          '🔮 Visit the Crystal Lab',
+        ),
       );
   return el(
     'div',

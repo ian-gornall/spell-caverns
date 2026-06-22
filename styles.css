@@ -183,15 +183,21 @@ button {
   background: none;
 }
 .btn-icon.back {
-  width: var(--tap-min);
-  height: var(--tap-min);
+  /* A7: was the full 64px --tap-min circle, which read as a heavy blob next to the 1.3rem
+     title. A 50px circle is better-proportioned to the header and still a comfortable touch
+     target (> the 44px iOS / 48px Material minimums). flex-shrink:0 keeps it a true circle. */
+  width: 50px;
+  height: 50px;
+  flex-shrink: 0;
   border-radius: 50%;
   /* center the chevron glyph exactly, not just by line-height (which left it
      sitting a hair high/left in the circle) — shared centering token (§17.B) */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.4rem;
+  /* nudge the optical bearing of the '‹' glyph so it sits dead-centre, not a hair right */
+  padding-right: 3px;
+  font-size: 2rem;
   line-height: 1;
   background: var(--panel);
   border: 1px solid var(--panel-border);
@@ -646,6 +652,11 @@ button.quest {
      again" button) unreachably on short phones (QA §A regression fix). */
   justify-content: safe center;
   overflow-y: auto;
+  /* A8: setting only overflow-y promotes overflow-x to `auto` (CSS spec), so a pulsing/
+     highlighting tile (nudge-pulse scales 1.06, hint-glow adds an outer glow) trips a
+     spurious INNER horizontal scrollbar — invisible on phones but an ugly classic bar on
+     desktop Chrome. Pin x to `clip` so the pulse can't open a horizontal scroller. */
+  overflow-x: clip;
   padding: 12px 0 max(10px, env(safe-area-inset-bottom));
 }
 .answer-zone {
@@ -1620,6 +1631,20 @@ button.quest {
 .seg button.locked {
   opacity: 0.45;
 }
+/* A3/A4: a .stat is a pill sized for a SINGLE inline row (gem count etc.). When reused as a
+   COLUMN cell inside a .seg (Progress "known / mastered / new to find" and "Personal bests"),
+   stacking a big number + a label jammed both lines against the 999px curve. Give those column
+   cells real breathing room: a gentler radius + vertical padding, centred. The richer
+   .seg.haul .haul-tile rule (higher specificity) keeps its treasure styling untouched. */
+.seg .stat {
+  flex: 1;
+  min-width: 90px;
+  justify-content: center;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  text-align: center;
+}
 input[type="range"] {
   width: 100%;
   height: 38px;
@@ -2334,8 +2359,17 @@ select {
   width: 30px;
   height: 16px;
 }
+/* A friendly greeting wink: the eye closes once near the start, then settles back
+   to normal open eyes (fill-mode 'both' holds the final 100% open frame, so the
+   wink no longer STICKS shut after mount). Under prefers-reduced-motion the global
+   duration clamp collapses it, leaving eyes open. */
 .mascot.wink .mascot-eyes .eye:last-child {
-  transform: scaleY(0.18); /* squish one eye into a friendly wink */
+  transform-origin: center;
+  animation: geo-wink 1.8s ease-in-out 0.25s 1 both;
+}
+@keyframes geo-wink {
+  0%, 55%, 100% { transform: scaleY(1); } /* open */
+  22%, 38% { transform: scaleY(0.18); }   /* squished shut — the wink */
 }
 .speech-bubble {
   position: relative;
@@ -2584,6 +2618,14 @@ select {
 }
 .geode:active {
   transform: scale(0.97);
+}
+/* A5: the 200px geode is a small repeated-tap target for little hands on a phone. Size it up
+   to fill a comfortable share of the screen width (phone-only; iPad/desktop keep 200px). */
+@media (max-width: 480px) {
+  .geode {
+    width: min(72vw, 280px);
+    height: min(72vw, 280px);
+  }
 }
 .geode-shell {
   position: absolute;
@@ -3604,3 +3646,43 @@ html.readable .crystal-name {
 .feedback-entry .fb-diff { opacity: 0.75; }
 .feedback-entry .fb-note { margin: 4px 0 0; line-height: 1.4; white-space: pre-wrap; }
 .feedback-entry .fb-note.muted { opacity: 0.5; font-style: italic; }
+
+/* ============================================================================
+   §36 DESKTOP / VISUAL POLISH (Ian's desktop-Chrome QA pass)
+   ============================================================================ */
+
+/* A2: cap the app width on a real desktop monitor so it doesn't stretch edge-to-edge.
+   Gated on `pointer: fine` (a mouse) so it NEVER touches a touch tablet — iPad reports
+   `pointer: coarse` and is excluded on BOTH counts (also min-width:1025 > iPad-landscape
+   1024). The body keeps its full-bleed gradient; only the #app column is centred. */
+@media (min-width: 1025px) and (pointer: fine) {
+  #app {
+    max-width: 900px;
+    margin-inline: auto;
+  }
+}
+
+/* A8: a thin, on-theme scrollbar instead of Chrome's chunky default grey bar. Applies to
+   the inner scroll containers (.play-body, .screen lists, panels) and the page. Firefox
+   uses scrollbar-width/color; WebKit/Blink use the ::-webkit-scrollbar pseudo-elements. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 170, 255, 0.4) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 170, 255, 0.35);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 190, 255, 0.55);
+  background-clip: content-box;
+}
