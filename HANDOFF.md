@@ -240,6 +240,28 @@
 >   (currently shows "Cavern level 1"); a confirm-gate on Re-test (semi-destructive). ⚠️ csc-v62 interaction preserved:
 >   Re-test stays FIRMLY on the placement (walk) path — if the diagnostic ever failed to run, 6 clean crafts now = 6
 >   KNOWN (1-correct) → instant Mastery unlock (the bug Ian hit). Verified: unit test + `qa_retest.mjs`.
+> - **E. CONTENT-FILTER INAPPROPRIATE LAB DRAWINGS (main app) — ⛔ NOT BUILT (Ian 2026-06-23, from the ADMIN_APP design).**
+>   The new admin app (see `ADMIN_APP.md`) lets the operator DELETE a lab drawing + DISABLE the Lab per student via a new
+>   `settings.labDisabled` flag — but that's REACTIVE. Add a PRE-EMPTIVE on-device check in the MAIN app so abusive drawings
+>   are less likely to reach the admin (free-first [[prefer-free-services]]: a tiny on-device image classifier, a "report"
+>   path, and/or rate/size limits — weigh later). ALSO: the main app must READ `settings.labDisabled` and hide/disable the
+>   Crystal Lab + specimen drawing when it's on (the admin sets it authoritatively via the §6 adminRev write).
+>
+> **🆕 SESSION 2026-06-23c — §37 B SUPERSEDED → ADMIN APP (operator dashboard) — DESIGN DOC written (`ADMIN_APP.md`), NOT
+> built.** Ian pivoted: build a STANDALONE OPERATOR admin app FIRST (view ALL students, edit settings authoritatively,
+> export configurable CSV), and DEFER the parent/teacher monitor mode — decide its shape based on the admin app (§10 of the
+> doc captures the deferred concerns). Locked via AskUserQuestion: (1) HOSTING = gated `/admin` bundle + `/api/admin/*` in
+> the EXISTING worker, reusing FAMILY_SYNC KV + Git-CD, NOT in the kid PWA SW precache; (2) AUTH = reuse the `ADMIN_KEY`
+> secret (x-admin-key, same as the feedback archive / `src/admin.js`); (3) WRITE-BACK = AUTHORITATIVE — add an `adminRev`
+> counter to the container that outranks `progressScore` in the shared `engine/cloudsync.reconcile`, so an admin edit (even
+> a reset) wins ONCE, the device adopts it, then normal never-lose-progress resumes. §11 Qs RESOLVED (2026-06-23): CSV
+> default cols = Identity+Progress+Stats+word-counts (lists off); DELETE family/profile = yes, confirm-gated; lab specimens
+> = viewable thumbnails + delete + a `labDisabled` lock; overview = flat list + group-by-family toggle. §11 Q3 RESOLVED:
+> FULL operator editing (prefs + difficulty + words-per-dig + `categories.level` re-aim + guarded reset/re-test), with the
+> CONDITION that a restore point is ALWAYS auto-snapshotted BEFORE any reset/re-test (reuse `profiles.pushSnapshot`; restore
+> exposed in the admin UI). **ALL design Qs now settled — DESIGN COMPLETE.** NEXT: BUILD test-first per `ADMIN_APP.md` §12
+> (shared reconcile+tests → pure `engine/admin_view.js`+`admin_export.js`+tests → worker `/api/admin/*` → `admin/` bundle →
+> qa_admin → deploy). Tree at design time: clean (only `.gitignore` + these docs).
 >
 > **🆕 SESSION 2026-06-22e — §36 STAY-IN-LEVEL ✅ SHIPPED + LIVE on prod (csc-v61), verified.** Pushed `main` →
 > Git-CD built + deployed (prod went csc-v60→**csc-v61** in ~30s); `check_deploy.mjs csc-v61` = DEPLOYED ✅;
