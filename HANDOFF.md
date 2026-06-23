@@ -276,8 +276,19 @@
 > preset swatches + editable hex), pill on/off toggles, placeholders so unset settings aren't blank, a STICKY Save bar, and an
 > iOS scroll-hardening fix (scroll on the doc root, not body — the old body-scroll also silently broke position:sticky). Only
 > `admin/admin.css` + `admin/admin.js` changed; `qa_admin.mjs` green. LESSON (again): full-page screenshots LIE about
-> scroll/clipping — always LOOK at viewport (non-fullPage) shots. `scripts/seed_admin_demo.mjs` seeds demo families into KV
-> (`--remote`!) for exploring the live admin; delete them via the admin UI or `wrangler kv key delete`.
+> scroll/clipping — always LOOK at viewport (non-fullPage) shots. `scripts/seed_admin_demo.mjs` (COMMITTED) seeds
+> demo families into KV — note `wrangler kv ... put` defaults to a LOCAL miniflare KV; must pass **`--remote`** to hit the
+> production namespace the deployed worker reads.
+> **🌱 DEMO DATA LIVE IN PROD KV (Ian 2026-06-23: keep up for now).** Seeded 4 families / 7 students into the REMOTE
+> FAMILY_SYNC namespace so the live `/admin` isn't empty: **SUNNYDAY3** (Lex / Ava / Sam — Lex has 2 specimens + a restore
+> point, mastery unlocked), **RIVERBED7** (Maya), **MOUNTAIN5** (Theo / Nina — Nina has a 🔒 kid-lock), **MEADOW42** (Kit, a
+> fresh lvl-1 profile). Codes won't collide with real families. Prod KV also holds ~6 pre-existing NON-family keys
+> (`push:`/`feedback:`) which the admin correctly ignores (`SYNC_CODE_RE` filter) — that's why "0 students" was right before
+> seeding. **Cleanup when done:** the admin UI's "Delete whole family" on each, or `npx wrangler kv key delete <CODE> --binding
+> FAMILY_SYNC --remote`. Re-seed anytime: `node scripts/seed_admin_demo.mjs` then `npx wrangler kv bulk put scripts/_seed_demo.json
+> --binding FAMILY_SYNC --remote`. **`ADMIN_KEY`** (the `/admin` login) is a Cloudflare Worker SECRET — write-only, not readable
+> back; not in `.env`/`~/.secrets`. Confirmed SET on prod (the gate returns 403, not 503). Recover via your own notes / the
+> dev device's `localStorage['csc_admin_key']`, or reset with `wrangler secret put ADMIN_KEY --name spell-caverns`.
 > Built test-first, all guards green. What shipped: (1) `engine/cloudsync.reconcile` is now `adminRev`-aware
 > (+3 tests); (2) NEW pure `engine/admin_view.js` (flattenContainer/Profile/Families) + `engine/admin_export.js` (toCSV, two
 > granularities, column registry) + `test/admin.test.js` (8 tests); (3) `worker.js` gained gated `/api/admin/families` (list,
