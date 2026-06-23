@@ -43,6 +43,22 @@ function fmtDur(ms) {
 }
 const now = () => Date.now();
 const panel = (title, ...kids) => el('section', { class: 'panel' }, el('h3', {}, title), ...kids);
+// Like panel() but carries extra classes (e.g. 'span2' to span the detail grid).
+const panelC = (title, cls, ...kids) => el('section', { class: `panel ${cls}` }, el('h3', {}, title), ...kids);
+
+// A detail FIELD = stacked label + a content-sized control/value. `opts.wide` spans the field row;
+// `opts.toggle` lays it out as a label + on/off switch on one line.
+function field(label, control, opts = {}) {
+  const isNode = control && control.nodeType;
+  const v = isNode ? control : el('span', { class: 'v' }, control == null || control === '' ? '—' : String(control));
+  return el(
+    'div',
+    { class: `field${opts.wide ? ' wide' : ''}${opts.toggle ? ' toggle' : ''}` },
+    el('span', { class: 'k' }, label),
+    v,
+  );
+}
+const fieldsGrid = (...kids) => el('div', { class: 'fields' }, ...kids.filter(Boolean));
 function kvGrid(pairs) {
   return el(
     'div',
@@ -89,9 +105,19 @@ function confirmModal({ title, message, confirmLabel = 'Confirm', danger = false
   return m;
 }
 
+// The kid app's crystal palette (src/screens/onboarding.js COLOURS) — reused as preset swatches.
+const COLOUR_PRESETS = [
+  { value: '#7AA2FF', name: 'Sky' },
+  { value: '#36F1CD', name: 'Aqua' },
+  { value: '#7AE582', name: 'Leaf' },
+  { value: '#FFD23F', name: 'Sun' },
+  { value: '#9D8DF1', name: 'Violet' },
+  { value: '#FF7EB6', name: 'Rose' },
+];
+
 // editable-field factories (bind to a plain object the Save step then persists)
-function textField(obj, key, { type = 'text', num = false } = {}) {
-  const i = el('input', { type, value: obj[key] != null ? obj[key] : '' });
+function textField(obj, key, { type = 'text', num = false, placeholder = '' } = {}) {
+  const i = el('input', { type, value: obj[key] != null ? obj[key] : '', placeholder });
   i.addEventListener('input', () => { obj[key] = num ? (i.value === '' ? null : Number(i.value)) : i.value; });
   return i;
 }
@@ -101,10 +127,40 @@ function checkField(obj, key) {
   i.addEventListener('change', () => { obj[key] = i.checked; });
   return i;
 }
+// A styled on/off toggle (pill track + knob) wrapping the same bound checkbox.
+function toggleField(obj, key) {
+  const input = checkField(obj, key);
+  return el('label', { class: 'switch' }, input, el('span', { class: 'track' }));
+}
 function selectField(obj, key, options) {
   const s = el('select', {}, ...options.map((o) => el('option', { value: o, selected: obj[key] === o }, o)));
   s.addEventListener('change', () => { obj[key] = s.value; });
   return s;
+}
+// Native colour input + preset palette + editable hex, all bound to obj[key] (themeColor).
+function colourField(obj, key) {
+  const norm = (v) => (typeof v === 'string' && /^#?[0-9a-fA-F]{6}$/.test(v) ? (v[0] === '#' ? v : '#' + v).toLowerCase() : null);
+  const native = el('input', { type: 'color', value: norm(obj[key]) || '#7aa2ff' });
+  const hex = el('input', { type: 'text', value: obj[key] != null ? obj[key] : '', placeholder: '#7aa2ff', maxlength: '7' });
+  const swatchEls = [];
+  const markActive = () => {
+    const cur = norm(obj[key]);
+    swatchEls.forEach((s) => s.el.classList.toggle('on', s.value === cur));
+  };
+  const set = (v) => { obj[key] = v; const n = norm(v); if (n) native.value = n; hex.value = v; markActive(); };
+  native.addEventListener('input', () => set(native.value));
+  hex.addEventListener('input', () => { obj[key] = hex.value; const n = norm(hex.value); if (n) native.value = n; markActive(); });
+  const presets = el(
+    'div',
+    { class: 'colour-presets' },
+    ...COLOUR_PRESETS.map((c) => {
+      const b = el('button', { type: 'button', class: 'swatch', style: { background: c.value }, title: c.name, 'aria-label': c.name, onClick: () => set(c.value.toLowerCase()) });
+      swatchEls.push({ el: b, value: c.value.toLowerCase() });
+      return b;
+    }),
+  );
+  markActive();
+  return el('div', { class: 'colour-control' }, el('div', { class: 'colour-row' }, native, hex), presets);
 }
 
 // ---- LOGIN --------------------------------------------------------------------------------
@@ -261,9 +317,9 @@ function openDetail(code, id) {
 
   const bar = el(
     'div',
-    { class: 'admin-bar' },
+    { class: 'admin-bar sticky' },
     el('button', { class: 'btn ghost', onClick: renderOverview }, '‹ Back'),
-    el('h1', {}, edited.profile && edited.profile.name ? edited.profile.name : 'Explorer'),
+    el('h1', { class: 'det-name' }, edited.profile && edited.profile.name ? edited.profile.name : 'Explorer'),
     el('span', { class: 'muted' }, `family ${code} · rev ${found.fam.adminRev || 0}`),
     el('span', { class: 'spacer', style: { flex: '1 1 auto' } }),
     el('button', { class: 'btn primary', onClick: save }, 'Save'),
@@ -271,55 +327,69 @@ function openDetail(code, id) {
 
   const identity = panel(
     'Identity',
-    kvGrid([
-      ['Name', textField(edited.profile, 'name')],
-      ['Colour', textField(edited.settings, 'themeColor')],
-      ['Age', row.age],
-      ['Kid lock', row.kidLock ? 'yes' : 'no'],
-      ['Profile ID', row.profileId],
-    ]),
+    fieldsGrid(
+      field('Name', textField(edited.profile, 'name'), { wide: true }),
+      field('Crystal colour', colourField(edited.settings, 'themeColor'), { wide: true }),
+      field('Age', row.age),
+      field('Profile ID', row.profileId),
+      field('Kid lock', row.kidLock ? 'yes' : 'no', { toggle: false }),
+    ),
   );
   const settings = panel(
     'Settings',
-    kvGrid([
-      ['Difficulty', selectField(edited.settings, 'difficulty', ['easy', 'medium', 'hard'])],
-      ['Words per dig', textField(edited.settings, 'length', { type: 'number', num: true })],
-      ['Voice', checkField(edited.settings, 'voice')],
-      ['Volume', textField(edited.settings, 'volume', { type: 'number', num: true })],
-      ['Voice rate', textField(edited.settings, 'voiceRate', { type: 'number', num: true })],
-      ['Readable text', checkField(edited.settings, 'readableText')],
-      ['Daily goal gems', textField(edited.settings, 'dailyGoalGems', { type: 'number', num: true })],
-      ['Reminders', checkField(edited.settings, 'reminders')],
-      ['Disable Lab', checkField(edited.settings, 'labDisabled')],
-    ]),
+    fieldsGrid(
+      field('Difficulty', selectField(edited.settings, 'difficulty', ['easy', 'medium', 'hard'])),
+      field('Words per dig', textField(edited.settings, 'length', { type: 'number', num: true, placeholder: '10' })),
+      field('Volume', textField(edited.settings, 'volume', { type: 'number', num: true, placeholder: '100' })),
+      field('Voice rate', textField(edited.settings, 'voiceRate', { type: 'number', num: true, placeholder: '1.0' })),
+      field('Daily goal gems', textField(edited.settings, 'dailyGoalGems', { type: 'number', num: true, placeholder: '50' }), { wide: true }),
+      field('Voice', toggleField(edited.settings, 'voice'), { toggle: true }),
+      field('Readable text', toggleField(edited.settings, 'readableText'), { toggle: true }),
+      field('Reminders', toggleField(edited.settings, 'reminders'), { toggle: true }),
+      field('Disable Lab', toggleField(edited.settings, 'labDisabled'), { toggle: true }),
+    ),
   );
   const progress = panel(
     'Progress',
-    kvGrid([
-      ['Cavern level', textField(edited.categories, 'level', { type: 'number', num: true })],
-      ['Peak level', row.peakLevel],
-      ['Start level', row.startLevel],
-      ['Mastery unlocked', row.masteryUnlocked ? 'yes' : 'no'],
-      ['Mining unlocked', row.miningUnlocked ? 'yes' : 'no'],
-    ]),
+    fieldsGrid(
+      field('Cavern level', textField(edited.categories, 'level', { type: 'number', num: true, placeholder: '1' })),
+      field('Peak level', row.peakLevel),
+      field('Start level', row.startLevel),
+      field('Mastery unlocked', row.masteryUnlocked ? 'yes' : 'no'),
+      field('Mining unlocked', row.miningUnlocked ? 'yes' : 'no'),
+    ),
   );
   const stats = panel(
     'Stats',
-    kvGrid([
-      ['Play time', fmtDur(row.playMs)],
-      ['Sessions', row.sessionsPlayed],
-      ['Accuracy', `${pct(row.accuracy)} (${row.correct}/${row.answers})`],
-      ['Gems', textField(edited, 'gems', { type: 'number', num: true })],
-      ['Streak', `${row.streakCurrent} (best ${row.streakBest})`],
-      ['Last played', row.streakLastDay],
-    ]),
+    fieldsGrid(
+      field('Play time', fmtDur(row.playMs)),
+      field('Sessions', row.sessionsPlayed),
+      field('Accuracy', `${pct(row.accuracy)} (${row.correct}/${row.answers})`, { wide: true }),
+      field('Gems', textField(edited, 'gems', { type: 'number', num: true, placeholder: '0' })),
+      field('Streak', `${row.streakCurrent} (best ${row.streakBest})`),
+      field('Last played', row.streakLastDay),
+    ),
   );
-  const chips = (label, list) => el('div', {}, el('div', { class: 'k' }, `${label} (${list.length})`), el('div', { class: 'word-chips' }, ...list.map((w) => el('span', { class: 'word-chip' }, w))));
-  const words = panel('Words', chips('Learning', row.learning), chips('Known', row.known), chips('Mastered', row.mastered), chips('Tricky', row.tricky));
+  const chips = (label, list) => el('div', { class: 'field wide' }, el('div', { class: 'k' }, `${label} (${list.length})`), el('div', { class: 'word-chips' }, ...(list.length ? list.map((w) => el('span', { class: 'word-chip' }, w)) : [el('span', { class: 'muted' }, '—')])));
+  const words = panelC('Words', 'span2', fieldsGrid(chips('Learning', row.learning), chips('Known', row.known), chips('Mastered', row.mastered), chips('Tricky', row.tricky)));
 
-  const detail = el('div', {}, bar, identity, settings, progress, stats, words, specimensPanel(code, id, original), restorePanel(code, id, original), dangerPanel(code, id, original));
+  // Two-column (3 on wide) panel grid; long sections (Words, Specimens, Restore, Danger) span full width.
+  const grid = el(
+    'div',
+    { class: 'detail-grid' },
+    identity,
+    settings,
+    progress,
+    stats,
+    words,
+    addClass(specimensPanel(code, id, original), 'span2'),
+    addClass(restorePanel(code, id, original), 'span2'),
+    addClass(dangerPanel(code, id, original), 'span2'),
+  );
+  const detail = el('div', {}, bar, grid);
   root.replaceChildren(detail);
 }
+function addClass(node, cls) { if (node && node.classList) node.classList.add(cls); return node; }
 
 // re-aim the working set at a new level: park current learning as tricky + reset the run window
 // (the kid app's fillLearning then tops up from the new band). Pure object edit on the serialized

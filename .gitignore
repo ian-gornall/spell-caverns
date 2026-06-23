@@ -13,6 +13,8 @@ scripts/qa_active_pause_break.png
 scripts/qa_active_pause_gate.png
 # Admin app QA screenshots (scratch — scripts/qa_admin.mjs).
 scripts/qa_admin/
+# Admin demo-seed bulk file (scratch — scripts/seed_admin_demo.mjs writes it; do not commit fake data).
+scripts/_seed_demo.json
 # Cached dictionary download for scripts/build_nonsense_blocklist.mjs (regenerable).
 words_alpha_tmp.txt
 # Exploratory QA screenshots (scratch artifacts from scripts/qa.mjs — regenerable).

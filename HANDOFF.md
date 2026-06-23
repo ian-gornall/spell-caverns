@@ -267,6 +267,17 @@
 > = 403 → `ADMIN_KEY` IS set on prod + the gate works** (503 would mean unset). `/admin` 307→`/admin/` (Cloudflare assets adds
 > the trailing slash before the worker; the worker's own `/admin` handler is a fallback). **OWED (Ian's):** an authenticated
 > end-to-end pass with the real key against real KV families (the harness used a mocked backend — it can't hold the secret).
+> **🎨 UI REDESIGN (2026-06-23c, admin-only — NO version bump, admin/* isn't precached + no kid-app file touched):** Ian
+> flagged the first admin UI cut as poor (a naive single-column form: oversized full-width inputs, empty-looking boxes, tiny
+> checkboxes, NO colour picker; my fault — the earlier design agent audited token CONSISTENCY on the spec, not UX of the built
+> screens, and my QA used FULL-PAGE screenshots that hid the cramped/scroll truth). Redesigned via a design agent + a real
+> VISUAL loop (viewport, non-fullPage screenshots → look → iterate): dense multi-panel `.detail-grid` (1/2/3 cols by width),
+> content-sized number inputs (no more 560px boxes), a real colour control (native `<input type=color>` + the kid app's 6
+> preset swatches + editable hex), pill on/off toggles, placeholders so unset settings aren't blank, a STICKY Save bar, and an
+> iOS scroll-hardening fix (scroll on the doc root, not body — the old body-scroll also silently broke position:sticky). Only
+> `admin/admin.css` + `admin/admin.js` changed; `qa_admin.mjs` green. LESSON (again): full-page screenshots LIE about
+> scroll/clipping — always LOOK at viewport (non-fullPage) shots. `scripts/seed_admin_demo.mjs` seeds demo families into KV
+> (`--remote`!) for exploring the live admin; delete them via the admin UI or `wrangler kv key delete`.
 > Built test-first, all guards green. What shipped: (1) `engine/cloudsync.reconcile` is now `adminRev`-aware
 > (+3 tests); (2) NEW pure `engine/admin_view.js` (flattenContainer/Profile/Families) + `engine/admin_export.js` (toCSV, two
 > granularities, column registry) + `test/admin.test.js` (8 tests); (3) `worker.js` gained gated `/api/admin/families` (list,

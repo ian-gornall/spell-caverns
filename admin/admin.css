@@ -2,19 +2,31 @@
    Per DESIGN_SYSTEM.md §3/§7: no colour token or shared class is re-declared here; this is
    the "additions + adult-tool density" layer. All colours come from styles.css :root. */
 
-/* Adult tool: the page IS scrollable and text IS selectable (the kid app disables both). */
-html,
-body {
+/* Adult tool: the page IS scrollable and text IS selectable (the kid app disables both).
+   The kid app locks html/body to 100% height + overflow:hidden. We unlock height to auto so
+   the long detail view can grow. CRITICAL: scrolling lives on the DOCUMENT — only the root
+   element scrolls; body stays overflow:visible. (If BOTH html and body get overflow:auto + a
+   content-tall height, body becomes its own non-scrolling scroll-container and position:sticky
+   on a descendant has no scroll range — the Save bar would not pin.)
+   -webkit-overflow-scrolling:touch keeps iOS Safari momentum-scrolling; never re-lock height. */
+html {
   overflow-y: auto;
+  height: auto;
+  min-height: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+body {
+  overflow: visible;
   height: auto;
   min-height: 100%;
 }
 #admin-app {
   -webkit-user-select: text;
   user-select: text;
-  max-width: 1100px;
+  max-width: 1180px;
   margin: 0 auto;
   padding: 16px;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* §7a relaxed tap targets — adult accessibility (44px primary, 36–40px inline). Look unchanged. */
@@ -154,7 +166,7 @@ body {
   }
 }
 
-/* Detail view: a definition grid inside .panel sections. */
+/* Detail view: a definition grid inside .panel sections (used by login + simple read pairs). */
 .kv {
   display: grid;
   grid-template-columns: minmax(120px, 0.5fr) 1fr;
@@ -172,6 +184,199 @@ body {
 .kv input,
 .kv select {
   width: 100%;
+}
+
+/* ── Detail layout ──────────────────────────────────────────────────────────────────────
+   The detail used to be a single 2160px column of full-width rows. It's now a responsive
+   masonry of panels, each holding a stacked-label field grid; controls are sized to content. */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: start;
+}
+@media (min-width: 720px) {
+  .detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* full-width panels (words list, specimens, restore, danger) span both columns */
+  .detail-grid .panel.span2 {
+    grid-column: 1 / -1;
+  }
+}
+@media (min-width: 1040px) {
+  .detail-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.detail-grid .panel {
+  margin-bottom: 0;
+}
+.detail-grid .panel h3 {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.detail-grid .panel h3::before {
+  content: '';
+  width: 4px;
+  height: 1.05em;
+  border-radius: 2px;
+  background: var(--accent);
+  flex: 0 0 auto;
+}
+
+/* A field = stacked label + content-sized control. Two-up inside a panel where it fits. */
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.field.wide {
+  grid-column: 1 / -1;
+}
+.field > .k {
+  color: var(--ink-dim);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.field > .v {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  min-height: 1.4em;
+  display: flex;
+  align-items: center;
+}
+/* content-sized controls: a number is narrow, a select hugs its label, text fills the field */
+#admin-app .field input[type='number'] {
+  width: 100%;
+  max-width: 120px;
+}
+#admin-app .field input[type='text'],
+#admin-app .field select {
+  width: 100%;
+}
+#admin-app .field input::placeholder {
+  color: var(--ink-dim);
+  opacity: 0.65;
+  font-style: italic;
+}
+
+/* ── On/off toggle (styled checkbox) ────────────────────────────────────────────────────
+   Replaces the tiny default boxes floating right. A pill track + sliding knob, accent when on. */
+.field.toggle {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 40px; /* keep the 2-up toggle rows aligned even when a label wraps */
+}
+.field.toggle > .k {
+  font-size: 0.92rem;
+}
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 26px;
+  cursor: pointer;
+}
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+.switch .track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.switch .track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--ink-dim);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.switch input:checked + .track {
+  background: linear-gradient(150deg, #5f7bff, #8a5cff);
+  border-color: transparent;
+}
+.switch input:checked + .track::after {
+  transform: translateX(20px);
+  background: var(--ink);
+}
+.switch input:focus-visible + .track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Colour control ─────────────────────────────────────────────────────────────────────
+   Native swatch + the kid app's preset palette + an editable hex, all bound to themeColor. */
+.colour-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.colour-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#admin-app .colour-row input[type='color'] {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 2px;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+#admin-app .colour-row input[type='text'] {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 140px;
+  text-transform: lowercase;
+}
+.colour-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.colour-presets .swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid var(--panel-border);
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.6);
+}
+.colour-presets .swatch.on {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 .word-chips {
   display: flex;
@@ -210,6 +415,27 @@ body {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 8px;
+}
+
+/* Sticky detail header/action bar so Save stays reachable on the long page. */
+.admin-bar.sticky {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  /* opaque enough to read over scrolling content; tokens only, glass treatment */
+  background: linear-gradient(160deg, var(--bg-2), var(--bg-1));
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin: 0 -2px 14px;
+  box-shadow: 0 10px 28px -16px #000c;
+}
+.admin-bar.sticky .det-name {
+  font-size: 1.3rem;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Export modal option groups reuse the shared overlay (.gate-overlay/.gate-box). */
