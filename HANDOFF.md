@@ -2,14 +2,18 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-23 • sw **csc-v65** — §37 A active-engagement auto-pause: ✅ BUILT + QA-green, DEPLOYING (Ian approved). (csc-v64 was SHIPPED + LIVE.)
+> `C:\Users\iango\spell`  •  Last updated 2026-06-23 • sw **csc-v65** — §37 A active-engagement auto-pause: ✅ SHIPPED + LIVE on prod, verified.
 > (csc-v64 = the §37 C exploratory design-QA pass; its only code change is a GEODE-BOSS "nullnull" fix — see top banner.
 > Commit `ada3df5`; pushed `main` → Git-CD built + deployed; `check_deploy.mjs csc-v64` = DEPLOYED ✅ (prod went
 > csc-v63→csc-v64); `qa_prod.mjs` = **ISSUES: none** (live APP_VERSION csc-v64, boots, Mastery renders, CNN loads + drew
 > 'a'→'a'). §37 A/B remain unbuilt — A's design is now settled (Ian 2026-06-23: idle resets the 20-min counter; the
 > 5-min lock is grown-up-dismissable), B still ⛔ design-first.)
 >
-> **🆕 SESSION 2026-06-23b — §37 A ACTIVE-ENGAGEMENT AUTO-PAUSE (csc-v65) — ✅ BUILT + QA-GREEN; Ian approved the deploy.**
+> **🆕 SESSION 2026-06-23b — §37 A ACTIVE-ENGAGEMENT AUTO-PAUSE (csc-v65) — ✅ SHIPPED + LIVE on prod, verified.**
+> Committed `8d6142e` + pushed `main` → Git-CD built + deployed (prod went csc-v64→**csc-v65** in ~15s; `check_deploy.mjs
+> csc-v65` = DEPLOYED ✅); `qa_prod.mjs` = **ISSUES: none** (live APP_VERSION csc-v65, boots clean, Mastery + CNN load,
+> drew 'a'→'a', 0 console errors → the new global `installActivePause` wiring runs on the live build). The full
+> 20-min→break flow is verified LOCALLY via `qa_active_pause.mjs` (the fast-config `window.__active*` knobs aren't on prod).
 > The screen-time off-ramp Ian designed (2026-06-23): after **20 MINUTES of CONTINUOUS active play** the app shows a SOFT
 > "brain break" overlay listing the words the child is currently **LEARNING** ("practise with a partner or take a break"),
 > which **AUTO-unlocks after 5 min** and is **GROWN-UP-dismissable** via the arithmetic gate. Both of Ian's design calls
@@ -38,9 +42,10 @@
 >   (drives continuous play → lock fires → learning chips shown → grown-up gate dismiss → re-lock → AUTO-unlock → `playMs`
 >   banked = **ISSUES: none**). `node --check` clean on all 8 changed files. Visually verified the break overlay + the
 >   gate-on-top fix by screenshot. csc-v65 bumps `sw.js` + `src/version.js` + precaches `engine/activetime.js`.
-> - **SHIP (in progress):** commit `feat` → push `main` → Git-CD builds csc-v65 → `check_deploy.mjs csc-v65` + `qa_prod.mjs`
->   → then a `docs(HANDOFF)` commit marking SHIPPED + LIVE + verified. **Owed (unchanged):** Ian's real-device iOS pass.
->   §37 B (parent/teacher monitor mode) is now the next design-first item; its "play time" metric is already being banked.
+> - **✅ SHIPPED:** commit `8d6142e` (feat) → push `main` → Git-CD → DEPLOYED ✅ csc-v65 → `qa_prod` ISSUES: none. **Owed
+>   (unchanged):** Ian's real-device iOS pass — verify the 20-min off-ramp actually fires on a real long session, and that
+>   the soft lock + grown-up dismiss feel right on the device. **NEXT design-first item:** §37 B (parent/teacher monitor
+>   mode); its "play time" metric is already being banked into `stats.playMs` ("build this once" — done).
 >
 > **🆕 SESSION 2026-06-23 — §37 C FULL EXPLORATORY DESIGN-QA PASS (mobile portrait + landscape) — ⚠️ done; ONE bug
 > found + FIXED (csc-v64), NOT yet committed/deployed.** A view-as-you-go pass ([[interactive-visual-qa]] / `QA.md`):
