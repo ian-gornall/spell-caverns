@@ -2,10 +2,11 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • sw **csc-v62** — ✅ BUILT + all-green locally; ⏸️ NOT DEPLOYED (held for Ian's review).
+> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • sw **csc-v62** — ✅ SHIPPED + LIVE on prod, verified.
 >
-> **🆕 SESSION 2026-06-22f — §36e ONE-CORRECT PHASE MODEL + RETENTION REVIEW + TYPE-IN-CRAFT (csc-v62) — ✅ BUILT,
-> all-green locally; ⏸️ NOT DEPLOYED (awaiting Ian's review).** Built the 5 next-steps Ian recorded 2026-06-22e,
+> **🆕 SESSION 2026-06-22f — §36e ONE-CORRECT PHASE MODEL + RETENTION REVIEW + TYPE-IN-CRAFT (csc-v62) — ✅ SHIPPED +
+> LIVE on prod, verified.** Committed `9a07d0f` + pushed `main` → Git-CD built + deployed (prod went csc-v61→**csc-v62**
+> in ~45s; `check_deploy.mjs csc-v62` = DEPLOYED ✅). Built the 5 next-steps Ian recorded 2026-06-22e,
 > after a round of clarifying Qs (his answers folded in). Test-first; **327 unit tests** (+8 new `test/review.test.js`)
 > + smoke + qa_stay_in_level + qa_placement + qa_diag_oneshot + qa_mastery + qa_overflow + qa_s31 + qa_autofill +
 > qa_caps_mastery + NEW `qa_type_craft` all green; qa_phone_audit = only the 2 documented by-design landscape home
@@ -53,9 +54,35 @@
 >   forgiving "fix the glowing letters" retry; a corrected build is honest CLOSURE ("You fixed it! 🛠️ +5💎 · Craft it
 >   again to master") — NOT "Mastered", 5-gem consolation, counts as a run miss. (One-shot-advance was the rejected
 >   alternative.) No code change — the build already implements both.
-> - **➡️ NEXT:** Ian reviews locally → if good, commit + push `main` (Git-CD builds csc-v62) → verify check_deploy +
->   qa_prod → real-device pass. The §36e #5 retention thresholds (60%? window? demote-vs-requeue?) and the #3
->   long-word feel are the most likely tweak points.
+> - **✅ DEPLOYED + VERIFIED:** `qa_prod.mjs` = **ISSUES: none** (live APP_VERSION csc-v62, boots, home + Mastery
+>   render, CNN model loads over Cloudflare + drew 'a'→'a'). **➡️ REMAINING:** a real-device pass (Ian's) — esp. the
+>   #3 long-word feel in Mastery type mode on a phone. The §36e #5 retention thresholds (60%? window?
+>   demote-vs-requeue?) are the most likely tweak points. Plus the new **§37 TODOs** below (design-first).
+>
+> **🆕 §37 RECORDED TODOs (Ian 2026-06-22f) — ⛔ DESIGN-FIRST, NOT YET BUILT (just captured; discuss before coding).**
+> - **A. ACTIVE-ENGAGEMENT AUTO-PAUSE (screen-time off-ramp; relates to the long-deferred §36 E5).** If a student
+>   has been ACTIVELY engaged for **20 minutes STRAIGHT** (continuous active play — NOT the existing idle guard,
+>   which fires on INACTIVITY; "unlikely, but if so"), **LOCK the app for 5 minutes**. During the lock, DISPLAY the
+>   words they're currently **"learning"** (`categories.learningWords`/`learningProgress`) with the instruction
+>   **"practice with a partner or take a break"**. Auto-unlock after 5 min. Needs a NEW cumulative ACTIVE-time
+>   accumulator (resets on a real break/idle; distinct from `createIdleGuard`). NOTE: build this active-time tracker
+>   ONCE — TODO B's "play time" metric reuses it. Open Qs: does any pause/idle reset the 20-min counter, or only a
+>   full app close? Is the 5-min lock hard (no override) or grown-up-dismissable?
+> - **B. PARENT/TEACHER ("MONITOR") MODE — view + export/sync student data; many-to-many; groups.** A **monitor**
+>   (parent or teacher) can **VIEW a linked student's data** and **EXPORT it OR SYNC it to a Google Sheet / Google
+>   Doc**. Data to surface: **play time** (TODO A's active-time metric), other general metrics (sessions, accuracy,
+>   gems, streak…), the words a student is currently **LEARNING**, and the words they've **MASTERED** (all already
+>   live per-profile in `categories` + `state.stats`). **MANY-TO-MANY linking:** a student ↔ MANY monitors AND a
+>   monitor ↔ MANY students (a teacher with a class; a child with mum + dad + teacher). Monitors can **sort students
+>   into GROUPS** (e.g. a class / reading group) for group-level views. Net effect: a parent/teacher dashboard over
+>   their linked students. **Design-first considerations to settle with Ian before building:** (1) IDENTITY/AUTH —
+>   today the app is on-device + opt-in family-sync (KV `FAMILY_SYNC`, keyed by a family PASSWORD; `engine/cloudsync`).
+>   A monitor↔student GRAPH is a new sharing model → needs monitor identity (monitor accounts? link/invite codes?) +
+>   a server-side relationship store (KV or D1). (2) PRIVACY/COPPA — sharing a child's data with a monitor needs a
+>   consent/authorization model (PRIVACY.md) — who can link to whom, and how a guardian approves a teacher link.
+>   (3) GOOGLE SYNC — prefer FREE first ([[prefer-free-services]]): a CSV/JSON EXPORT the monitor imports into Sheets
+>   is the zero-dependency option; a live Google Sheets API sync needs OAuth + the Drive/Sheets API (free tier — flag
+>   the cliff). (4) Reuse the existing multi-profile + family-sync plumbing rather than a parallel system.
 >
 > **🆕 SESSION 2026-06-22e — §36 STAY-IN-LEVEL ✅ SHIPPED + LIVE on prod (csc-v61), verified.** Pushed `main` →
 > Git-CD built + deployed (prod went csc-v60→**csc-v61** in ~30s); `check_deploy.mjs csc-v61` = DEPLOYED ✅;
