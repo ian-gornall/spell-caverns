@@ -6,6 +6,8 @@ scripts/qa_jackson_caps.png
 scripts/qa_apostrophe.png
 scripts/qa_mastery_apos.png
 scripts/qa_retest.png
+scripts/qa_boss_nullname.png
+scripts/qa_offline.png
 # Cached dictionary download for scripts/build_nonsense_blocklist.mjs (regenerable).
 words_alpha_tmp.txt
 # Exploratory QA screenshots (scratch artifacts from scripts/qa.mjs — regenerable).

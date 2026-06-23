@@ -120,26 +120,33 @@ export function bossScreen(ctx, params = {}) {
   // --- phase 2: reveal the new zone + mineral ------------------------------
   function reveal(crystal) {
     const line = bossAnnounce(depth);
+    // NOTE: native replaceChildren() STRINGIFIES a null/false argument into a "null"/"false" text
+    // node (unlike el(), which skips falsy children). When no milestone crystal is granted (crystal
+    // === null — e.g. late-game once every crystal is collected, so nextFreeCrystal() returns null),
+    // the `crystal && el(...)` children below are null, so we MUST filter them out before passing the
+    // list to replaceChildren — otherwise the reveal renders "nullnull". (guard: qa_boss_nullname.mjs)
     body.replaceChildren(
-      el('div', { class: 'depth-banner' }, `⛏️ Depth ${depth} — ${zone.name}`),
-      el(
-        'div',
-        { class: 'boss-burst' },
-        crystal
-          ? el('div', { class: 'crystal-art big', html: crystalSvg(crystal, { size: 168 }) })
-          : el('div', { class: 'boss-emoji' }, '💠'),
-      ),
-      crystal && el('h2', { class: 'boss-crystal-name' }, crystal.name),
-      crystal && el('p', { class: 'boss-fact' }, crystal.fact),
-      mascot(line, { mood: 'cheer' }),
-      el('div', { class: 'earned' }, `+${bonus} bonus gems!  ·  Total 💎 ${ctx.state.gems || 0}`),
-      el(
-        'div',
-        { class: 'row' },
-        el('button', { class: 'btn primary', onClick: () => ctx.nav(from) }, '⛏️ Descend deeper'),
-        crystal && el('button', { class: 'btn', onClick: () => ctx.nav('catalog') }, '💠 Catalog'),
-        el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
-      ),
+      ...[
+        el('div', { class: 'depth-banner' }, `⛏️ Depth ${depth} — ${zone.name}`),
+        el(
+          'div',
+          { class: 'boss-burst' },
+          crystal
+            ? el('div', { class: 'crystal-art big', html: crystalSvg(crystal, { size: 168 }) })
+            : el('div', { class: 'boss-emoji' }, '💠'),
+        ),
+        crystal && el('h2', { class: 'boss-crystal-name' }, crystal.name),
+        crystal && el('p', { class: 'boss-fact' }, crystal.fact),
+        mascot(line, { mood: 'cheer' }),
+        el('div', { class: 'earned' }, `+${bonus} bonus gems!  ·  Total 💎 ${ctx.state.gems || 0}`),
+        el(
+          'div',
+          { class: 'row' },
+          el('button', { class: 'btn primary', onClick: () => ctx.nav(from) }, '⛏️ Descend deeper'),
+          crystal && el('button', { class: 'btn', onClick: () => ctx.nav('catalog') }, '💠 Catalog'),
+          el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
+        ),
+      ].filter(Boolean),
     );
     audio.say(line);
 

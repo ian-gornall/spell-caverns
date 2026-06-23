@@ -66,10 +66,14 @@ export function adminFeedbackScreen(ctx) {
         ? 'Admin key was rejected. Re-register this device (Settings → tap version 7×).'
         : 'Couldn’t load feedback (offline or server error). Pull again in a moment.';
       list.replaceChildren(
-        el('p', { class: 'field-hint' }, msg),
-        e && e.status === 403
-          ? el('button', { class: 'btn ghost', onClick: () => { clearAdminKey(); toast('Cleared admin key'); back(); } }, 'Forget this device')
-          : null,
+        ...[
+          el('p', { class: 'field-hint' }, msg),
+          // native replaceChildren stringifies a null arg into a "null" text node — filter it out
+          // (only the 403 path adds the button; the offline/server-error path must not show "null").
+          e && e.status === 403
+            ? el('button', { class: 'btn ghost', onClick: () => { clearAdminKey(); toast('Cleared admin key'); back(); } }, 'Forget this device')
+            : null,
+        ].filter(Boolean),
       );
     }
   };

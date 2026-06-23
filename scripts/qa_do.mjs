@@ -56,6 +56,10 @@ try {
     await page.goto('http://localhost:5173', { waitUntil: 'networkidle' });
   } else if (action === 'eval') {
     await page.evaluate((s) => { (0, eval)(s); }, arg);
+  } else if (action === 'resize') {
+    // arg = "WxH" e.g. 844x390 (landscape) — flips the live session's viewport in place
+    const [w, h] = arg.toLowerCase().split('x').map((v) => parseInt(v, 10));
+    if (w && h) { await page.setViewportSize({ width: w, height: h }); console.log(`resized to ${w}x${h}`); }
   }
   await page.waitForTimeout(parseInt(process.env.WAIT || '400', 10));
 

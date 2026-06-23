@@ -253,7 +253,14 @@
 //      level to 1 and RE-LOCKS mastery/mining (zeroes peakKnownish/peakMastered) while KEEPING word
 //      progress (Ian's pick); the diagnostic re-aims the kept known/mastered on completion. +unit test
 //      + qa_retest.mjs (seed placed+unlocked → tap Re-test → asserts level=1, re-locked, progress kept).
-const VERSION = 'csc-v63';
+// csc-v64: §37 C exploratory design-QA pass (2026-06-22g) — FIX: the GEODE BOSS reveal rendered the
+//      literal text "nullnull" whenever no milestone crystal was granted (real late-game: once all 24
+//      crystals are collected, grantMilestoneCrystal→nextFreeCrystal returns null; also any re-shown
+//      depth). Cause: native body.replaceChildren(...) STRINGIFIES a null arg into a "null" text node,
+//      and reveal() passed `crystal && el(...)` children (= null) straight in. Now those lists are
+//      .filter(Boolean)'d before replaceChildren (boss.js + the same pattern in admin_feedback.js error
+//      path). Guard: scripts/qa_boss_nullname.mjs (seeds all-crystals-owned → boss → asserts no "null").
+const VERSION = 'csc-v64';
 
 const CORE = [
   '/',

@@ -38,7 +38,11 @@ await page.screenshot({ path: 'scripts/_arch/archive.png', fullPage: true });
 await page.goto(BASE); await page.waitForTimeout(400);
 await page.click('.profile-card:not(.add)'); await page.waitForTimeout(300);
 await page.click('.menu-card:has-text("Settings")'); await page.waitForTimeout(300);
+// the version line now lives INSIDE the collapsed "Grown-up settings" <details> (csc-v54) —
+// open the disclosure first, else .version-line is in the DOM but not visible (click times out).
+await page.evaluate(() => { const d = document.querySelector('details'); if (d) d.open = true; });
 const vl = await page.$('.version-line');
+await vl.scrollIntoViewIfNeeded();
 for (let i = 0; i < 7; i++) { await vl.click(); }
 await page.waitForTimeout(600);
 check(/feedback archive/i.test(await page.innerText('body')), '7-tap opens archive when already admin (no prompt)');
