@@ -260,7 +260,15 @@
 //      and reveal() passed `crystal && el(...)` children (= null) straight in. Now those lists are
 //      .filter(Boolean)'d before replaceChildren (boss.js + the same pattern in admin_feedback.js error
 //      path). Guard: scripts/qa_boss_nullname.mjs (seeds all-crystals-owned → boss → asserts no "null").
-const VERSION = 'csc-v64';
+// csc-v65: §37 A ACTIVE-ENGAGEMENT auto-pause (Ian 2026-06-23). A NEW global active-time clock
+//      (engine/activetime.js, precached) watches document-wide activity across every screen; after 20
+//      minutes of CONTINUOUS active play it shows a SOFT "brain break" overlay (ui.activePauseOverlay)
+//      listing the words the child is currently LEARNING ("practise with a partner or take a break"),
+//      which AUTO-unlocks after 5 min and is GROWN-UP-dismissable via the arithmetic gate (Ian's two
+//      design calls). A real break — a ≥60s activity gap, a tab leave, or a profile switch — resets the
+//      20-min streak. The same clock banks lifetime play time into stats.playMs for the §37 B parent
+//      view ("build this once"). +test/activetime.test.js (8) + scripts/qa_active_pause.mjs.
+const VERSION = 'csc-v65';
 
 const CORE = [
   '/',
@@ -287,6 +295,7 @@ const CORE = [
   '/src/models/letters/model.json',
   '/src/models/letters/weights.bin',
   '/src/engine/pushconfig.js',
+  '/src/engine/activetime.js',
   '/src/engine/lexicon.js',
   '/src/engine/distractors.js',
   '/src/engine/praise.js',

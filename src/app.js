@@ -6,7 +6,9 @@
 // screen factories; each factory returns a DOM node that `render()` mounts.
 import * as store from './state.js';
 import * as audio from './audio.js';
-import { setRoot, render, toast, applyTheme, applyReadable } from './ui.js';
+import { setRoot, render, toast, applyTheme, applyReadable, activePauseOverlay } from './ui.js';
+import { createActiveTimer } from './engine/activetime.js';
+import { learningProgress } from './engine/categories.js';
 import { homeScreen } from './screens/home.js';
 import { onboardingScreen } from './screens/onboarding.js';
 import { profilesScreen } from './screens/profiles.js';
@@ -93,6 +95,9 @@ function refreshActive() {
     applyTheme(s.settings.themeColor);
     applyReadable(s.settings.readableText);
   }
+  // §37 A: a profile switch is a real break — re-anchor play time to the new explorer + reset the
+  // 20-minute streak so one child's session never carries into the next.
+  if (activePause) activePause.rebind();
   return s;
 }
 
@@ -117,6 +122,9 @@ function boot() {
   // Prime audio/speech on the first tap anywhere — iOS unlocks media only inside a user
   // gesture (HANDOFF §4). `{ once:true }` removes the listener after.
   window.addEventListener('pointerdown', () => audio.prime(), { once: true });
+
+  // §37 A: install the global active-engagement clock (20-min continuous play → soft brain break).
+  installActivePause();
 
   // Deliver any feedback that didn't reach the developer last time (offline at submit). Lazy +
   // best-effort — never blocks boot, never throws. (§28.A)
@@ -187,6 +195,89 @@ function boot() {
     nav('profiles');
     maybeBootSync(); // sync the family in the background while they pick
   }
+}
+
+// §37 A ACTIVE-ENGAGEMENT auto-pause. ONE global active-time clock (engine/activetime.js) watches
+// document-wide pointer/key activity across EVERY screen. After LOCK_MS (20 min) of CONTINUOUS
+// active play it shows a soft "brain break" (ui.activePauseOverlay) — the off-ramp Ian asked for,
+// distinct from the per-screen idle guard (which fires on INACTIVITY). A real break resets the
+// streak: a >= BREAK_MS gap between interactions, the tab going away, or a profile switch (Ian
+// design call #1). The break is grown-up-dismissable and auto-unlocks after PAUSE_MS (call #2).
+// The same clock banks lifetime "play time" into stats.playMs — the metric the §37 B parent/teacher
+// view will reuse ("build this once"). QA fast-forwards the thresholds via window.__active* knobs.
+let activePause = null; // { rebind } — set by installActivePause; refreshActive() re-anchors on switch
+
+function installActivePause() {
+  const num = (k, d) => {
+    const v = typeof window !== 'undefined' ? Number(window[k]) : NaN;
+    return Number.isFinite(v) && v > 0 ? v : d;
+  };
+  const LOCK_MS = num('__activeLockMs', 20 * 60 * 1000);
+  const BREAK_MS = num('__activeBreakMs', 60 * 1000);
+  const PAUSE_MS = num('__activePauseMs', 5 * 60 * 1000);
+  const HEARTBEAT_MS = num('__activeHeartbeatMs', 5000);
+  const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const playMs0 = () => (ctx.state && ctx.state.stats && ctx.state.stats.playMs) || 0;
+
+  const timer = createActiveTimer({ lockMs: LOCK_MS, breakMs: BREAK_MS, playMs: playMs0() });
+  let overlay = null; // the brain-break overlay while shown (marking is suspended during a break)
+  let lastMove = 0;
+  let lastSaved = timer.playMs();
+
+  const mark = () => {
+    if (overlay) return; // on a break — don't count the break itself as engagement
+    timer.mark(now());
+  };
+  const onMove = () => {
+    const t = now();
+    if (t - lastMove < 300) return; // throttle the high-frequency pointermove
+    lastMove = t;
+    mark();
+  };
+  const persist = () => {
+    if (!(ctx.state && ctx.state.stats)) return;
+    ctx.state.stats.playMs = timer.playMs();
+    lastSaved = timer.playMs();
+    try {
+      ctx.save();
+    } catch {
+      /* storage disabled */
+    }
+  };
+  const endBreak = () => {
+    overlay = null;
+    timer.resetStreak(); // a fresh 20-minute clock starts once the break ends
+  };
+  const showBreak = () => {
+    if (overlay) return;
+    const learning = ctx.state && ctx.state.categories ? learningProgress(ctx.state.categories) : [];
+    overlay = activePauseOverlay({ learning, durationMs: PAUSE_MS, onUnlock: endBreak, onGrownupSkip: endBreak });
+  };
+
+  document.addEventListener('pointerdown', mark, true);
+  document.addEventListener('pointermove', onMove, true);
+  document.addEventListener('keydown', mark, true);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') persist(); // bank play time before a possible eviction
+    else mark(); // the (possibly long) hidden gap resets the streak if it was a real break
+  });
+
+  setInterval(() => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    if (timer.playMs() !== lastSaved) persist(); // bank play time once per heartbeat when it changed
+    if (!overlay && ctx.state && ctx.state.profile && timer.locked(now())) showBreak();
+  }, HEARTBEAT_MS);
+
+  activePause = {
+    rebind: () => {
+      if (overlay) {
+        overlay.remove();
+        overlay = null;
+      }
+      timer.bind(playMs0()); // re-anchor play time to the (now active) profile + fresh streak
+      lastSaved = timer.playMs();
+    },
+  };
 }
 
 // Family sync (cross-device): if the FAMILY sync password is set, pull + merge on open

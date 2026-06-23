@@ -63,7 +63,7 @@ function defaultProfile(id, over = {}) {
     gems: 0,
     feedback: [],
     specimens: [],
-    stats: { sessionsPlayed: 0, answers: 0, correct: 0, byDay: {} },
+    stats: { sessionsPlayed: 0, answers: 0, correct: 0, playMs: 0, byDay: {} },
     streak: defaultStreak(),
     records: { bestCombo: 0, bestWaveGems: 0 },
     catalog: { owned: [], milestoneDepth: 1 },

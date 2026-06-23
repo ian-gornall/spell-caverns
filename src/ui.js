@@ -243,6 +243,74 @@ export function parentalGate({ title = 'Grown-ups only 🔒', body = [], agree =
   return overlay;
 }
 
+// §37 A ACTIVE-ENGAGEMENT auto-pause — a soft, full-screen "brain break" shown after a long
+// UNBROKEN session (the global createActiveTimer in app.js reaches its 20-min lockMs). Unlike the
+// idle pauseOverlay (which fires on INACTIVITY and dismisses on a tap), this is a deliberate
+// off-ramp: it shows the words the child is currently LEARNING so the break stays useful ("practise
+// with a partner"), counts `durationMs` (5 min) down then AUTO-unlocks, and a grown-up can end it
+// early through the arithmetic parentalGate (Ian design call #2: the lock is SOFT / grown-up-
+// dismissable, not a hard wall). `learning` is the learningProgress() list (or plain word strings);
+// an empty list just hides the word row. Returns { remove } for forced teardown.
+export function activePauseOverlay({ learning = [], durationMs = 5 * 60 * 1000, onUnlock, onGrownupSkip } = {}) {
+  let left = Math.max(1, Math.ceil(durationMs / 1000)); // whole seconds remaining
+  let timerId = 0;
+  let done = false;
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const countEl = el('span', { class: 'apause-count' }, fmt(left));
+  const finish = (fn) => {
+    if (done) return;
+    done = true;
+    clearInterval(timerId);
+    overlay.remove();
+    if (fn) fn();
+  };
+  const words = learning.map((w) => (typeof w === 'string' ? w : w && w.word)).filter(Boolean);
+  const wordRow = words.length
+    ? el(
+        'div',
+        { class: 'apause-words' },
+        ...words.map((w) => el('span', { class: 'apause-word' }, w)),
+      )
+    : null;
+  const overlay = el(
+    'div',
+    { class: 'apause-overlay' }, // intentionally NO tap-to-dismiss (it is a real break, not the idle pause)
+    el(
+      'div',
+      { class: 'apause-box' },
+      el('div', { class: 'apause-emoji' }, '🌿'),
+      el('h2', {}, 'Time for a brain break!'),
+      el('p', {}, "You've been spelling really hard. Take a stretch, or practise these words out loud with a partner or grown-up."),
+      wordRow,
+      el('p', { class: 'apause-back' }, 'Back in ', countEl),
+      el(
+        'button',
+        {
+          class: 'btn ghost apause-skip',
+          onClick: () =>
+            parentalGate({
+              title: 'Grown-ups only 🔒',
+              body: ['End the brain break early?'],
+              confirmLabel: 'End break',
+              onPass: () => finish(onGrownupSkip || onUnlock),
+            }),
+        },
+        'Grown-up: end the break',
+      ),
+    ),
+  );
+  document.body.appendChild(overlay);
+  timerId = setInterval(() => {
+    left -= 1;
+    if (left <= 0) {
+      finish(onUnlock);
+      return;
+    }
+    countEl.textContent = fmt(left);
+  }, 1000);
+  return { remove: () => finish(null) };
+}
+
 // A gentle "do something" pulse on a node (used by idle nudges to highlight a card
 // or the primary button). No-op for a missing node.
 export function pulse(node) {

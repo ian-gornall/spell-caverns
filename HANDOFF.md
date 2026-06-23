@@ -2,12 +2,45 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-23 • sw **csc-v64** — ✅ SHIPPED + LIVE on prod, verified.
+> `C:\Users\iango\spell`  •  Last updated 2026-06-23 • sw **csc-v65** — §37 A active-engagement auto-pause: ✅ BUILT + QA-green, DEPLOYING (Ian approved). (csc-v64 was SHIPPED + LIVE.)
 > (csc-v64 = the §37 C exploratory design-QA pass; its only code change is a GEODE-BOSS "nullnull" fix — see top banner.
 > Commit `ada3df5`; pushed `main` → Git-CD built + deployed; `check_deploy.mjs csc-v64` = DEPLOYED ✅ (prod went
 > csc-v63→csc-v64); `qa_prod.mjs` = **ISSUES: none** (live APP_VERSION csc-v64, boots, Mastery renders, CNN loads + drew
 > 'a'→'a'). §37 A/B remain unbuilt — A's design is now settled (Ian 2026-06-23: idle resets the 20-min counter; the
 > 5-min lock is grown-up-dismissable), B still ⛔ design-first.)
+>
+> **🆕 SESSION 2026-06-23b — §37 A ACTIVE-ENGAGEMENT AUTO-PAUSE (csc-v65) — ✅ BUILT + QA-GREEN; Ian approved the deploy.**
+> The screen-time off-ramp Ian designed (2026-06-23): after **20 MINUTES of CONTINUOUS active play** the app shows a SOFT
+> "brain break" overlay listing the words the child is currently **LEARNING** ("practise with a partner or take a break"),
+> which **AUTO-unlocks after 5 min** and is **GROWN-UP-dismissable** via the arithmetic gate. Both of Ian's design calls
+> honored: **(1)** a real break/idle RESETS the 20-min streak — a ≥60s no-interaction gap, a tab leave, OR a profile
+> switch (NOT only a full app close); **(2)** the 5-min lock is SOFT (grown-up-dismissable), not a hard wall. Distinct
+> from the per-screen idle guard (which fires on INACTIVITY) — this measures CONTINUOUS engagement. Built test-first:
+> - **NEW pure `engine/activetime.js`** (`createActiveTimer`): ONE active-time clock, TWO outputs from the SAME activity
+>   stream — `streakMs` (continuous streak; a ≥breakMs gap RESETS it → drives the 20-min lock) + `playMs` (LIFETIME active
+>   total; a break never subtracts → the "play time" metric §37 B's parent view reuses, Ian's "build this once"). +8 unit
+>   tests (`test/activetime.test.js`): steady accrual, break-reset, live-gap, lock-at-20, mid-session idle never locks,
+>   resetStreak/bind. The DOM wiring calls `mark(performance.now())` on activity; `locked(t)` drives the lock.
+> - **`ui.activePauseOverlay`** — the blocking break overlay: 🌿 + the learning-word chips + a live mm:ss countdown + a
+>   "Grown-up: end the break" button → `parentalGate` (arithmetic) → early dismiss; auto-unlocks at 0. `.apause-*` CSS.
+> - **`app.installActivePause`** — ONE global clock for the whole app (NOT per-screen): document-wide
+>   pointerdown/pointermove(300ms-throttled)/keydown → `timer.mark`; a 5s heartbeat banks `playMs`→`stats.playMs`+save and
+>   pops the break when `locked`; visibility-hidden persists play time + a long hidden gap resets the streak; a profile
+>   switch (`refreshActive`) rebinds play time to the new explorer + resets the streak. Marking is SUSPENDED while the
+>   break is up (the break isn't engagement). QA fast-forwards via `window.__activeLockMs/__activeBreakMs/__activePauseMs/
+>   __activeHeartbeatMs` (mirrors the `__idleTest` hook).
+> - **`state.stats.playMs`** default added (back-compat: `storedToState` merges it over existing profiles). **z-index FIX
+>   (real bug):** `.gate-overlay` 80→**200** so the grown-up gate sits ABOVE the brain-break overlay (120) — it was
+>   rendering BEHIND the near-opaque break (a Playwright force-click had MASKED it in the guard; only LOOKING at the
+>   screenshot caught it — the recurring "textContent/automation pass ≠ visual truth" lesson).
+> - **QA — ALL GREEN:** **336** unit tests (+8) · smoke · **qa_overflow** (0 bleed across the full Galaxy matrix ×2 text
+>   scales) · **qa_phone_audit** (the 2 by-design landscape-home fails only, baseline) · NEW **`qa_active_pause.mjs`**
+>   (drives continuous play → lock fires → learning chips shown → grown-up gate dismiss → re-lock → AUTO-unlock → `playMs`
+>   banked = **ISSUES: none**). `node --check` clean on all 8 changed files. Visually verified the break overlay + the
+>   gate-on-top fix by screenshot. csc-v65 bumps `sw.js` + `src/version.js` + precaches `engine/activetime.js`.
+> - **SHIP (in progress):** commit `feat` → push `main` → Git-CD builds csc-v65 → `check_deploy.mjs csc-v65` + `qa_prod.mjs`
+>   → then a `docs(HANDOFF)` commit marking SHIPPED + LIVE + verified. **Owed (unchanged):** Ian's real-device iOS pass.
+>   §37 B (parent/teacher monitor mode) is now the next design-first item; its "play time" metric is already being banked.
 >
 > **🆕 SESSION 2026-06-23 — §37 C FULL EXPLORATORY DESIGN-QA PASS (mobile portrait + landscape) — ⚠️ done; ONE bug
 > found + FIXED (csc-v64), NOT yet committed/deployed.** A view-as-you-go pass ([[interactive-visual-qa]] / `QA.md`):
@@ -158,7 +191,8 @@
 >   accumulator (resets on a real break/idle; distinct from `createIdleGuard`). NOTE: build this active-time tracker
 >   ONCE — TODO B's "play time" metric reuses it. **✅ DESIGN DECISIONS (Ian 2026-06-23): (1) a real break/idle RESETS
 >   the 20-min active counter (not only a full app close); (2) the 5-min lock is GROWN-UP-DISMISSABLE (soft, not hard).**
->   Still NOT BUILT — design captured, ready to implement in a future session (Ian: do not code yet).
+>   **✅ BUILT + SHIPPED (csc-v65, 2026-06-23b) — see the top banner.** `engine/activetime.js` (the once-built active-time
+>   clock; also banks `stats.playMs` for B) + `ui.activePauseOverlay` + `app.installActivePause`; both design calls honored.
 > - **B. PARENT/TEACHER ("MONITOR") MODE — view + export/sync student data; many-to-many; groups.** A **monitor**
 >   (parent or teacher) can **VIEW a linked student's data** and **EXPORT it OR SYNC it to a Google Sheet / Google
 >   Doc**. Data to surface: **play time** (TODO A's active-time metric), other general metrics (sessions, accuracy,
