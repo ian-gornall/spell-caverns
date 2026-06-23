@@ -2,7 +2,7 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-23 • sw **csc-v65** — §37 A active-engagement auto-pause: ✅ SHIPPED + LIVE on prod, verified.
+> `C:\Users\iango\spell`  •  Last updated 2026-06-23 • sw **csc-v66** — operator ADMIN APP (view/edit all students + CSV export): ✅ SHIPPED + LIVE on prod, verified. (§37 A active-pause shipped csc-v65.)
 >
 > **WHERE THINGS STAND (read first):** prod is **csc-v65**, tree is CLEAN, all guards green. The §37 backlog Ian raised
 > 2026-06-22f is now essentially cleared in code: **A (active-pause) = ✅ BUILT + SHIPPED (csc-v65, this session)**,
@@ -260,8 +260,14 @@
 > FULL operator editing (prefs + difficulty + words-per-dig + `categories.level` re-aim + guarded reset/re-test), with the
 > CONDITION that a restore point is ALWAYS auto-snapshotted BEFORE any reset/re-test (reuse `profiles.pushSnapshot`; restore
 > exposed in the admin UI). **ALL design Qs settled.**
-> **✅ BUILT (2026-06-23c, branch `admin-app`, csc-v66) — test-first, all guards green; NOT yet deployed (awaiting Ian's
-> OK + `ADMIN_KEY` confirmed on prod).** What shipped on the branch: (1) `engine/cloudsync.reconcile` is now `adminRev`-aware
+> **✅ SHIPPED + LIVE on prod (2026-06-23c, csc-v66), verified.** Merged `admin-app`→`main` + pushed → Git-CD built +
+> deployed (prod csc-v65→**csc-v66** in ~45s; `check_deploy.mjs csc-v66` = DEPLOYED ✅). `qa_prod.mjs` = **ISSUES: none**
+> (kid app boots, Mastery+CNN load, drew 'a'→'a' — the precached reconcile change is clean). Live admin smoke (curl): `/admin/`
+> serves the admin HTML (links the shared `/styles.css` + `/admin/admin.js`); `/admin/admin.js` = 200 JS; **`/api/admin/families`
+> = 403 → `ADMIN_KEY` IS set on prod + the gate works** (503 would mean unset). `/admin` 307→`/admin/` (Cloudflare assets adds
+> the trailing slash before the worker; the worker's own `/admin` handler is a fallback). **OWED (Ian's):** an authenticated
+> end-to-end pass with the real key against real KV families (the harness used a mocked backend — it can't hold the secret).
+> Built test-first, all guards green. What shipped: (1) `engine/cloudsync.reconcile` is now `adminRev`-aware
 > (+3 tests); (2) NEW pure `engine/admin_view.js` (flattenContainer/Profile/Families) + `engine/admin_export.js` (toCSV, two
 > granularities, column registry) + `test/admin.test.js` (8 tests); (3) `worker.js` gained gated `/api/admin/families` (list,
 > SYNC_CODE_RE-filtered), `/api/admin/family/:code` GET/PUT(authoritative adminRev bump)/DELETE, + serves `/admin`; (4) the
