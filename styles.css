@@ -28,6 +28,7 @@
   --emerald: #7ae582; /* great    */
   --amethyst: #9d8df1; /* good     */
   --slate: #6c7a89; /* gentle "try again" */
+  --danger: #ff9aa2; /* destructive actions (admin reset/delete) + form errors (.gate-err) — a soft rose, on-palette, not alarm-red. See DESIGN_SYSTEM.md §1d. */
 
   --bg-0: #070a1c;
   --bg-1: #0e1430;
@@ -1406,7 +1407,7 @@ button.quest {
   background: rgba(0, 0, 0, 0.3);
   border: 2px solid var(--accent, #7cc4ff);
 }
-.gate-err { color: #ff9aa2; min-height: 18px; font-size: 0.9rem; margin: 6px 0; }
+.gate-err { color: var(--danger); min-height: 18px; font-size: 0.9rem; margin: 6px 0; }
 .gate-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 6px; }
 
 /* §30 Progress: the kid-visible "Words I'm learning" set (2-step pips toward known). */

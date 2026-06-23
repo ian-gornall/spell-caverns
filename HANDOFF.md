@@ -259,9 +259,23 @@
 > = viewable thumbnails + delete + a `labDisabled` lock; overview = flat list + group-by-family toggle. §11 Q3 RESOLVED:
 > FULL operator editing (prefs + difficulty + words-per-dig + `categories.level` re-aim + guarded reset/re-test), with the
 > CONDITION that a restore point is ALWAYS auto-snapshotted BEFORE any reset/re-test (reuse `profiles.pushSnapshot`; restore
-> exposed in the admin UI). **ALL design Qs now settled — DESIGN COMPLETE.** NEXT: BUILD test-first per `ADMIN_APP.md` §12
-> (shared reconcile+tests → pure `engine/admin_view.js`+`admin_export.js`+tests → worker `/api/admin/*` → `admin/` bundle →
-> qa_admin → deploy). Tree at design time: clean (only `.gitignore` + these docs).
+> exposed in the admin UI). **ALL design Qs settled.**
+> **✅ BUILT (2026-06-23c, branch `admin-app`, csc-v66) — test-first, all guards green; NOT yet deployed (awaiting Ian's
+> OK + `ADMIN_KEY` confirmed on prod).** What shipped on the branch: (1) `engine/cloudsync.reconcile` is now `adminRev`-aware
+> (+3 tests); (2) NEW pure `engine/admin_view.js` (flattenContainer/Profile/Families) + `engine/admin_export.js` (toCSV, two
+> granularities, column registry) + `test/admin.test.js` (8 tests); (3) `worker.js` gained gated `/api/admin/families` (list,
+> SYNC_CODE_RE-filtered), `/api/admin/family/:code` GET/PUT(authoritative adminRev bump)/DELETE, + serves `/admin`; (4) the
+> `admin/` bundle (index.html links `/styles.css` then `/admin/admin.css`; admin.js = login→overview[flat/grouped/search/sort]
+> →detail[view+edit+Save]→specimens[thumb/view/delete]→restore points→danger[reset/re-test snapshot-FIRST, delete
+> profile/family]→CSV export modal); (5) `styles.css` `--danger:#ff9aa2` token (`.gate-err`→`var(--danger)`); (6) sw.js skips
+> `/admin/*` + csc-v66 bump (+ src/version.js); (7) `build_deploy.mjs` copies `admin/`. QA: **347 unit tests** + NEW
+> `scripts/qa_admin.mjs` (20 checks, visual+functional: login→overview→detail→edit asserts the adminRev bump→CSV BOM/header
+> →phone cards, 0 console errors) all green; build verified to emit `deploy/admin/*`. Screenshots LOOKED at (caught + fixed a
+> real bug: number/password inputs showed as white default boxes — styles.css only themes `input[type=text]` — fixed in
+> admin.css). **DEPLOY STEP (when Ian approves):** merge `admin-app`→`main` → push (Git-CD builds csc-v66) → `check_deploy.mjs
+> csc-v66` + `qa_prod.mjs`; then `wrangler secret put ADMIN_KEY` must be set on prod (already used by feedback) → smoke `/admin`
+> live. The reconcile change ships in the kid bundle too (hence the precache bump) — back-compat: adminRev defaults 0, no
+> existing-sync behaviour change (covered by the new tests). Branch at build time otherwise clean.
 >
 > **🆕 SESSION 2026-06-22e — §36 STAY-IN-LEVEL ✅ SHIPPED + LIVE on prod (csc-v61), verified.** Pushed `main` →
 > Git-CD built + deployed (prod went csc-v60→**csc-v61** in ~30s); `check_deploy.mjs csc-v61` = DEPLOYED ✅;

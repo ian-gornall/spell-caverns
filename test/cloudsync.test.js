@@ -53,6 +53,31 @@ test('reconcile: identical -> inSync', () => {
   assert.equal(reconcile(a, b).action, 'inSync');
 });
 
+// --- adminRev: an authoritative admin edit wins the merge ONCE (ADMIN_APP.md §6) -----------
+// The admin app writes a container with a bumped `data.adminRev`; that revision outranks the
+// progressScore/savedAt rule so the child's device adopts the edit (even a reset that LOWERS
+// progress). Once the device adopts it, both carry the same adminRev and normal never-lose-
+// progress resumes — so the edit is a one-time baseline, not a permanent override.
+test('reconcile: a higher adminRev wins outright, even against far more progress', () => {
+  const adminEdit = env({ ...blob({ answers: 1 }), adminRev: 1 }, 50); // tiny progress, admin rev 1
+  const device = env(blob({ answers: 100 }), 9999); // lots of progress, adminRev absent (0)
+  assert.equal(reconcile(device, adminEdit).action, 'pull', 'device adopts the admin edit');
+  assert.equal(reconcile(adminEdit, device).action, 'push', 'admin edit pushes over the device');
+});
+
+test('reconcile: equal adminRev falls back to the progressScore rule', () => {
+  const more = env({ ...blob({ answers: 100 }), adminRev: 2 }, 50);
+  const less = env({ ...blob({ answers: 3 }), adminRev: 2 }, 9999);
+  assert.equal(reconcile(more, less).action, 'push', 'same adminRev -> more progress wins');
+  assert.equal(reconcile(less, more).action, 'pull');
+});
+
+test('reconcile: adminRev absent/0 -> existing behaviour unchanged', () => {
+  const a = env({ ...blob({ answers: 10 }), adminRev: 0 }, 100);
+  const b = env(blob({ answers: 10 }), 100); // no adminRev field at all
+  assert.equal(reconcile(a, b).action, 'inSync', 'adminRev 0 == absent, ties fall through');
+});
+
 test('reconcile always reports which envelope to use + a human reason', () => {
   const r = reconcile(env(blob({ answers: 100 }), 1), env(blob({ answers: 1 }), 2));
   assert.ok(r.use && r.use.data, 'returns the chosen envelope');

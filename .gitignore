@@ -11,6 +11,8 @@ scripts/qa_offline.png
 scripts/qa_active_pause.png
 scripts/qa_active_pause_break.png
 scripts/qa_active_pause_gate.png
+# Admin app QA screenshots (scratch — scripts/qa_admin.mjs).
+scripts/qa_admin/
 # Cached dictionary download for scripts/build_nonsense_blocklist.mjs (regenerable).
 words_alpha_tmp.txt
 # Exploratory QA screenshots (scratch artifacts from scripts/qa.mjs — regenerable).

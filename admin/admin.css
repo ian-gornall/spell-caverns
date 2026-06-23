@@ -1,0 +1,241 @@
+/* admin/admin.css — admin-ONLY additions on top of the shared styles.css.
+   Per DESIGN_SYSTEM.md §3/§7: no colour token or shared class is re-declared here; this is
+   the "additions + adult-tool density" layer. All colours come from styles.css :root. */
+
+/* Adult tool: the page IS scrollable and text IS selectable (the kid app disables both). */
+html,
+body {
+  overflow-y: auto;
+  height: auto;
+  min-height: 100%;
+}
+#admin-app {
+  -webkit-user-select: text;
+  user-select: text;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* §7a relaxed tap targets — adult accessibility (44px primary, 36–40px inline). Look unchanged. */
+#admin-app .btn {
+  min-height: 44px;
+  padding: 10px 18px;
+  font-size: 1rem;
+}
+#admin-app .btn.ghost {
+  min-height: 38px;
+  padding: 8px 14px;
+  font-size: 0.95rem;
+}
+/* styles.css only themes input[type=text]; carry the SAME dark treatment (token-based, no new
+   colours) to number/password inputs so admin forms match the app instead of showing white boxes. */
+#admin-app input[type='text'],
+#admin-app input[type='number'],
+#admin-app input[type='password'],
+#admin-app select {
+  min-height: 42px;
+  font-size: 1rem;
+  border-radius: 14px;
+  border: 2px solid var(--panel-border);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--ink);
+  padding: 0 14px;
+}
+
+/* Danger button (DESIGN_SYSTEM.md §1d/§4b) — references the shared --danger token. */
+.btn.danger {
+  color: var(--danger);
+  border-color: rgba(255, 154, 162, 0.45);
+}
+.btn.danger:hover {
+  background: rgba(255, 154, 162, 0.08);
+  box-shadow: 0 0 14px -4px rgba(255, 154, 162, 0.4);
+}
+
+/* Admin header bar. */
+.admin-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.admin-bar h1 {
+  font-size: 1.4rem;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.admin-bar .spacer {
+  flex: 1 1 auto;
+}
+.admin-bar input[type='text'] {
+  flex: 1 1 180px;
+  min-width: 140px;
+}
+
+/* §7b data table — adult density; new classes, not overrides. */
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.98rem;
+}
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--panel-border);
+  white-space: nowrap;
+}
+.admin-table thead th {
+  background: var(--panel);
+  cursor: pointer;
+  user-select: none;
+  position: sticky;
+  top: 0;
+}
+.admin-table thead th.sorted {
+  color: var(--accent);
+}
+.admin-table tbody tr {
+  cursor: pointer;
+}
+.admin-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.admin-tablewrap {
+  overflow-x: auto;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+}
+
+/* Mobile card list (base / <720px). */
+.admin-cards {
+  display: grid;
+  gap: 10px;
+}
+.admin-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.admin-card .ac-name {
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+.admin-card .ac-sub {
+  color: var(--ink-dim);
+  font-size: 0.92rem;
+  margin-top: 4px;
+}
+.admin-group-head {
+  margin: 14px 0 4px;
+  color: var(--ink-dim);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+/* Show the table only on wider screens; cards below (DESIGN_SYSTEM.md §6b: 720px admin). */
+.admin-tablewrap {
+  display: none;
+}
+@media (min-width: 720px) {
+  .admin-cards {
+    display: none;
+  }
+  .admin-tablewrap {
+    display: block;
+  }
+}
+
+/* Detail view: a definition grid inside .panel sections. */
+.kv {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.5fr) 1fr;
+  gap: 6px 12px;
+  align-items: center;
+}
+.kv .k {
+  color: var(--ink-dim);
+  font-size: 0.92rem;
+}
+.kv .v {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.kv input,
+.kv select {
+  width: 100%;
+}
+.word-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.word-chip {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 0.9rem;
+}
+.spec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
+}
+.spec-thumb {
+  position: relative;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.25);
+}
+.spec-thumb img {
+  display: block;
+  width: 100%;
+  height: 90px;
+  object-fit: contain;
+}
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* Export modal option groups reuse the shared overlay (.gate-overlay/.gate-box). */
+.exp-group {
+  margin: 10px 0;
+}
+.exp-group h4 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  color: var(--ink-dim);
+}
+.exp-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 4px 12px;
+}
+.exp-cols label,
+.exp-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+}
+.muted {
+  color: var(--ink-dim);
+}
+.center {
+  text-align: center;
+}

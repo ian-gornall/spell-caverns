@@ -268,7 +268,15 @@
 //      design calls). A real break — a ≥60s activity gap, a tab leave, or a profile switch — resets the
 //      20-min streak. The same clock banks lifetime play time into stats.playMs for the §37 B parent
 //      view ("build this once"). +test/activetime.test.js (8) + scripts/qa_active_pause.mjs.
-const VERSION = 'csc-v65';
+// csc-v66: ADMIN APP (ADMIN_APP.md / DESIGN_SYSTEM.md) — a standalone operator dashboard at
+//      /admin (separate bundle, NOT precached; kid SW now skips /admin/*) to view/edit ALL
+//      students + export configurable CSV. Worker gains gated /api/admin/* (ADMIN_KEY) over the
+//      same FAMILY_SYNC KV. Authoritative edits: engine/cloudsync.reconcile is now adminRev-aware
+//      (an admin edit's higher container.adminRev outranks progressScore, so the child's device
+//      adopts it on next sync — this is the one PRECACHED change, hence the bump). New pure
+//      engine/admin_view.js (flatten) + engine/admin_export.js (CSV) + the admin/ bundle. styles.css
+//      gains --danger:#ff9aa2 (.gate-err now references it). +test/admin.test.js + adminRev tests.
+const VERSION = 'csc-v66';
 
 const CORE = [
   '/',
@@ -423,6 +431,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/audio/') || url.pathname.startsWith('/api/')) return;
+  // The admin app (ADMIN_APP.md) is a separate bundle — the kid SW never caches it.
+  if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) return;
 
   event.respondWith(
     (async () => {

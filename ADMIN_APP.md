@@ -85,7 +85,7 @@ one envelope per opaque **family code** (a bare 8-char string — siblings share
 | Stats | `stats.sessionsPlayed`, `answers`, `correct` | accuracy = `correct/answers` |
 | Stats | `stats.byDay` | per-day `{answers,correct,gems,digs,crafted,…}` (for trends) |
 | Stats | `gems` | current gem balance |
-| Stats | `streak` | `{current,best,lastDay}` (`engine/streak.js`) |
+| Stats | `streak` | `{count,longest,lastPlayedDate,freezes}` (`engine/streak.js`) → surfaced as current/best/last-played |
 | Words | `categories.words[]` | per-word records: `word, category(new/learning/known/mastered/tricky), band, pattern, craftAttempts, craftCorrect, craftStreak, lastSeen` |
 | Catalog | `catalog.owned[]`, `milestoneDepth` | crystals collected |
 | Other | `specimens[]` | lab drawings (base64) — **viewable thumbnails**, deletable + lockable by admin (§7, §11 Q4) |

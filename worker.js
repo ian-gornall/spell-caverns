@@ -11,7 +11,7 @@
 //
 // KV: bind a namespace as FAMILY_SYNC (see wrangler.toml / DEPLOY_CLOUDFLARE.md). Until it's
 // bound, /api/sync returns 503 and the app runs on-device (client sync is best-effort).
-import { reconcile, isValidSyncCode, normalizeSyncCode } from './src/engine/cloudsync.js';
+import { reconcile, isValidSyncCode, normalizeSyncCode, SYNC_CODE_RE } from './src/engine/cloudsync.js';
 import { encryptPayload, buildVapidJWT } from './src/engine/webpush.js';
 import { VAPID_PUBLIC } from './src/engine/pushconfig.js';
 
@@ -234,6 +234,72 @@ async function handleFeedback(request, env, nowSec) {
   return new Response('method not allowed', { status: 405 });
 }
 
+// --- admin app (ADMIN_APP.md) ------------------------------------------------------------
+// Operator-only endpoints under /api/admin/*, all gated by the SAME ADMIN_KEY secret the
+// feedback archive uses (x-admin-key header). They read/edit/delete the family-sync
+// containers held in KV. Edits are AUTHORITATIVE: each PUT bumps the container's `adminRev`,
+// which outranks progressScore in the shared reconcile (engine/cloudsync), so the child's
+// device adopts the edit on its next /api/sync — even a reset that lowers progress.
+
+// Gate any /api/admin/* request. Returns a Response to short-circuit, or null when allowed.
+function requireAdmin(request, env) {
+  if (!env.FAMILY_SYNC) return json({ error: 'not configured (bind the FAMILY_SYNC KV namespace)' }, 503);
+  if (!env.ADMIN_KEY) return json({ error: 'ADMIN_KEY secret not set' }, 503);
+  if (request.headers.get('x-admin-key') !== env.ADMIN_KEY) return json({ error: 'forbidden' }, 403);
+  return null;
+}
+
+// GET /api/admin/families — every family container (full data; the client flattens it for the
+// overview + detail). Lists the whole namespace and keeps only bare sync-code keys — the other
+// keys (push:/adminpush:/feedback:) all contain a ':' so they fail SYNC_CODE_RE. Paginated.
+async function handleAdminFamilies(env) {
+  const kv = env.FAMILY_SYNC;
+  const out = [];
+  let cursor;
+  do {
+    const page = await kv.list({ cursor });
+    cursor = page.list_complete ? undefined : page.cursor;
+    for (const { name } of page.keys) {
+      if (!SYNC_CODE_RE.test(name)) continue; // skip push:/adminpush:/feedback: + anything non-code
+      const envelope = await kv.get(name, { type: 'json' });
+      if (envelope && envelope.data) {
+        out.push({ code: name, savedAt: envelope.savedAt || 0, adminRev: Number(envelope.data.adminRev) || 0, data: envelope.data });
+      }
+    }
+  } while (cursor);
+  return json(out);
+}
+
+// GET/PUT/DELETE /api/admin/family/:code — one family.
+//   GET    -> the stored envelope (or null)
+//   PUT    -> AUTHORITATIVE write of an edited container (bumps adminRev, stamps savedAt)
+//   DELETE -> remove the family entirely
+async function handleAdminFamily(request, env, code, nowMs) {
+  const kv = env.FAMILY_SYNC;
+  if (!SYNC_CODE_RE.test(code)) return json({ error: 'invalid code' }, 400);
+
+  if (request.method === 'GET') {
+    const envelope = await kv.get(code, { type: 'json' });
+    return json(envelope || null);
+  }
+  if (request.method === 'PUT') {
+    const body = await request.json().catch(() => null);
+    const data = body && (body.data && typeof body.data === 'object' ? body.data : body);
+    if (!data || !Array.isArray(data.profiles)) return json({ error: 'bad container' }, 400);
+    const existing = await kv.get(code, { type: 'json' });
+    const prevRev = (existing && existing.data && Number(existing.data.adminRev)) || Number(data.adminRev) || 0;
+    data.adminRev = prevRev + 1; // authoritative: wins the next reconcile so the device adopts it
+    const envelope = { app: 'crystal-spell-caverns', backupVersion: 1, ...(existing || {}), data, savedAt: nowMs, adminAt: nowMs };
+    await kv.put(code, JSON.stringify(envelope));
+    return json(envelope);
+  }
+  if (request.method === 'DELETE') {
+    await kv.delete(code);
+    return new Response(null, { status: 204 });
+  }
+  return new Response('method not allowed', { status: 405 });
+}
+
 async function handleSync(request, env) {
   const kv = env.FAMILY_SYNC; // KV namespace binding
   const url = new URL(request.url);
@@ -275,6 +341,19 @@ export default {
     if (url.pathname === '/api/push/admin') return handleAdminPush(request, env);
     if (url.pathname === '/api/push/test') return handlePushTest(request, env, Math.floor(Date.now() / 1000));
     if (url.pathname === '/api/feedback') return handleFeedback(request, env, Math.floor(Date.now() / 1000));
+    // Admin app (ADMIN_APP.md) — all /api/admin/* share one ADMIN_KEY gate.
+    if (url.pathname.startsWith('/api/admin/')) {
+      const gate = requireAdmin(request, env);
+      if (gate) return gate;
+      if (url.pathname === '/api/admin/families') return handleAdminFamilies(env);
+      const m = url.pathname.match(/^\/api\/admin\/family\/([^/]+)$/);
+      if (m) return handleAdminFamily(request, env, normalizeSyncCode(decodeURIComponent(m[1])), Date.now());
+      return json({ error: 'not found' }, 404);
+    }
+    // Serve the admin SPA shell for the bare /admin path (assets handle /admin/* files).
+    if (url.pathname === '/admin' || url.pathname === '/admin/') {
+      return env.ASSETS.fetch(new Request(new URL('/admin/index.html', url), request));
+    }
     // Everything else: serve the static asset (deploy/). With assets-first routing the Worker
     // usually isn't even invoked for assets; this fallback covers any non-asset path.
     return env.ASSETS.fetch(request);

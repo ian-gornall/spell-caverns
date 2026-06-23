@@ -41,6 +41,14 @@ export function progressScore(blob) {
   return answers * 10 + tick * 5 + tracked * 2 + gems;
 }
 
+// The authoritative admin-edit revision carried on a container (ADMIN_APP.md §6). The admin
+// app bumps `data.adminRev` on every edit; a strictly higher adminRev WINS reconcile outright
+// (below), so a child's device adopts an admin edit even when its own progressScore is higher
+// (e.g. a reset that lowers progress). Defaults 0 when absent, so existing syncs are unaffected.
+export function adminRev(env) {
+  return (env && env.data && Number(env.data.adminRev)) || 0;
+}
+
 // Decide the sync action between the LOCAL and REMOTE backup envelopes (either may be
 // null). Returns { action: 'push'|'pull'|'inSync', use, reason }:
 //   - push  : upload `use` (the local envelope) to Drive
@@ -52,6 +60,13 @@ export function reconcile(local, remote) {
   if (!l && !r) return { action: 'inSync', use: null, reason: 'nothing to sync' };
   if (!r) return { action: 'push', use: l, reason: 'no backup in Drive yet' };
   if (!l) return { action: 'pull', use: r, reason: 'no local progress yet' };
+
+  // An authoritative admin edit (higher adminRev) wins outright — over progress AND recency.
+  // Equal adminRev (incl. the common 0==0) falls through to the never-lose-progress rule.
+  const la = adminRev(l);
+  const ra = adminRev(r);
+  if (ra > la) return { action: 'pull', use: r, reason: 'admin edit (newer revision)' };
+  if (la > ra) return { action: 'push', use: l, reason: 'admin edit (newer revision)' };
 
   const ls = progressScore(l.data);
   const rs = progressScore(r.data);
