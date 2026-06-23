@@ -2,8 +2,90 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • sw **csc-v63** — ✅ SHIPPED + LIVE on prod, verified.
-> (csc-v63 = the §37 D RE-TEST fix on top of csc-v62; commit `da2e0c7`, prod csc-v62→csc-v63 verified.)
+> `C:\Users\iango\spell`  •  Last updated 2026-06-23 • sw **csc-v64** — ✅ SHIPPED + LIVE on prod, verified.
+> (csc-v64 = the §37 C exploratory design-QA pass; its only code change is a GEODE-BOSS "nullnull" fix — see top banner.
+> Commit `ada3df5`; pushed `main` → Git-CD built + deployed; `check_deploy.mjs csc-v64` = DEPLOYED ✅ (prod went
+> csc-v63→csc-v64); `qa_prod.mjs` = **ISSUES: none** (live APP_VERSION csc-v64, boots, Mastery renders, CNN loads + drew
+> 'a'→'a'). §37 A/B remain unbuilt — A's design is now settled (Ian 2026-06-23: idle resets the 20-min counter; the
+> 5-min lock is grown-up-dismissable), B still ⛔ design-first.)
+>
+> **🆕 SESSION 2026-06-23 — §37 C FULL EXPLORATORY DESIGN-QA PASS (mobile portrait + landscape) — ⚠️ done; ONE bug
+> found + FIXED (csc-v64), NOT yet committed/deployed.** A view-as-you-go pass ([[interactive-visual-qa]] / `QA.md`):
+> act → screenshot → LOOK → decide, across every screen at phone PORTRAIT (390×844) and LANDSCAPE (844×390), via the
+> live session harness (`qa_session.mjs` + `qa_do.mjs`; added a `resize WxH` action to flip orientation in place).
+> Drove real interactions in every mode. **Result: the app is in very good shape** — layouts are clean, zero horizontal
+> overflow anywhere, dynamic states (verdicts, Paused overlay, rewards) look polished. Findings:
+> - **🐛 FOUND + FIXED — GEODE BOSS reveal rendered the literal text "nullnull" (csc-v64).** When the boss cracks but no
+>   milestone crystal is granted, the reveal showed "nullnull" under the 💠. **Reachable in REAL play:**
+>   `grantMilestoneCrystal()` returns null once **all 24 crystals are collected** (late game → `nextFreeCrystal` is null),
+>   so EVERY subsequent geode boss would show "nullnull"; also any re-shown/already-granted depth. **Root cause:** native
+>   `body.replaceChildren(...)` **stringifies a `null` argument into a "null" text node** (unlike `el()`, which skips
+>   falsy children). `boss.js` `reveal()` passed two `crystal && el(...)` children (= `null` when crystal is null) straight
+>   in. **Fix:** wrap the child list and `.filter(Boolean)` before `replaceChildren` (in `boss.js`; same pattern also fixed
+>   in `admin_feedback.js`'s non-403 error path, which would've shown a stray "null" button-slot). **Guard:** new
+>   `scripts/qa_boss_nullname.mjs` (seeds an all-24-crystals-owned profile → opens a boss → cracks → asserts NO "null"
+>   text node; FAILED on old code = 2 null nodes, PASSES now). Verified both reveal paths by screenshot: null-crystal →
+>   💠 + zone + bonus only (clean); real-crystal → art + name + fact + Catalog button (unchanged). LESSON: a falsy `&&`
+>   child is SAFE inside `el(...)` but a "null" text node inside native `replaceChildren(...)` — always `.filter(Boolean)`.
+> - **Verified WORKING (no issue) across the walk:** onboarding (Tap-to-start gate → Geo intro → name → colour → age →
+>   sync → start), Craft (tap-build, **physical-keyboard type-in-Craft** csc-v62 #2, proper-noun **caps** "Jackson"→"J"+lower,
+>   tray wraps to 2 rows for 7-letter words, **one-shot diagnostic miss** "Good effort! +5💎·Next word" csc-v57, Paused
+>   overlay), Mastery (phone single-canvas draw layout + candidate row; **type mode** completes "swift"→Mastered +25💎;
+>   landscape = §31 WIDE multi-box + explicit "Check it"; QWERTY incl. apostrophe key), Mining (2-tile pick, speed reward),
+>   Catalog (purchase Amethyst −400💎, science facts present), Crystal Lab (spell→draw→name→**save specimen** full flow),
+>   cavern map (**tap-to-go-back** re-aims to Level 4 + crafts), Progress, Settings (all sections incl. grown-up gate),
+>   daily Geode (`geode.js` reveal verified clean by code review — no null-child pattern). Reward screens render fine.
+> - **By-design / not bugs (confirmed):** (a) `qa_phone_audit` = the **2 documented landscape home fails only** (`.menu-card.play`
+>   not co-visible — Craft hero fills the first landscape screen; the home still scrolls fine via the `.home` container).
+>   (b) Settings **Medium/Hard difficulty show 🔒** — intentional "unlock, never force" (`unlockedDifficulties`); tapping
+>   toasts how to unlock. (c) The Paused overlay firing during QA = the 45s idle guard + my slow manual pacing (synthetic
+>   clicks don't reset it) — not a bug; the overlay itself looks great.
+> - **Minor / NOTED (not fixed — judgement calls for Ian):** (1) Landscape **"Who's playing?"** pushes the profile cards
+>   ~93px below the fold (mascot+speech eats height); cards' tops are visible/tappable but it's a slight clip on a rarely-
+>   rotated screen. (2) Difficulty unlock keys off the **legacy `state.tracker`** (knownCount), while mastery/mining/levels
+>   use the §30 `categories` system — a possible divergence to reconcile someday (a player deep in categories but with a
+>   thin tracker sees Medium/Hard still locked). (3) THEORETICAL: home's Repair COUNT (tallies category records) vs the
+>   Repair SESSION (resolves words against the lexicon `byRank()` pool) could diverge if a category word ever falls out of
+>   the word list — harmless today (all words come from the lexicon); surfaced only by my seed using non-lexicon words.
+> - **Also un-staled a dev guard:** `scripts/qa_archive.mjs` was failing (click-timeout) because the `.version-line` 7-tap
+>   target moved INSIDE the collapsed "Grown-up settings" `<details>` (csc-v54) → not visible. Fixed the guard to open the
+>   disclosure first (`details.open = true` + `scrollIntoViewIfNeeded`); now 🎉 PASS (its 6 archive-render checks already
+>   confirmed the admin_feedback fix is fine). NOT my code change — a pre-existing drift surfaced by the QA loop.
+> - **All guards GREEN:** `npm test` (328) · `smoke` · `qa_overflow` (0 bleed) · `qa_phone_audit` (2 by-design only) ·
+>   `qa_boss_nullname` (new) · `qa_boss_debug` · `qa_archive` (fixed). `node --check` clean on every changed file.
+> - **Iteration 2 (deeper functional QA, no new bugs):** (a) **LONG-WORD** §37 #3 owed item now verified on emulator —
+>   11- ("application") and 13-letter ("advertisement") words in Mastery wrap their answer boxes (5+5+1 / 5+5+3) and
+>   co-fit with the full QWERTY (type) + canvas (draw) on phone portrait, zero overflow; Mastery box sizing now matches
+>   Craft. (b) **MULTI-PROFILE** — added a 2nd explorer (Sam, pink mascot; the sync step correctly skips for non-first-run),
+>   both show in "Who's playing?", and **kid-lock** set → enforced ("Enter Lex's picture lock" on select) → correct entry
+>   unlocks. (c) **RE-TEST** (csc-v63) live: header level 40→1, Mastery card disappears (re-locked), Mining stays locked,
+>   diagnostic re-runs with a "Re-testing — the next round finds the right level ✨" nudge. (d) **LARGE FONT** (root 22px ≈
+>   Android Largest): home + Craft render clean, no horizontal overflow (qa_overflow already covers ×1.3 at 8 sizes).
+>   Still owed: a REAL-device pass (Ian's) — the emulator can't reproduce iOS standalone.
+> - **Iteration 3 (secondary flows, no new bugs):** (a) **Feedback** — fun/hard ratings + note → "Thanks! +10 gems"
+>   toast, records + rewards. (b) **Printables** — both Word-list + Look-cover-write-check grid render with a populated
+>   source ("short a" pattern, 33 patterns in the dropdown); on-screen preview is dark, print output governed by
+>   `@media print`. (c) **Time machine** — lists seeded snapshots ("731/732 days ago — daily auto-save"); Restore is
+>   **confirm()-gated** before the rollback (good). (d) **Backup** — "Backup saved! → iCloud Drive" toast (export +
+>   download fires). (e) **Daily Geode** — seeded all-quests-done → "🎁 Geode ready!" chip → crack → "Geode cracked!
+>   +30 gems" + ratcheted-harder quests; clean reveal, NO null-child issue (confirms the geode.js code review). Three
+>   thorough QA passes total → exactly ONE real bug (the geode-boss "nullnull", fixed in csc-v64); the app is solid.
+> - **Iteration 4 (riskiest component + offline, no new bugs):** (a) **DRAW RECOGNIZER (on-device EMNIST CNN)** via
+>   `qa_mastery.mjs` — traced l→[l,i], o→[o], t→[t] (correct candidate offered first each time), built "lot" → "⭐ Mastered!
+>   +25"; the "Is it… l / i" candidate UI is clean and the recognition quality is good (the only ambiguity, l-vs-i, is
+>   correctly surfaced as two tappable candidates). (b) **OFFLINE PWA BOOT** — new guard `scripts/qa_offline.mjs`: warm
+>   load → `setOffline(true)` → hard reload → app still boots its first screen from the SW cache (precached version =
+>   csc-v64, no throw). **CONCLUSION:** 4 thorough QA iterations cover the entire harness-testable surface (every screen ×
+>   2 orientations, every mode, long words, multi-profile/kid-lock, re-test, large-font, feedback, printables, time
+>   machine, backup, daily geode, draw-CNN, offline). Only ONE real bug surfaced (geode "nullnull" → csc-v64). **The QA
+>   loop is wound down** — the only remaining untestable-here items are a REAL-device iOS pass (safe-area/standalone) and
+>   the live FAMILY-SYNC merge (needs the deployed Worker / a 2nd device), both of which are Ian's. **csc-v64 awaits
+>   review → deploy** (commit + push `main` → Git-CD → `check_deploy.mjs csc-v64` + `qa_prod.mjs`).
+> - **Owed:** a real-device pass remains Ian's (the harness can't reproduce iOS standalone/safe-area). **Ship step when
+>   approved:** commit + push `main` (Git-CD builds csc-v64) → `check_deploy.mjs csc-v64` + `qa_prod.mjs`. csc-v64 bumps
+>   sw.js + version.js; no new precached app file (the guard is a dev script). §37 A (active-pause) — design now
+>   SETTLED (Ian 2026-06-23: idle/break resets the 20-min counter; the 5-min lock is grown-up-dismissable) but still
+>   NOT BUILT (Ian: do not code yet). §37 B (monitor mode) remains ⛔ design-first (needs the identity/COPPA/sync design).
 >
 > **🆕 SESSION 2026-06-22f — §36e ONE-CORRECT PHASE MODEL + RETENTION REVIEW + TYPE-IN-CRAFT (csc-v62) — ✅ SHIPPED +
 > LIVE on prod, verified.** Committed `9a07d0f` + pushed `main` → Git-CD built + deployed (prod went csc-v61→**csc-v62**
@@ -74,8 +156,9 @@
 >   words they're currently **"learning"** (`categories.learningWords`/`learningProgress`) with the instruction
 >   **"practice with a partner or take a break"**. Auto-unlock after 5 min. Needs a NEW cumulative ACTIVE-time
 >   accumulator (resets on a real break/idle; distinct from `createIdleGuard`). NOTE: build this active-time tracker
->   ONCE — TODO B's "play time" metric reuses it. Open Qs: does any pause/idle reset the 20-min counter, or only a
->   full app close? Is the 5-min lock hard (no override) or grown-up-dismissable?
+>   ONCE — TODO B's "play time" metric reuses it. **✅ DESIGN DECISIONS (Ian 2026-06-23): (1) a real break/idle RESETS
+>   the 20-min active counter (not only a full app close); (2) the 5-min lock is GROWN-UP-DISMISSABLE (soft, not hard).**
+>   Still NOT BUILT — design captured, ready to implement in a future session (Ian: do not code yet).
 > - **B. PARENT/TEACHER ("MONITOR") MODE — view + export/sync student data; many-to-many; groups.** A **monitor**
 >   (parent or teacher) can **VIEW a linked student's data** and **EXPORT it OR SYNC it to a Google Sheet / Google
 >   Doc**. Data to surface: **play time** (TODO A's active-time metric), other general metrics (sessions, accuracy,
