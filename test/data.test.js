@@ -53,6 +53,9 @@ test('proper-noun capitalization: August is capitalized; the ambiguous common wo
   }
   // a sanity check on a known unambiguous proper noun
   assert.equal(byWord('europe')?.word, 'Europe');
+  // Ian 2026-06-22e: Jackson is a surname/name — capitalized like Williams/Smith (spelled
+  // lowercase with an auto-capital first letter via isProperWord/displayCase).
+  assert.equal(byWord('jackson')?.word, 'Jackson', 'Jackson should be capitalized (proper noun)');
 });
 
 test('every pattern id is one of the 63 canonical families', () => {

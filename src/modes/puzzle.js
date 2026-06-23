@@ -11,7 +11,7 @@
 // reward (positive reinforcement, never shaming). UI module — verified with Playwright.
 import { el, header, burst, toast, createIdleGuard, pulse, fitPlayArea, visibleTimeout } from '../ui.js';
 import { buildCraftPool, buildRepairSession, recommendNext } from '../engine/selection.js';
-import { fillLearning, recordCraft, repairWords, seedFromPlacement } from '../engine/categories.js';
+import { fillLearning, recordCraft, repairWords, seedFromPlacement, recordSetResult } from '../engine/categories.js';
 import { createPlacement, nextWord as placementNext, submit as placementSubmit, result as placementResult, serialize as placementSerialize } from '../engine/placement.js';
 import { byRank } from '../engine/lexicon.js';
 import { mulberry32 } from '../engine/distractors.js';
@@ -152,10 +152,38 @@ export function startPuzzle(ctx, params = {}) {
   window.addEventListener('resize', fit);
   ctx.onLeave(() => window.removeEventListener('resize', fit));
 
+  // §36e #2 (Ian 2026-06-22e): a PHYSICAL keyboard can build the word — typing a letter MOVES the
+  // matching tray tile into the next slot (exactly as tapping it), and Backspace returns the last
+  // placed tile. Always available alongside tap/drag; there is NO on-screen keyboard (the OS one's
+  // word-suggestion strip would give the spelling away and can't be disabled from the web). A
+  // physical keyboard has no suggestion strip, so it's safe.
+  const onPhysicalKey = (e) => {
+    if (locked) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return; // leave browser/OS shortcuts alone
+    if (e.key === 'Backspace') {
+      for (let i = slots.length - 1; i >= 0; i--) {
+        if (slots[i] && !slots[i].locked) { returnSlot(i); e.preventDefault(); return; }
+      }
+      return;
+    }
+    // Letters AND the apostrophe (for contractions like "they're"). The dataset uses a STRAIGHT '
+    // (the tile letter), so a typed curly ’ is normalised to it. Anything else (digits, etc.) ignored.
+    const apostrophe = e.key === "'" || e.key === '’';
+    if (!apostrophe && !/^[a-zA-Z]$/.test(e.key)) return;
+    const letter = apostrophe ? "'" : e.key.toLowerCase();
+    const tile = trayTiles.find((t) => !t.used && t.letter === letter); // first free matching tile
+    if (!tile) return; // no such letter available right now — ignore (don't beep at a wrong key)
+    placeFromTray(tile.id); // same path as a tap: sfx, hint-clock reset, render + complete-check
+    e.preventDefault();
+  };
+  window.addEventListener('keydown', onPhysicalKey);
+  ctx.onLeave(() => window.removeEventListener('keydown', onPhysicalKey));
+
   // --- per-session state ----------------------------------------------------
   let index = 0;
   let combo = 0;
   let earned = 0;
+  let setClean = 0; // §36e: clean first-try builds this set → run accuracy for retention review
 
   // --- per-word state -------------------------------------------------------
   let target = '';
@@ -534,6 +562,7 @@ export function startPuzzle(ctx, params = {}) {
 
     if (firstTry) {
       combo += 1;
+      setClean += 1; // §36e: a clean first-try build counts toward this run's accuracy
       ctx.store.recordCombo(combo); // best combo today (daily quest)
       const verdict = gradeAnswer({ correct: true, responseMs, combo, craft: true, rng });
       earned += verdict.points;
@@ -678,6 +707,9 @@ export function startPuzzle(ctx, params = {}) {
     guard.stop(); // crafting reward is a menu, not active play
     ctx.store.recordSessionPlayed();
     ctx.store.noteWaveEarned(earned); // personal best ("beat your best")
+    // §36e retention review: a completed CRAFT run scoring < 60% queues mastered words to resurface
+    // in the NEXT craft set (count scales with the miss rate). The placement diagnostic is NOT a run.
+    if (!placement) recordSetResult(state.categories, 'craft', setClean, session.length);
     ctx.save();
     // Broke through to a new cavern depth? Hand off to the GEODE BOSS milestone.
     if (ctx.depth() > ctx.store.lastMilestoneDepth()) {

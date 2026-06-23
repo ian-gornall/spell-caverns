@@ -42,8 +42,10 @@ export const CATEGORIES = {
   TRICKY: 'tricky',
 };
 
-// Consecutive correct CRAFTS required to move learning → known ("twice in a row").
-export const PROMOTE_STREAK = 2;
+// Clean CRAFTS required to move learning → known. §36e (Ian 2026-06-22e): ONE clean construct
+// moves a word into the mastery phase (was "twice in a row"). Kept as a named constant so the
+// progress pips, the recommender and the placement seeding all read the same threshold.
+export const PROMOTE_STREAK = 1;
 // Bounded craft-outcome history kept for the adaptive-level policy (step 2 reads it).
 const RECENT_MAX = 8;
 
@@ -65,6 +67,8 @@ export function createCategoryState({ setSize = 10, level = 1 } = {}) {
     words: new Map(), // word -> record (see ensureRecord); UNSEEN words are simply absent
     recent: [], // recent craft outcomes (booleans), newest last — for adaptive level
     order: 0, // bumps on every record creation
+    seen: 0, // §36e: monotonic "recency clock" — bumped on every craft/draw → record.lastSeen
+    reviewPending: { craft: 0, mastery: 0 }, // §36e: review words to fold into the NEXT set, per mode
     peakKnownish: 0, // high-water of (#known + #mastered) — gates the mastery unlock
     peakMastered: 0, // high-water of #mastered — gates the mining unlock
     peakLevel: Math.max(1, Math.round(level) || 1), // §36 D4: deepest cavern level reached (map frontier)
@@ -104,6 +108,7 @@ function ensureRecord(state, word, poolEntry) {
       craftAttempts: 0,
       craftCorrect: 0,
       order: ++state.order,
+      lastSeen: 0, // §36e: set on each craft/draw; drives oldest-first review selection
     };
     state.words.set(k, rec);
   }
@@ -253,6 +258,7 @@ export function recordCraft(state, word, correct, opts = {}) {
   const rec = ensureRecord(state, word, idx.get(recKey(word)));
   rec.craftAttempts += 1;
   if (correct) rec.craftCorrect += 1;
+  rec.lastSeen = ++state.seen; // §36e: this word is now the most-recently-seen
   pushRecent(state, correct);
 
   const before = rec.category;
@@ -287,22 +293,60 @@ export function recordCraft(state, word, correct, opts = {}) {
 }
 
 // Record one MASTERY (draw) result. Draw mode serves KNOWN words; mastered is set ONLY here.
-//   known + success → mastered ; known + miss → stays known ;
-//   mastered + success → stays mastered ; mastered + miss → known.
+// §36e (Ian 2026-06-22e — the ONE-correct phase model):
+//   known + success    → mastered
+//   mastered + success → stays mastered (a clean review pass)
+//   known OR mastered + MISS → "breaks" the word back to LEARNING (a cracked crystal): it must
+//                              pass BOTH phases again (construct, then mastery). NOT a one-rung drop.
 // A draw on any other category is a no-op (draw mode never serves it).
 export function recordDraw(state, word, correct) {
   const rec = getRecord(state, word);
   if (!rec) return { word, to: CATEGORIES.NEW, noop: true };
-  const before = rec.category;
-  if (rec.category === CATEGORIES.KNOWN) {
-    if (correct) rec.category = CATEGORIES.MASTERED;
-  } else if (rec.category === CATEGORIES.MASTERED) {
-    if (!correct) rec.category = CATEGORIES.KNOWN;
-  } else {
+  if (rec.category !== CATEGORIES.KNOWN && rec.category !== CATEGORIES.MASTERED) {
     return { word, to: rec.category, noop: true };
+  }
+  const before = rec.category;
+  rec.lastSeen = ++state.seen; // §36e: drawing a word makes it the most-recently-seen
+  if (correct) {
+    if (rec.category === CATEGORIES.KNOWN) rec.category = CATEGORIES.MASTERED; // the one path to mastered
+    // mastered + correct → stays mastered (review confirmed)
+  } else {
+    demoteToLearning(state, rec); // §36e: a missed draw BREAKS it → learning/cracked, redo both phases
   }
   bumpPeaks(state);
   return { word, from: before, to: rec.category, noop: false };
+}
+
+// ---- §36e retention review (Ian 2026-06-22e) ----
+// PER MODE, when a completed set (a "run") scores BELOW 60%, fold previously-MASTERED words back
+// into the NEXT set for review (oldest-last-seen first) so mastery doesn't decay while the explorer
+// pushes deeper. The count scales with how far below the line the run fell:
+//   pending = max(0, ceil(0.6*total) - correct)   →  6-word set: 3/6→1, 2/6→2, 1/6→3, 0/6→4
+// Only CONSTRUCT (craft) and MASTERY (draw) answers count toward a run — mining never changes a
+// word's status, so it never drives review. The pending count is OVERWRITTEN at the end of every
+// set (a good set sets it back to 0), so review only ever rides one set forward at a time.
+export function recordSetResult(state, mode, correct, total) {
+  if (!state.reviewPending) state.reviewPending = { craft: 0, mastery: 0 };
+  const t = Math.max(0, Math.round(total) || 0);
+  const c = Math.max(0, Math.round(correct) || 0);
+  const need = Math.ceil(0.6 * t); // the minimum correct to be AT 60% (ceil(0.6*6)=4, ceil(0.6*5)=3)
+  const n = t > 0 && c < need ? need - c : 0;
+  state.reviewPending[mode] = n;
+  return n;
+}
+export function pendingReview(state, mode) {
+  return (state.reviewPending && state.reviewPending[mode]) || 0;
+}
+// The mastered words to resurface for `mode` right now: the `pendingReview` OLDEST-last-seen ones
+// (the ones not practised for the longest time). Pure read; selection folds them into the pool.
+export function reviewWords(state, mode) {
+  const n = pendingReview(state, mode);
+  if (n <= 0) return [];
+  return [...state.words.values()]
+    .filter((r) => r.category === CATEGORIES.MASTERED)
+    .sort((a, b) => (a.lastSeen || 0) - (b.lastSeen || 0) || a.order - b.order)
+    .slice(0, n)
+    .map((r) => r.word);
 }
 
 // ---- adaptive level primitives (the WHEN-to-move policy lives in the selection layer) ----
@@ -516,6 +560,8 @@ export function serializeCategoryState(state) {
     level: state.level,
     recent: [...state.recent],
     order: state.order,
+    seen: state.seen || 0, // §36e recency clock
+    reviewPending: { craft: 0, mastery: 0, ...(state.reviewPending || {}) }, // §36e per-mode review queue
     peakKnownish: state.peakKnownish || 0,
     peakMastered: state.peakMastered || 0,
     peakLevel: state.peakLevel || state.level || 1,
@@ -529,6 +575,10 @@ export function deserializeCategoryState(data) {
   state.setSize = Math.max(1, Math.round(data.setSize) || 10);
   state.recent = Array.isArray(data.recent) ? data.recent.map(Boolean) : [];
   state.order = Number.isFinite(data.order) ? data.order : 0;
+  state.seen = Number.isFinite(data.seen) ? data.seen : 0; // §36e recency clock
+  state.reviewPending = data.reviewPending && typeof data.reviewPending === 'object'
+    ? { craft: Number(data.reviewPending.craft) || 0, mastery: Number(data.reviewPending.mastery) || 0 }
+    : { craft: 0, mastery: 0 };
   state.peakKnownish = Number.isFinite(data.peakKnownish) ? data.peakKnownish : 0;
   state.peakMastered = Number.isFinite(data.peakMastered) ? data.peakMastered : 0;
   state.peakLevel = Number.isFinite(data.peakLevel) ? data.peakLevel : 0; // §36 D4; re-anchored below

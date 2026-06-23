@@ -2,11 +2,10 @@
 // (src/engine/selection.js). Pure; runs under `node --test`.
 //
 // Selection turns the category state machine into concrete per-mode word lists:
-//   - CRAFT   = the productive-struggle hub: FOCUS the learning set, balanced with a
-//               little known (review) + tricky (repair). ANY word may appear; learning leads.
-//   - MINING  = recognition: KNOWN-or-better words only (known ∪ mastered).
-//   - MASTERY = the draw test: KNOWN words lead (the ones to master); mastered may follow.
-// Plus the adaptive level: a MEDIUM-cadence up/down read off a short run of craft results.
+//   - CRAFT   = the productive-struggle hub: FOCUS the learning set + tricky (repair), plus any
+//               §36e mastered REVIEW words queued by a sub-60% set. Learning leads.
+//   - MINING  = recognition: MASTERED words only (Ian 2026-06-22e: mining is gated to mastered).
+//   - MASTERY = the draw test: KNOWN words lead (the ones to master); queued review may follow.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -57,7 +56,7 @@ test('buildCraftPool focuses the learning set (composition is mostly learning wo
   assert.ok(fromLearning >= 4, 'the bulk of a craft session is the learning set');
 });
 
-test('buildCraftPool balances in a little KNOWN (review) + TRICKY (repair) when slots allow', () => {
+test('buildCraftPool mixes in TRICKY (cracked-overflow repair) when slots allow; KNOWN words stay in mastery', () => {
   const st = createCategoryState({ setSize: 4, level: 1 });
   fillLearning(st, POOL); // cat,bat,hat,map learning
   makeKnown(st, 'cat'); // cat → known (refills with rat)
@@ -68,9 +67,11 @@ test('buildCraftPool balances in a little KNOWN (review) + TRICKY (repair) when 
   assert.equal(getCat(st, 'hat'), CATEGORIES.TRICKY);
   const out = buildCraftPool(st, POOL, { length: 8, rng });
   const cats = new Set(out.map((w) => getCat(st, w.word)));
-  // with extra room beyond the learning set, review + repair words are mixed in
+  // learning leads; with extra room the tricky (cracked) word is folded in for repair
   assert.ok(cats.has(CATEGORIES.LEARNING));
-  assert.ok([...cats].some((c) => c === CATEGORIES.KNOWN || c === CATEGORIES.TRICKY));
+  assert.ok(cats.has(CATEGORIES.TRICKY));
+  // §36e: KNOWN words are the mastery phase's job — craft no longer auto-serves them as review
+  assert.ok(!cats.has(CATEGORIES.KNOWN), 'known words are drawn (mastery), not re-crafted');
   // never duplicates a word
   assert.equal(new Set(out.map((w) => w.word)).size, out.length);
 });
@@ -99,19 +100,17 @@ test('buildRepairSession pads with learning words when few are cracked', () => {
   assert.ok(out.some((w) => w.word === 'cat'));
 });
 
-test('buildMiningPool serves ONLY known-or-better words (no learning / tricky / new)', () => {
+test('buildMiningPool serves ONLY MASTERED words (Ian 2026-06-22e: mining is gated to mastered)', () => {
   const st = createCategoryState({ setSize: 4, level: 1 });
   fillLearning(st, POOL);
   makeKnown(st, 'cat');
   makeKnown(st, 'bat');
-  recordDraw(st, 'cat', true); // cat → mastered
+  recordDraw(st, 'cat', true); // cat → mastered; bat stays merely KNOWN
   const out = buildMiningPool(st, POOL, { length: 10, rng });
-  const allowed = new Set([CATEGORIES.KNOWN, CATEGORIES.MASTERED]);
-  assert.ok(out.length >= 2);
-  out.forEach((w) => assert.ok(allowed.has(getCat(st, w.word)), `${w.word} is ${getCat(st, w.word)}`));
-  // both the known 'bat' and the mastered 'cat' are eligible
+  out.forEach((w) => assert.equal(getCat(st, w.word), CATEGORIES.MASTERED, `${w.word} is ${getCat(st, w.word)}`));
   const words = out.map((w) => w.word);
-  assert.ok(words.includes('bat') && words.includes('cat'));
+  assert.ok(words.includes('cat'), 'the mastered word is eligible');
+  assert.ok(!words.includes('bat'), 'a merely-known word is NOT mined anymore');
 });
 
 test('buildMasteryPool leads with KNOWN (unmastered) words — the ones still to master', () => {

@@ -60,6 +60,10 @@ try {
       const tileLower = check.tileText === check.w[0]; // data target is lowercased → tile is lowercase
       if (!tileLower) issues.push(`FAIL: tray tile for "${check.w}" was not lowercase ("${check.tileText}")`);
       if (!slotUpper) issues.push(`FAIL: proper noun "${check.w}" slot 0 rendered "${check.slot0}", expected "${check.w[0].toUpperCase()}"`);
+      // VISUAL guard (Ian 2026-06-22f): textContent "W" is not enough — a CSS text-transform:lowercase
+      // would still RENDER it lowercase (the csc-v60→v61 bug). Assert slot 0 isn't being lowercased.
+      const tt = await page.evaluate(() => getComputedStyle(document.querySelectorAll('.slots .slot')[0]).textTransform);
+      if (tt === 'lowercase') issues.push(`FAIL(visual): .slot text-transform:lowercase re-lowercases the "${check.w[0].toUpperCase()}" — proper caps look broken`);
 
       // place the SECOND letter too — it must stay lowercase
       const check2 = await page.evaluate(() => {

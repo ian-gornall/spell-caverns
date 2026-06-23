@@ -981,7 +981,10 @@ button.quest {
   border-radius: 16px;
   font-size: calc(clamp(1.5rem, 6vw, 2.4rem) * var(--play-scale, 1));
   font-weight: 800;
-  text-transform: lowercase;
+  /* §36e #1 fix (Ian 2026-06-22f): NO text-transform here. displayCase() (engine/puzzle.js) already
+     lowercases every letter EXCEPT a proper noun's FIRST letter, which it capitalizes. A blanket
+     text-transform:lowercase was silently re-lowercasing that capital — proper-noun caps LOOKED
+     broken even though the DOM text was "J". Tiles stay lowercase via the (lowercased) data. */
   /* Empty slots read as glowing CRYSTAL SOCKETS waiting to be filled — an inset well
      with a faint cyan inner glow + a soft dashed rim — not a flat web-form input. */
   background: radial-gradient(circle at 50% 32%, rgba(54, 241, 205, 0.12), rgba(0, 0, 0, 0.32) 72%);
@@ -1234,8 +1237,10 @@ button.quest {
   position: relative;
   flex: 1 1 0; /* equal columns that shrink to fit a long word on one line */
   min-width: 0;
-  max-width: 96px;
-  height: calc(clamp(60px, 11vw, 120px) * var(--play-scale, 1));
+  /* §36e #3 (Ian 2026-06-22e): match Craft's .slot proportions for a consistent answer-row feel —
+     same max width + height clamps as a craft tile (long words still shrink below this on one row). */
+  max-width: calc(clamp(44px, 13vw, 72px) * var(--play-scale, 1));
+  height: calc(clamp(50px, min(15vw, 12vh), 84px) * var(--play-scale, 1));
   border-radius: 16px;
   /* same glowing crystal-socket look as the empty .slot, so a box reads as "write here" */
   background: radial-gradient(circle at 50% 32%, rgba(54, 241, 205, 0.12), rgba(0, 0, 0, 0.32) 72%);
@@ -1260,9 +1265,10 @@ button.quest {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: clamp(1.7rem, 5vw, 2.6rem);
+  /* §36e #3: same letter size as a craft .slot, so a built word reads identically across modes */
+  font-size: calc(clamp(1.5rem, 6vw, 2.4rem) * var(--play-scale, 1));
   font-weight: 800;
-  text-transform: lowercase;
+  /* §36e #1 fix: no text-transform — displayCase() controls casing (proper-noun first letter is capital) */
   color: var(--ink);
   pointer-events: none;
 }
@@ -3220,17 +3226,17 @@ html.readable .crystal-name {
   .draw-hint {
     font-size: 0.82rem;
   }
-  /* §11/§34-fix: Mastery word-display tiles are SMALLER on phones so a long word (e.g.
-     "international", 13 letters) wraps to ~2 rows instead of 3 big ones — that 3-row block
-     dominated the screen and crowded the keypad ("cramped, letters overlap their borders").
-     Phone DRAW mode draws on the separate canvas, so smaller display tiles don't hurt it. */
+  /* §36e #3 (Ian 2026-06-22e): Mastery's answer tiles now MATCH Craft's .slot proportions for a
+     consistent feel across modes (was deliberately shrunk in §11/§34 to keep a long word like
+     "international" from crowding the keypad). fitPlayArea (--play-scale) shrinks the whole play
+     area to fit a long word on a phone, so the bigger tiles still co-fit with the keypad. */
   .mastery .draw-slots .slot {
-    width: calc(clamp(30px, 7.6vw, 44px) * var(--play-scale, 1));
-    height: calc(clamp(34px, 8vw, 48px) * var(--play-scale, 1));
-    font-size: calc(clamp(1.1rem, 4.4vw, 1.6rem) * var(--play-scale, 1));
+    width: calc(clamp(44px, 13vw, 72px) * var(--play-scale, 1));
+    height: calc(clamp(50px, min(15vw, 12vh), 84px) * var(--play-scale, 1));
+    font-size: calc(clamp(1.5rem, 6vw, 2.4rem) * var(--play-scale, 1));
   }
   .draw-slots {
-    gap: calc(7px * var(--play-scale, 1));
+    gap: calc(10px * var(--play-scale, 1));
   }
 }
 

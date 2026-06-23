@@ -5,10 +5,10 @@
 // owns gems/speed/recency; this module owns WHICH words each mode serves. (§36: the old
 // adaptive level mover lived here and was removed — see the note where it used to be.)
 //
-//   - CRAFT   (productive-struggle hub): FOCUS the learning set, balanced with a little
-//             KNOWN (review) + TRICKY (repair). Any word may appear; learning leads.
-//   - MINING  (recognition): KNOWN-or-better only (known ∪ mastered) — never learning/new.
-//   - MASTERY (draw test):   KNOWN words lead (the ones still to master); mastered may follow.
+//   - CRAFT   (productive-struggle hub): FOCUS the learning set + TRICKY (cracked-overflow repair),
+//             plus §36e mastered REVIEW words queued by a sub-60% run. Learning leads.
+//   - MINING  (recognition): MASTERED only (Ian 2026-06-22e: mining is gated to mastered).
+//   - MASTERY (draw test):   KNOWN words lead (the ones still to master); queued review may follow.
 //
 // Imports nothing browser-specific so it runs under `node --test`.
 import { shuffle } from './distractors.js';
@@ -20,6 +20,7 @@ import {
   masteredWords,
   trickyWords,
   repairWords,
+  reviewWords,
   unlocks,
   getRecord,
 } from './categories.js';
@@ -31,20 +32,17 @@ const entriesFor = (pool, words) => {
   return words.map((w) => idx.get(String(w).toLowerCase())).filter(Boolean);
 };
 
-// CRAFT: focus the learning set, reserving up to ~25% of the session for interleaved
-// review (tricky repair first, then known, then mastered). Returns up to `length` entries,
-// de-duplicated and shuffled (craft is recall — interleaving aids transfer). The caller keeps
-// the learning set full (categories.fillLearning) so it is never starved.
+// CRAFT: focus the learning set. §36e (Ian 2026-06-22e): the §5 retention REVIEW words (mastered
+// words resurfaced after a sub-60% run) are GUARANTEED a place in the next set (they're the whole
+// point of the review), then learning fills the bulk, then any TRICKY (cracked-overflow) repair.
+// KNOWN words are NOT auto-served here anymore — they belong to the mastery (draw) phase. Returns up
+// to `length` de-duplicated, shuffled entries (craft is recall — interleaving aids transfer); the
+// caller keeps the learning set full (categories.fillLearning) so it is never starved.
 export function buildCraftPool(state, pool, opts = {}) {
   const { length = 10, rng = Math.random } = opts;
+  const review = entriesFor(pool, reviewWords(state, 'craft')); // §36e: resurfaced mastered words
   const learn = entriesFor(pool, learningWords(state));
-  const review = [
-    ...entriesFor(pool, trickyWords(state)), // repair first
-    ...entriesFor(pool, knownWords(state)), // then light review
-    ...entriesFor(pool, masteredWords(state)), // then over-learned confirmation
-  ];
-  const reviewSlots = Math.min(review.length, Math.floor(length * 0.25));
-  const learnSlots = Math.max(0, length - reviewSlots);
+  const tricky = entriesFor(pool, trickyWords(state)); // cracked words evicted on overflow
 
   const picked = [];
   const seen = new Set();
@@ -54,11 +52,9 @@ export function buildCraftPool(state, pool, opts = {}) {
       seen.add(w.word);
     }
   };
-  shuffle(learn, rng).slice(0, learnSlots).forEach(add);
-  review.slice(0, reviewSlots).forEach(add); // review is already priority-ordered
-  // top up if either pool was thin: more learning, then any remaining review.
-  shuffle(learn, rng).forEach(add);
-  review.forEach(add);
+  shuffle(review, rng).forEach(add); // §36e: the resurfaced mastered words come back FIRST (guaranteed)
+  shuffle(learn, rng).forEach(add); // then the learning set (the bulk of a normal run)
+  shuffle(tricky, rng).forEach(add); // then any cracked-overflow repair if room remains
   return shuffle(picked, rng).slice(0, length);
 }
 
@@ -82,21 +78,22 @@ export function buildRepairSession(state, pool, opts = {}) {
   return picked.slice(0, length); // keep cracked-first order (no final reshuffle)
 }
 
-// MINING: recognition practice on words the learner can already produce — KNOWN ∪ MASTERED
-// only (a mastered word "may appear in all modes again"). Most-recently-proven last for variety.
+// MINING: recognition practice on words the learner has fully proven — MASTERED only (Ian
+// 2026-06-22e: mining is gated to mastered, not merely known). Shuffled for variety.
 export function buildMiningPool(state, pool, opts = {}) {
   const { length = 10, rng = Math.random } = opts;
-  const words = [...knownWords(state), ...masteredWords(state)];
-  return shuffle(entriesFor(pool, words), rng).slice(0, length);
+  return shuffle(entriesFor(pool, masteredWords(state)), rng).slice(0, length);
 }
 
-// MASTERY (draw): lead with KNOWN-but-not-yet-mastered words (the actual goal); top up with
-// mastered words for spaced re-confirmation (a draw miss on a mastered word demotes it to known).
+// MASTERY (draw): lead with KNOWN-but-not-yet-mastered words (the actual goal); §36e appends only
+// the QUEUED review words (oldest mastered, resurfaced after a sub-60% mastery run) — NOT every
+// mastered word — so mastery focuses on the goal plus a controlled review dose. A draw miss on a
+// resurfaced word BREAKS it back to learning (categories.recordDraw).
 export function buildMasteryPool(state, pool, opts = {}) {
   const { length = 10, rng = Math.random } = opts;
   const lead = shuffle(entriesFor(pool, knownWords(state)), rng);
-  const tail = shuffle(entriesFor(pool, masteredWords(state)), rng);
-  return [...lead, ...tail].slice(0, length);
+  const review = shuffle(entriesFor(pool, reviewWords(state, 'mastery')), rng);
+  return [...lead, ...review].slice(0, length);
 }
 
 // §36 stay-in-level (Ian 2026-06-22d): the MEDIUM-cadence adaptive level mover (it pushed the level

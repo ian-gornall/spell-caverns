@@ -4,12 +4,13 @@
 // §30 introduces DISCRETE word categories layered on top of the continuous
 // mastery score (progress.js stays as-is for gems/speed/recency):
 //   new → learning → known → mastered, plus `tricky` (a demotion/overflow bucket).
-// Hard rules (Ian 2026-06-19d):
+// Hard rules (Ian 2026-06-22e — the ONE-correct phase model):
 //   - learning = a fixed working set of EXACTLY [setSize] words, always kept full;
-//   - known   = crafted correctly TWICE IN A ROW (a miss → back to learning);
-//   - mastered = a known word with ONE success in MASTERY (draw) mode (set ONLY there;
-//               a draw miss on a mastered word → back to known; a draw miss on a merely
-//               known word leaves it known);
+//   - known   = crafted correctly ONCE (one clean construct → the mastery phase). A craft miss
+//               on a previously-correct word → back to learning ("cracked", redo both phases);
+//   - mastered = a known word with ONE success in MASTERY (draw) mode (set ONLY there). A draw
+//               MISS on a known OR mastered word "breaks" it → back to learning (cracked): it
+//               must pass BOTH phases again (construct, then mastery);
 //   - tricky  = the hardest/lowest-accuracy words evicted to keep learning at setSize
 //               (on overflow OR a level demotion) — the demotion/overflow pool;
 //   - refill priority when a slot frees: new-on-level → on-level-or-lower tricky → level-up;
@@ -69,7 +70,7 @@ function fresh(opts = {}) {
   return st;
 }
 
-// Drive a learning word to KNOWN: PROMOTE_STREAK correct crafts in a row.
+// Drive a learning word to KNOWN: PROMOTE_STREAK clean crafts (one, in the §36e model).
 function makeKnown(st, word) {
   for (let i = 0; i < PROMOTE_STREAK; i++) recordCraft(st, word, true, { pool: POOL });
 }
@@ -89,12 +90,11 @@ test('fillLearning fills to setSize with the lowest-rank NEW words at the curren
   for (const w of learningWords(st)) assert.equal(getCat(st, w), CATEGORIES.LEARNING);
 });
 
-test('two correct crafts IN A ROW promote a word to known and refill the freed slot', () => {
+test('ONE clean craft promotes a word to known and refills the freed slot (§36e: 1 correct → mastery phase)', () => {
   const st = fresh();
+  assert.equal(PROMOTE_STREAK, 1); // §36e: a single clean construct moves a word to the mastery phase
   recordCraft(st, 'cat', true, { pool: POOL });
-  assert.equal(getCat(st, 'cat'), CATEGORIES.LEARNING); // one correct is not enough
-  recordCraft(st, 'cat', true, { pool: POOL });
-  assert.equal(getCat(st, 'cat'), CATEGORIES.KNOWN); // two in a row → known
+  assert.equal(getCat(st, 'cat'), CATEGORIES.KNOWN); // one clean build → known
   assert.deepEqual(knownWords(st), ['cat']);
   // the freed learning slot is refilled with the next new tier-1 word (rank 4 = 'map')
   assert.equal(learningWords(st).length, 3);
@@ -111,8 +111,7 @@ test('a proper noun (capitalized in data) is ONE record across fill + lowercased
   const st = createCategoryState({ setSize: 3, level: 1 });
   fillLearning(st, POOL2); // creates a 'Sam' learning record (lowest-rank new word in band 1)
   assert.ok(learningWords(st).some((w) => w.toLowerCase() === 'sam'), 'Sam should be in the learning set');
-  recordCraft(st, 'sam', true, { pool: POOL2 }); // the UI crafts with the LOWERCASED target
-  recordCraft(st, 'sam', true, { pool: POOL2 }); // 2 in a row → known
+  recordCraft(st, 'sam', true, { pool: POOL2 }); // the UI crafts with the LOWERCASED target → known (§36e: 1 clean build)
   const recs = [...st.words.values()].filter((r) => r.word.toLowerCase() === 'sam');
   assert.equal(recs.length, 1, 'a proper noun must not split into two case-variant records');
   assert.equal(recs[0].category, CATEGORIES.KNOWN, 'the lowercased craft must progress the SAME record');
@@ -177,9 +176,9 @@ test('a NEVER-correct learning word is NOT repair (it is new learning, not a reg
 
 test('a word correct ONCE then missed needs repair (got it, lost it)', () => {
   const st = fresh();
-  recordCraft(st, 'cat', true, { pool: POOL }); // streak 1, correct 1
-  assert.equal(needsRepair(st.words.get('cat')), false); // making progress, not repair
-  recordCraft(st, 'cat', false, { pool: POOL }); // streak reset to 0, correct still 1
+  recordCraft(st, 'cat', true, { pool: POOL }); // §36e: one clean build → KNOWN (not a repair word)
+  assert.equal(needsRepair(st.words.get('cat')), false); // known, making progress, not repair
+  recordCraft(st, 'cat', false, { pool: POOL }); // a craft miss CRACKS it back to learning, correct still 1
   assert.equal(needsRepair(st.words.get('cat')), true);
   assert.deepEqual(repairWords(st), ['cat']);
 });
@@ -205,14 +204,13 @@ test('learningProgress carries a needsRepair flag that matches repairWords + sum
   assert.deepEqual(sum.repair, repairWords(st));
 });
 
-test('a miss resets the in-a-row streak (one correct then a miss does NOT make it known)', () => {
+test('§36e: a craft miss on a never-correct learning word leaves it learning (streak 0), one clean build → known', () => {
   const st = fresh();
-  recordCraft(st, 'bat', true, { pool: POOL });
   recordCraft(st, 'bat', false, { pool: POOL });
+  assert.equal(getCat(st, 'bat'), CATEGORIES.LEARNING); // a miss keeps it learning, streak 0
+  assert.equal(st.words.get('bat').craftStreak, 0);
   recordCraft(st, 'bat', true, { pool: POOL });
-  assert.equal(getCat(st, 'bat'), CATEGORIES.LEARNING); // streak was broken → still learning
-  recordCraft(st, 'bat', true, { pool: POOL });
-  assert.equal(getCat(st, 'bat'), CATEGORIES.KNOWN); // now two in a row
+  assert.equal(getCat(st, 'bat'), CATEGORIES.KNOWN); // one clean build is enough now
 });
 
 test('a craft MISS on a known word demotes it back to learning', () => {
@@ -237,23 +235,25 @@ test('re-entering learning over capacity evicts the HARDEST other word to tricky
   assert.equal(getCat(st, 'bat'), CATEGORIES.TRICKY); // the lowest-accuracy word was parked as tricky
 });
 
-test('draw mode is the ONLY path to mastered: known + draw success → mastered; draw miss → known', () => {
+test('draw mode is the ONLY path to mastered: known + draw success → mastered; §36e draw miss BREAKS it to learning', () => {
   const st = fresh();
   makeKnown(st, 'cat');
   // a draw success masters it
   recordDraw(st, 'cat', true);
   assert.equal(getCat(st, 'cat'), CATEGORIES.MASTERED);
   assert.deepEqual(masteredWords(st), ['cat']);
-  // a draw miss on a MASTERED word drops it back to known (not below)
+  // §36e: a draw MISS on a MASTERED word "breaks" it all the way back to learning (cracked) — it
+  // must pass BOTH phases again (construct, then mastery), not just drop one rung to known.
   recordDraw(st, 'cat', false);
-  assert.equal(getCat(st, 'cat'), CATEGORIES.KNOWN);
+  assert.equal(getCat(st, 'cat'), CATEGORIES.LEARNING);
+  assert.ok(repairWords(st).includes('cat')); // it had correct crafts → reads as a cracked crystal
 });
 
-test('a draw miss on a merely KNOWN (not mastered) word leaves it known; draw on a non-known word is a no-op', () => {
+test('§36e: a draw miss on a merely KNOWN (not mastered) word also BREAKS it to learning; draw on a non-known word is a no-op', () => {
   const st = fresh();
   makeKnown(st, 'cat');
   recordDraw(st, 'cat', false);
-  assert.equal(getCat(st, 'cat'), CATEGORIES.KNOWN); // failing the mastery test just means "not mastered yet"
+  assert.equal(getCat(st, 'cat'), CATEGORIES.LEARNING); // failing the mastery test cracks it — redo both phases
   // 'bat' is still learning — draw mode does not serve it; recording a draw must not change its category
   const before = getCat(st, 'bat');
   recordDraw(st, 'bat', true);
@@ -276,8 +276,8 @@ test('unlock chain: mastery after setSize KNOWN, mining after setSize MASTERED �
   assert.equal(unlocks(st).mining, true); // 3 mastered → mining unlocked
 
   // Regression guard: mastering words drops the live "known" count; missing a mastered word in
-  // draw drops the live "mastered" count — but neither unlock may switch back off.
-  recordDraw(st, 'cat', false); // mastered → known (mastered count now 2)
+  // draw (§36e: → learning/cracked) drops the live "mastered" count — but neither unlock regresses.
+  recordDraw(st, 'cat', false); // §36e: mastered → learning (cracked); mastered count now 2
   assert.equal(unlocks(st).mining, true);
   assert.equal(unlocks(st).mastery, true);
 });
@@ -384,14 +384,20 @@ test('setLevelAndRefill re-aims the set: old learning words → tricky, refilled
   assert.ok(learningWords(st).every((w) => POOL.find((p) => p.word === w).band === 2)); // from the new level
 });
 
-test('learningProgress reports a 2-step progress toward known for each learning word', () => {
+test('§36e: learningProgress reports a 1-step progress toward known for each learning word', () => {
   const st = fresh();
-  recordCraft(st, 'cat', true, { pool: POOL });
   const prog = learningProgress(st);
   assert.equal(prog.length, 3);
-  const cat = prog.find((p) => p.word === 'cat');
-  assert.equal(cat.needed, PROMOTE_STREAK);
-  assert.equal(cat.steps, 1); // one correct in a row so far
+  for (const row of prog) {
+    assert.equal(row.needed, PROMOTE_STREAK); // §36e: 1 clean build needed
+    assert.equal(row.needed, 1);
+    assert.equal(row.steps, 0); // none crafted yet
+  }
+  // a clean build promotes straight to known (it leaves the learning list), so steps never
+  // sits at a partial value under the 1-correct model — it's 0 (learning) or gone (known).
+  recordCraft(st, 'cat', true, { pool: POOL });
+  assert.equal(getCat(st, 'cat'), CATEGORIES.KNOWN);
+  assert.ok(!learningProgress(st).some((p) => p.word === 'cat'));
 });
 
 test('categorySummary reports learning list + known/mastered/tricky/new-remaining tallies', () => {

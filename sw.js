@@ -232,7 +232,22 @@
 //      cavern-map re-aim (never auto-drops). cavernLevels "cleared" (⭐) + categorySummary.toNextLevel now
 //      key off MASTERED (not known-or-mastered) so the map/tile match the advance bar. New guard
 //      qa_stay_in_level (5 clean crafts → level unchanged); +2 unit tests (bandMastered, advanceLevelIfCleared).
-const VERSION = 'csc-v61';
+// csc-v62: §36e ONE-CORRECT PHASE MODEL + RETENTION REVIEW + TYPE-IN-CRAFT (Ian 2026-06-22e). (#4)
+//      PROMOTE_STREAK 2→1 (one clean construct → the mastery/known phase); a MISSED mastery draw now
+//      "breaks" a known/mastered word back to learning (cracked) — redo BOTH phases (recordDraw); mining
+//      is gated to MASTERED-only (buildMiningPool); craft no longer auto-serves known words. (#5) Retention
+//      review: per mode, a completed run scoring <60% queues mastered words to resurface in the NEXT set,
+//      oldest-last-seen first, count scaling 3/6→1…0/6→4 (categories.recordSetResult/reviewWords/lastSeen +
+//      reviewPending; folded into buildCraftPool/buildMasteryPool). (#2) A PHYSICAL keyboard builds the word
+//      in Craft — typing moves the matching tile into a slot, Backspace returns the last (modes/puzzle.js).
+//      (#3) Mastery answer tiles match Craft's .slot proportions (styles.css). (#1) Jackson capitalized guard.
+//      FOLLOW-UPS (Ian live test 2026-06-22f): (a) PROPER-NOUN CAPS were VISUALLY broken since csc-v60 —
+//      .slot/.lbox-letter had `text-transform:lowercase`, which re-lowercased displayCase's capital (DOM
+//      text was "J" so qa_caps' textContent check passed, but it RENDERED "j"). Removed it on both spelling
+//      surfaces; qa_caps/qa_jackson_caps now assert computed text-transform≠lowercase. (b) APOSTROPHE typing:
+//      Craft's physical-keyboard handler + Mastery's now accept ' (and curly ’→') for contractions
+//      (they're/you're/there's). (c) Added an apostrophe KEY to the Mastery on-screen keypad.
+const VERSION = 'csc-v62';
 
 const CORE = [
   '/',

@@ -23,7 +23,7 @@
 // UI module — verified with Playwright.
 import { el, header, burst, toast, createIdleGuard, pulse, parentalGate, fitPlayArea, visibleTimeout } from '../ui.js';
 import { buildMasteryPool } from '../engine/selection.js';
-import { recordDraw, unlocks, advanceLevelIfCleared } from '../engine/categories.js';
+import { recordDraw, unlocks, advanceLevelIfCleared, recordSetResult } from '../engine/categories.js';
 import { recognizeGrid, pointsToGrid, GRID_N } from '../engine/handwriting.js';
 import { ensureRecognizer, recognizeDrawing } from '../cnn_recognizer.js';
 import { speechSupported, createLetterRecognizer } from '../speech.js';
@@ -34,6 +34,7 @@ import { mulberry32 } from '../engine/distractors.js';
 import { PRAISE } from '../engine/ui_phrases.js';
 
 const MASTERY_GEMS = 25; // flat reward for mastering a word (drawing is slow; speed is irrelevant)
+const MASTERY_FIX_GEMS = 5; // §36e: gentle consolation for a word fixed AFTER it broke (not a master)
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 // §32 SHELVED (Ian 2026-06-19g): the "spell out loud" voice mode is parked. The cloud Web Speech
 // API transcribes connected speech into WORDS (and the open mic echoed the app's own dictation),
@@ -224,11 +225,13 @@ export function startMastery(ctx, params = {}) {
   // --- per-session / per-word state ---------------------------------------
   let index = 0;
   let earned = 0;
+  let setCorrect = 0; // §36e: clean masters this run → run accuracy for retention review
   let target = '';
   let isProper = false; // §4 caps: this word's first letter displays as a capital (proper noun)
   let slots = []; // built spelling (letters or null)
   let cur = 0; // active slot (single-canvas + type flows; where the next drawn/typed letter lands)
   let locked = false; // true during the success/advance animation
+  let brokeThisWord = false; // §36e: a wrong finish "broke" this word (cracked) — a later fix is closure, not a master
   let strokes = []; // single-canvas: the current letter's pen strokes
   let drawing = false;
   let inputMode = 'draw'; // 'draw' (handwriting) | 'type' (keyboard) | 'voice' (§32 spell aloud)
@@ -283,6 +286,7 @@ export function startMastery(ctx, params = {}) {
     if (e.key === 'Enter') { checkWord(); return; }
     if (e.key === 'Backspace') { backspace(); e.preventDefault(); return; }
     if (/^[a-zA-Z]$/.test(e.key)) typeLetter(e.key.toLowerCase());
+    else if (e.key === "'" || e.key === '’') typeLetter("'"); // apostrophe for contractions (they're)
   };
   mediaWide.addEventListener?.('change', onMedia);
   window.addEventListener('resize', onResize);
@@ -641,7 +645,12 @@ export function startMastery(ctx, params = {}) {
       const keys = [...row].map((ch) =>
         el('button', { class: 'key', type: 'button', onClick: () => typeLetter(ch) }, ch),
       );
-      if (ri === 2) keys.push(el('button', { class: 'key key-back', type: 'button', 'aria-label': 'Delete', onClick: backspace }, '⌫'));
+      if (ri === 2) {
+        // apostrophe key for contractions (they're / you're / there's) — types the STRAIGHT ' the
+        // dataset uses. Without it the keypad can't spell those words (Ian 2026-06-22f).
+        keys.push(el('button', { class: 'key', type: 'button', 'aria-label': 'Apostrophe', onClick: () => typeLetter("'") }, '’'));
+        keys.push(el('button', { class: 'key key-back', type: 'button', 'aria-label': 'Delete', onClick: backspace }, '⌫'));
+      }
       return el('div', { class: 'key-row' }, ...keys);
     });
     keyboardEl.replaceChildren(...rows);
@@ -840,47 +849,32 @@ export function startMastery(ctx, params = {}) {
   }
 
   // --- grading -------------------------------------------------------------
+  // Advance to the next word, fired at most once (the praise onDone races a fallback timer).
+  // visibleTimeout (§36 E4): never advances in a backgrounded tab.
+  function advanceWord() {
+    let advanced = false;
+    const go = () => {
+      if (advanced) return;
+      advanced = true;
+      index += 1;
+      present();
+    };
+    return { after: (ms) => visibleTimeout(go, ms) };
+  }
+
   function checkWord() {
     if (locked) return;
     if (slots.some((s) => s == null)) return; // not finished yet — nothing to grade
     const built = slots.join('');
-    if (built === target) {
-      locked = true;
-      // §30: a draw success is the ONLY path to MASTERED.
-      recordDraw(state.categories, target, true);
-      // §36 stay-in-level (Ian 2026-06-22d): mastering a word is the only way the cavern level
-      // advances — if this just cleared the current band (all its words mastered), step up to the
-      // next one. Silent (no boss yet, per Ian); the new level surfaces on Home / the cavern map.
-      advanceLevelIfCleared(state.categories, pool);
-      earned += MASTERY_GEMS;
-      ctx.store.addGems(MASTERY_GEMS);
-      ctx.store.recordAnswerStat(true, 'mastery');
-      audio.sfx('combo');
-      flashVerdict('⭐ Mastered!', `+${MASTERY_GEMS} 💎 · ${inputMode === 'draw' ? 'Drawn from memory' : 'Spelled it!'}`, '#FFD23F');
-      const node = builtEl();
-      const r = node.getBoundingClientRect();
-      burst(r.left + r.width / 2, r.top + r.height / 2, '#FFD23F', 22);
-      bumpGems();
-      node.querySelectorAll('.slot, .lbox').forEach((s) => s.classList.add('locked'));
-      checkBtn.disabled = true;
-      ctx.save();
-      // Advance to the next word only AFTER the praise has finished speaking, so the next
-      // dictation doesn't talk over "Mastered!" (Ian 2026-06-19g). A fallback timer covers the
-      // no-audio / onDone-never-fires case.
-      let advanced = false;
-      const advance = () => {
-        if (advanced) return;
-        advanced = true;
-        index += 1;
-        present();
-      };
-      // visibleTimeout (§36 E4): don't advance to the next word in a backgrounded tab.
-      audio.speakPraise(PRAISE.mastered, { onDone: () => visibleTimeout(advance, 350) });
-      visibleTimeout(advance, 2600);
-    } else {
-      // a wrong finish is a gentle MISS (recordDraw(false): a mastered word drops to known,
-      // a merely-known word stays known). Keep the correct letters, clear the wrong ones to redo.
-      recordDraw(state.categories, target, false);
+    if (built !== target) {
+      // §36e (Ian 2026-06-22e): a wrong finish BREAKS the word — recordDraw(false) cracks a known/
+      // mastered word back to LEARNING (it must pass BOTH phases again). Only the FIRST wrong finish
+      // records the break; the child then keeps the correct letters and fixes the glowing ones (the
+      // familiar forgiving UX, unchanged — the fix is closure, graded as a miss for the run below).
+      if (!brokeThisWord) {
+        recordDraw(state.categories, target, false);
+        brokeThisWord = true;
+      }
       audio.sfx('miss');
       audio.speakPraise(inputMode === 'draw' ? PRAISE.redraw : PRAISE.retype);
       flashVerdict('Almost!', inputMode === 'draw' ? 'Fix the glowing letters' : 'Try again', '#8593A3');
@@ -898,7 +892,48 @@ export function startMastery(ctx, params = {}) {
       shakeBuilt();
       renderBuilt();
       ctx.save();
+      return;
     }
+    // built === target
+    locked = true;
+    const node = builtEl();
+    node.querySelectorAll('.slot, .lbox').forEach((s) => s.classList.add('locked'));
+    checkBtn.disabled = true;
+    if (brokeThisWord) {
+      // §36e: it already cracked this attempt, so fixing it is honest CLOSURE — NOT a master. It
+      // counts as a miss for the run (feeds retention review) and must be re-crafted then re-drawn
+      // to truly master. A gentle consolation + chime (no spoken "Mastered" — that would be a lie).
+      ctx.store.recordAnswerStat(false, 'mastery');
+      earned += MASTERY_FIX_GEMS;
+      ctx.store.addGems(MASTERY_FIX_GEMS);
+      audio.sfx('great');
+      flashVerdict('You fixed it! 🛠️', `+${MASTERY_FIX_GEMS} 💎 · Craft it again to master`, '#9D8DF1');
+      bumpGems();
+      ctx.save();
+      advanceWord().after(1200);
+      return;
+    }
+    // a CLEAN master — §30: a draw success is the ONLY path to MASTERED.
+    recordDraw(state.categories, target, true);
+    // §36 stay-in-level (Ian 2026-06-22d): mastering a word is the only way the cavern level
+    // advances — if this just cleared the current band (all its words mastered), step up to the
+    // next one. Silent (no boss yet, per Ian); the new level surfaces on Home / the cavern map.
+    advanceLevelIfCleared(state.categories, pool);
+    setCorrect += 1; // §36e: a clean master counts toward this run's accuracy
+    earned += MASTERY_GEMS;
+    ctx.store.addGems(MASTERY_GEMS);
+    ctx.store.recordAnswerStat(true, 'mastery');
+    audio.sfx('combo');
+    flashVerdict('⭐ Mastered!', `+${MASTERY_GEMS} 💎 · ${inputMode === 'draw' ? 'Drawn from memory' : 'Spelled it!'}`, '#FFD23F');
+    const r = node.getBoundingClientRect();
+    burst(r.left + r.width / 2, r.top + r.height / 2, '#FFD23F', 22);
+    bumpGems();
+    ctx.save();
+    // Advance only AFTER the praise has finished speaking, so the next dictation doesn't talk over
+    // "Mastered!" (Ian 2026-06-19g). The fallback timer covers the no-audio / onDone-never path.
+    const adv = advanceWord();
+    audio.speakPraise(PRAISE.mastered, { onDone: () => adv.after(350) });
+    adv.after(2600);
   }
 
   function flashVerdict(phrase, chip, color) {
@@ -935,6 +970,7 @@ export function startMastery(ctx, params = {}) {
     if (index >= session.length) return finish();
     locked = false;
     peeked = false;
+    brokeThisWord = false; // §36e: a fresh word starts un-broken
     const entry = session[index];
     target = entry.word.toLowerCase();
     isProper = isProperWord(entry.word); // §4 caps: capitalize the first letter's DISPLAY for proper nouns
@@ -959,6 +995,9 @@ export function startMastery(ctx, params = {}) {
     guard.stop();
     ctx.store.recordSessionPlayed();
     ctx.store.noteWaveEarned(earned);
+    // §36e retention review: a completed MASTERY run scoring < 60% queues mastered words to resurface
+    // in the NEXT mastery set (count scales with the miss rate). Per-mode, independent of craft.
+    recordSetResult(state.categories, 'mastery', setCorrect, session.length);
     ctx.save();
     const reward = el(
       'div',

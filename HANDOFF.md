@@ -2,7 +2,60 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • sw **csc-v61** — ✅ SHIPPED + LIVE on prod, verified.
+> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • sw **csc-v62** — ✅ BUILT + all-green locally; ⏸️ NOT DEPLOYED (held for Ian's review).
+>
+> **🆕 SESSION 2026-06-22f — §36e ONE-CORRECT PHASE MODEL + RETENTION REVIEW + TYPE-IN-CRAFT (csc-v62) — ✅ BUILT,
+> all-green locally; ⏸️ NOT DEPLOYED (awaiting Ian's review).** Built the 5 next-steps Ian recorded 2026-06-22e,
+> after a round of clarifying Qs (his answers folded in). Test-first; **327 unit tests** (+8 new `test/review.test.js`)
+> + smoke + qa_stay_in_level + qa_placement + qa_diag_oneshot + qa_mastery + qa_overflow + qa_s31 + qa_autofill +
+> qa_caps_mastery + NEW `qa_type_craft` all green; qa_phone_audit = only the 2 documented by-design landscape home
+> fails. `node --check` clean on all changed files. **NOTHING committed yet** (tree dirty) — Ian reviews, then deploy.
+> - **#4 — ONE-CORRECT PHASE MODEL (the big one).** `PROMOTE_STREAK` 2→**1**: ONE clean construct (craft) →
+>   KNOWN (the "mastery phase"). A MISSED mastery draw now **"breaks"** a known OR mastered word all the way back
+>   to LEARNING (a cracked crystal) — it must pass **BOTH** phases again (construct → mastery), not just drop one
+>   rung to known (`categories.recordDraw` rewritten; `demoteToLearning` reused). **MINING gated to MASTERED-only**
+>   (`buildMiningPool`; was known∪mastered). Craft no longer auto-serves KNOWN words as review (they're the draw
+>   mode's job now). "cracked" is the existing `needsRepair`/Repair UI (Ian: the broken bucket already exists).
+> - **#5 — RETENTION REVIEW.** PER MODE, when a completed run (set) scores **< 60%**, the NEXT set folds in some
+>   previously-**MASTERED** words for review, **oldest-last-seen first**, count scaling with the miss rate
+>   (`pending = max(0, ceil(0.6*total) - correct)` → 6-word set: 3/6→1, 2/6→2, 1/6→3, 0/6→4; ≥4/6→0). Only
+>   construct/mastery answers count toward a run (mining never changes status). New pure
+>   `categories.recordSetResult/pendingReview/reviewWords` + `state.reviewPending{craft,mastery}` + per-record
+>   `lastSeen` (bumped on every craft/draw); folded into `buildCraftPool`/`buildMasteryPool` (review words are
+>   GUARANTEED a slot, not capped at 25%). The modes call `recordSetResult` at each `finish()` (craft = clean
+>   first-try builds / set length; mastery = clean masters / set length). A resurfaced word that's MISSED breaks
+>   (#4) and redoes both phases — the intended inverse pressure to "stay in level" (review, not a level change).
+> - **#2 — TYPE IN CRAFT (physical keyboard).** A PHYSICAL keyboard builds the word in Craft: typing a letter MOVES
+>   the matching tray tile into the next slot (reuses `placeFromTray` → same sfx/hint-clock/auto-submit), Backspace
+>   returns the last placed tile. Always-on alongside tap/drag; **NO on-screen keyboard** (Ian: the OS keyboard's
+>   un-disable-able autosuggest gives the spelling away; a physical keyboard has no suggestion strip). New
+>   `qa_type_craft.mjs` drives real keydowns and asserts tiles fill + Backspace returns + the build completes.
+> - **#3 — MASTERY TILES MATCH CRAFT.** `styles.css`: Mastery's answer tiles (wide `.lbox` + the phone-portrait
+>   `.draw-slots .slot` override) now use Craft `.slot`'s width/height/font clamps for a consistent answer-row feel
+>   (was deliberately shrunk in §11/§34 to keep long words off the keypad — `fitPlayArea`/`--play-scale` now shrinks
+>   the whole play area to fit). ⚠️ Landscape-phone micro-overrides LEFT smaller on purpose (short-screen fit). OWED:
+>   Ian's eyes on a long word ("international") on a real phone in BOTH draw + type mode (qa_overflow/qa_s31 green).
+> - **#1 — JACKSON.** Already capitalized in `data/words.js` AND already in the generator's PROPER set — so it was
+>   already proper at runtime (`isProperWord` keys off data casing). Added the missing `data.test` regression guard.
+> - **🔴 LIVE-TEST FOLLOW-UPS (Ian 2026-06-22f) — found + fixed this session:** (a) **PROPER-NOUN CAPS were VISUALLY
+>   BROKEN since csc-v60.** `.slot` + `.lbox-letter` had `text-transform:lowercase`, which re-lowercased
+>   `displayCase()`'s capital — the DOM text was "J" (so `qa_caps`' textContent check PASSED) but it RENDERED "j".
+>   A visual-QA screenshot of Jackson caught it. Removed `text-transform` on both spelling surfaces; `qa_caps` +
+>   new `qa_jackson_caps.mjs` now also assert computed `text-transform≠lowercase`. Verified by screenshot (slot 0
+>   now shows "J", tiles stay lowercase). (b) **APOSTROPHE typing**: Craft's physical-keyboard handler (and
+>   Mastery's) now accept `'` (and curly `’`→`'`) for contractions (they're/you're/there's) — new
+>   `qa_apostrophe.mjs` types "you're" incl. the apostrophe → builds + advances. (c) **Apostrophe KEY** added to the
+>   Mastery on-screen keypad (`buildKeyboard`). LESSON re-learned: textContent checks ≠ visual truth — always LOOK.
+> - **TWO DESIGN DECISIONS — ✅ CONFIRMED by Ian (2026-06-22f, both = my recommended/as-built):** (a) **Placement
+>   seeding** stays UNCHANGED under the 1-correct rule: a clean diagnostic build banks a 1-pip "head start" but the
+>   word stays LEARNING (does NOT auto-grant KNOWN) — preserves §C1's "the diagnostic doesn't over-credit." (b)
+>   **Mastery break UX:** a wrong draw finish records the break (→ cracked) on the FIRST miss only, then KEEPS the
+>   forgiving "fix the glowing letters" retry; a corrected build is honest CLOSURE ("You fixed it! 🛠️ +5💎 · Craft it
+>   again to master") — NOT "Mastered", 5-gem consolation, counts as a run miss. (One-shot-advance was the rejected
+>   alternative.) No code change — the build already implements both.
+> - **➡️ NEXT:** Ian reviews locally → if good, commit + push `main` (Git-CD builds csc-v62) → verify check_deploy +
+>   qa_prod → real-device pass. The §36e #5 retention thresholds (60%? window? demote-vs-requeue?) and the #3
+>   long-word feel are the most likely tweak points.
 >
 > **🆕 SESSION 2026-06-22e — §36 STAY-IN-LEVEL ✅ SHIPPED + LIVE on prod (csc-v61), verified.** Pushed `main` →
 > Git-CD built + deployed (prod went csc-v60→**csc-v61** in ~30s); `check_deploy.mjs csc-v61` = DEPLOYED ✅;
