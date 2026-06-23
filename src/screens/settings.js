@@ -11,7 +11,7 @@ import * as sync from '../cloud_sync_backend.js';
 import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
 import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
-import { setLevelAndRefill } from '../engine/categories.js';
+import { setLevelAndRefill, resetForRetest } from '../engine/categories.js';
 import { byRank } from '../engine/lexicon.js';
 import { COLOURS } from './onboarding.js';
 import { APP_VERSION } from '../version.js';
@@ -258,7 +258,12 @@ export function settingsScreen(ctx) {
         class: 'btn',
         style: { marginTop: '10px', width: '100%' },
         onClick: () => {
-          // reset placement so the NEXT crafting round re-diagnoses the right level
+          // §37 D (Ian 2026-06-22f): re-test = a CLEAN re-diagnosis. SOFT-reset the categories (level→1,
+          // re-lock mastery/mining by zeroing the unlock peaks) so the old level + unlocks don't show
+          // through stale — but KEEP word progress (the diagnostic re-aims known/mastered on completion).
+          resetForRetest(ctx.state.categories);
+          ctx.state.startLevel = 1; // keep the per-profile anchor (Settings display) in sync
+          // reset placement so the NEXT crafting round re-diagnoses the right level (multi-session walk)
           ctx.state.placement = { done: false, age: (ctx.state.placement && ctx.state.placement.age) || null };
           ctx.save();
           toast('Re-testing — the next crafting round finds the right level. ✨');

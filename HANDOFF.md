@@ -58,12 +58,13 @@
 >   render, CNN model loads over Cloudflare + drew 'a'→'a'). **➡️ REMAINING:** a real-device pass (Ian's) — esp. the
 >   #3 long-word feel in Mastery type mode on a phone. The §36e #5 retention thresholds (60%? window?
 >   demote-vs-requeue?) are the most likely tweak points. Plus the new **§37 TODOs** below (design-first).
-> - **⚠️ KNOWN BUG found post-deploy (Ian 2026-06-22f) — RE-TEST is a soft reset that leaves stale state.** See
->   **§37 D** below for the full root cause + the design choice. Symptom: pressing "🔁 Re-test starting level" then
->   playing 6 words left Mastery UNLOCKED and the starting level UNCHANGED (Ian expected a clean re-diagnosis from a
->   reset level). Root cause: the Re-test handler (`screens/settings.js`) only sets `state.placement={done:false,age}`
->   — it does NOT reset `state.categories` (level, known/mastered) or the unlock high-water peaks
->   (`peakKnownish`/`peakMastered`), and those NEVER regress. Not yet fixed (needs Ian's call on reset scope).
+> - **✅ FIXED (csc-v63) — RE-TEST now does a clean SOFT re-diagnosis (Ian chose "soft" via AskUserQuestion).** Was:
+>   pressing "🔁 Re-test starting level" then playing 6 words left Mastery UNLOCKED + the level UNCHANGED (the handler
+>   only flipped `state.placement.done`, leaving `categories.level` + known/mastered + the never-regressing unlock
+>   peaks stale). Now `categories.resetForRetest()` resets the level to 1 and RE-LOCKS mastery/mining (zeroes
+>   `peakKnownish`/`peakMastered`) while KEEPING word progress (known/mastered records survive; the diagnostic
+>   re-aims them on completion → bumpPeaks re-unlocks from the kept progress). Wired into the Settings Re-test
+>   handler. +unit test + `qa_retest.mjs` (seed placed+unlocked → tap Re-test → level=1, re-locked, progress kept).
 >
 > **🆕 §37 RECORDED TODOs (Ian 2026-06-22f) — ⛔ DESIGN-FIRST, NOT YET BUILT (just captured; discuss before coding).**
 > - **A. ACTIVE-ENGAGEMENT AUTO-PAUSE (screen-time off-ramp; relates to the long-deferred §36 E5).** If a student
@@ -96,21 +97,19 @@
 >   design review (the csc-v62 proper-noun-caps bug is exactly why: `qa_caps` passed on textContent while the screen
 >   RENDERED lowercase — only LOOKING caught it). qa_phone_audit already flags 2 by-design LANDSCAPE home fails
 >   (`.menu-card.play` not co-visible) — landscape is the weakest area and the most likely to surface issues.
-> - **D. RE-TEST ("retest the spelling level") — handle it properly (⚠️ KNOWN BUG, Ian 2026-06-22f).** Pressing
->   "🔁 Re-test starting level" (Settings) currently does a SOFT reset: it only sets `state.placement={done:false,age}`
->   so the next Craft re-runs the diagnostic walk — but it does NOT reset `state.categories.level`, the known/mastered
->   words, or the unlock high-water peaks (`peakKnownish`/`peakMastered`, which never regress). RESULT Ian saw: after
->   6 re-test words, Mastery stayed UNLOCKED and the starting level was UNCHANGED (it looked like nothing reset). The
->   diagnostic DOES run (walk uses `placementSubmit`, not `recordCraft`, so it doesn't NEWLY feed categories) — the
->   stale prior progress is what shows through. **Ian's expectation:** re-test should reset the level (he said "to
->   level 1") and run a CLEAN multi-session re-diagnosis with Mastery/Mining RE-LOCKED during it. **Design choice to
->   confirm before coding:** how HARD should Re-test reset? (i) reset `categories.level` + RE-LOCK mastery/mining
->   (zero the peaks) but KEEP word progress (known/mastered preserved, re-aimed by `seedFromPlacement` on completion);
->   or (ii) a HARD wipe of the categories word-state too (a true blank-slate re-diagnosis). Either way also: show the
->   level as "diagnosing…" (not the stale band) during the walk, and confirm-gate the Re-test (it's destructive). Files:
->   `screens/settings.js` (Re-test handler), `engine/categories.js` (a reset/relock helper), `engine/placement.js`.
->   ⚠️ csc-v62 interaction: keep Re-test FIRMLY on the placement (walk) path — if the diagnostic ever fails to run,
->   6 clean crafts now = 6 KNOWN (1-correct) → instant Mastery unlock, which is exactly the confusing state Ian hit.
+> - **D. RE-TEST ("retest the spelling level") — ✅ FIXED (csc-v63, Ian chose SOFT reset).** Pressing
+>   "🔁 Re-test starting level" (Settings) USED to be a SOFT reset that only set `state.placement={done:false,age}` so
+>   the next Craft re-ran the diagnostic walk — but it did NOT reset `state.categories.level`, the known/mastered words,
+>   or the unlock high-water peaks (`peakKnownish`/`peakMastered`, which never regress). RESULT Ian saw: after 6 re-test
+>   words, Mastery stayed UNLOCKED and the level was UNCHANGED (looked like nothing reset). The diagnostic DID run (walk
+>   uses `placementSubmit`, not `recordCraft`) — the stale prior progress just showed through. **FIX (csc-v63, Ian chose
+>   option (i) — SOFT):** new `categories.resetForRetest()` resets `categories.level`→1 + RE-LOCKS mastery/mining (zeroes
+>   the peaks) but KEEPS word progress (known/mastered preserved, re-aimed by `seedFromPlacement` on completion →
+>   `bumpPeaks` re-unlocks from the kept progress). Wired into `screens/settings.js` (+ `startLevel=1`). Rejected alt:
+>   (ii) a HARD wipe of the word-state. **Nice-to-have, NOT done:** show the level as "diagnosing…" during the walk
+>   (currently shows "Cavern level 1"); a confirm-gate on Re-test (semi-destructive). ⚠️ csc-v62 interaction preserved:
+>   Re-test stays FIRMLY on the placement (walk) path — if the diagnostic ever failed to run, 6 clean crafts now = 6
+>   KNOWN (1-correct) → instant Mastery unlock (the bug Ian hit). Verified: unit test + `qa_retest.mjs`.
 >
 > **🆕 SESSION 2026-06-22e — §36 STAY-IN-LEVEL ✅ SHIPPED + LIVE on prod (csc-v61), verified.** Pushed `main` →
 > Git-CD built + deployed (prod went csc-v60→**csc-v61** in ~30s); `check_deploy.mjs csc-v61` = DEPLOYED ✅;

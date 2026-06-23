@@ -247,7 +247,13 @@
 //      surfaces; qa_caps/qa_jackson_caps now assert computed text-transform≠lowercase. (b) APOSTROPHE typing:
 //      Craft's physical-keyboard handler + Mastery's now accept ' (and curly ’→') for contractions
 //      (they're/you're/there's). (c) Added an apostrophe KEY to the Mastery on-screen keypad.
-const VERSION = 'csc-v62';
+// csc-v63: §37 D RE-TEST fix (Ian 2026-06-22f) — "Re-test starting level" was a SOFT reset that only
+//      flipped state.placement.done, leaving categories.level + known/mastered + unlock peaks stale (so
+//      Mastery stayed unlocked + the level didn't change). Now categories.resetForRetest() resets the
+//      level to 1 and RE-LOCKS mastery/mining (zeroes peakKnownish/peakMastered) while KEEPING word
+//      progress (Ian's pick); the diagnostic re-aims the kept known/mastered on completion. +unit test
+//      + qa_retest.mjs (seed placed+unlocked → tap Re-test → asserts level=1, re-locked, progress kept).
+const VERSION = 'csc-v63';
 
 const CORE = [
   '/',

@@ -375,6 +375,22 @@ export function setLevelAndRefill(state, level, pool) {
   return state;
 }
 
+// §37 D (Ian 2026-06-22f): prepare for a placement RE-TEST. A SOFT reset — reset the cavern level to
+// 1 and RE-LOCK mastery/mining by zeroing the never-regressing unlock high-water peaks, so the
+// re-diagnosis starts clean — but KEEP all word progress (known/mastered/tricky records are left
+// untouched; the diagnostic's seedFromPlacement re-aims them on completion, and bumpPeaks then
+// re-raises the unlock peaks from the kept progress). The caller also flips state.placement.done off
+// so the next Craft re-runs the diagnostic walk. Pure; no pool needed (no refill — the walk drives words).
+export function resetForRetest(state) {
+  state.level = 1;
+  state.peakLevel = 1;
+  state.peakKnownish = 0; // re-lock mastery for the duration of the re-diagnosis
+  state.peakMastered = 0; // re-lock mining likewise
+  state.recent = [];
+  state.reviewPending = { craft: 0, mastery: 0 };
+  return state;
+}
+
 // §C1: seed the working set from a placement diagnostic. Aims the level at the entered
 // band (parking any prior learning as tricky), then banks every diagnostic answer onto
 // its word so the child "starts with progress" (Ian): a CORRECT word below the entered

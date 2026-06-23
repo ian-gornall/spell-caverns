@@ -36,6 +36,7 @@ import {
   bandMastered,
   advanceLevelIfCleared,
   setLevelAndRefill,
+  resetForRetest,
   seedFromPlacement,
   unlocks,
   learningProgress,
@@ -428,6 +429,34 @@ test('categorySummary.toNextLevel = words in the current cavern level (band) not
   recordDraw(st, 'cat', true); // cat → MASTERED → now it drops off
   s = categorySummary(st, POOL);
   assert.equal(s.toNextLevel, 4); // 1 of 5 band-1 words mastered
+});
+
+// §37 D (Ian 2026-06-22f): tapping "Re-test starting level" must give a CLEAN re-diagnosis — reset
+// the cavern level to 1 and RE-LOCK mastery/mining (zero the never-regressing unlock peaks) — while
+// KEEPING word progress (known/mastered records stay; the diagnostic re-aims them on completion). The
+// old bug: Re-test only flipped state.placement.done, so the level + unlocked mastery looked stale.
+test('§37 D resetForRetest: resets level to 1 + re-locks mastery/mining, but KEEPS known/mastered words', () => {
+  const st = fresh(); // setSize 3
+  makeKnown(st, 'cat');
+  makeKnown(st, 'bat');
+  makeKnown(st, 'hat'); // 3 reached known → mastery unlocks
+  recordDraw(st, 'cat', true); // 1 mastered
+  st.level = 2;
+  assert.equal(unlocks(st).mastery, true);
+  const knownBefore = knownWords(st).length;
+  const masteredBefore = masteredWords(st).length;
+
+  resetForRetest(st);
+
+  assert.equal(st.level, 1, 'cavern level reset to 1 for the re-diagnosis');
+  assert.equal(st.peakKnownish, 0);
+  assert.equal(st.peakMastered, 0);
+  assert.equal(unlocks(st).mastery, false, 'mastery RE-LOCKED during the re-test');
+  assert.equal(unlocks(st).mining, false, 'mining RE-LOCKED during the re-test');
+  // word progress is KEPT (soft reset) — the records survive untouched
+  assert.equal(knownWords(st).length, knownBefore, 'known words preserved');
+  assert.equal(masteredWords(st).length, masteredBefore, 'mastered words preserved');
+  assert.ok(masteredWords(st).includes('cat'));
 });
 
 test('serialize → deserialize is a lossless round-trip of the whole state machine', () => {
