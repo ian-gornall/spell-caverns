@@ -3,11 +3,18 @@
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
 > `C:\Users\iango\spell`  •  Last updated 2026-06-23 • sw **csc-v65** — §37 A active-engagement auto-pause: ✅ SHIPPED + LIVE on prod, verified.
-> (csc-v64 = the §37 C exploratory design-QA pass; its only code change is a GEODE-BOSS "nullnull" fix — see top banner.
-> Commit `ada3df5`; pushed `main` → Git-CD built + deployed; `check_deploy.mjs csc-v64` = DEPLOYED ✅ (prod went
-> csc-v63→csc-v64); `qa_prod.mjs` = **ISSUES: none** (live APP_VERSION csc-v64, boots, Mastery renders, CNN loads + drew
-> 'a'→'a'). §37 A/B remain unbuilt — A's design is now settled (Ian 2026-06-23: idle resets the 20-min counter; the
-> 5-min lock is grown-up-dismissable), B still ⛔ design-first.)
+>
+> **WHERE THINGS STAND (read first):** prod is **csc-v65**, tree is CLEAN, all guards green. The §37 backlog Ian raised
+> 2026-06-22f is now essentially cleared in code: **A (active-pause) = ✅ BUILT + SHIPPED (csc-v65, this session)**,
+> **C (mobile design-QA pass) = ✅ done (csc-v64)**, **D (re-test fix) = ✅ done (csc-v63)**. Two things remain, BOTH
+> needing Ian, not code-blocked-on-me:
+> 1. **§37 A real-device pass (Ian's).** The 20-min→5-min off-ramp is verified on the emulator (`qa_active_pause.mjs`) but
+>    NOT yet felt on a real device over a real long session — does the break fire, does the soft lock + grown-up dismiss
+>    feel right? (Same standing "owed: real-device iOS pass" as the rest of the app.)
+> 2. **§37 B — parent/teacher "monitor" mode = the NEXT build, but ⛔ DESIGN-FIRST.** Discuss + settle the 4 open
+>    questions (monitor identity/auth, COPPA consent, free-first Google sync, reuse family-sync plumbing) BEFORE coding —
+>    see the §37 B entry below. Its "play time" metric is already being banked into `stats.playMs` (§37 A built it once).
+> (csc-v64 was the §37 C design-QA pass + a GEODE-BOSS "nullnull" fix, commit `ada3df5`, SHIPPED + LIVE.)
 >
 > **🆕 SESSION 2026-06-23b — §37 A ACTIVE-ENGAGEMENT AUTO-PAUSE (csc-v65) — ✅ SHIPPED + LIVE on prod, verified.**
 > Committed `8d6142e` + pushed `main` → Git-CD built + deployed (prod went csc-v64→**csc-v65** in ~15s; `check_deploy.mjs
@@ -121,9 +128,9 @@
 >   review → deploy** (commit + push `main` → Git-CD → `check_deploy.mjs csc-v64` + `qa_prod.mjs`).
 > - **Owed:** a real-device pass remains Ian's (the harness can't reproduce iOS standalone/safe-area). **Ship step when
 >   approved:** commit + push `main` (Git-CD builds csc-v64) → `check_deploy.mjs csc-v64` + `qa_prod.mjs`. csc-v64 bumps
->   sw.js + version.js; no new precached app file (the guard is a dev script). §37 A (active-pause) — design now
->   SETTLED (Ian 2026-06-23: idle/break resets the 20-min counter; the 5-min lock is grown-up-dismissable) but still
->   NOT BUILT (Ian: do not code yet). §37 B (monitor mode) remains ⛔ design-first (needs the identity/COPPA/sync design).
+>   sw.js + version.js; no new precached app file (the guard is a dev script). ~~§37 A (active-pause) — design now
+>   SETTLED ... but still NOT BUILT (Ian: do not code yet).~~ **[SUPERSEDED: §37 A is now BUILT + SHIPPED in csc-v65 — see
+>   the top banner.]** §37 B (monitor mode) remains ⛔ design-first (needs the identity/COPPA/sync design) — the next build.
 >
 > **🆕 SESSION 2026-06-22f — §36e ONE-CORRECT PHASE MODEL + RETENTION REVIEW + TYPE-IN-CRAFT (csc-v62) — ✅ SHIPPED +
 > LIVE on prod, verified.** Committed `9a07d0f` + pushed `main` → Git-CD built + deployed (prod went csc-v61→**csc-v62**
