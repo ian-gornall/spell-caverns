@@ -2,7 +2,8 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • sw **csc-v62** — ✅ SHIPPED + LIVE on prod, verified.
+> `C:\Users\iango\spell`  •  Last updated 2026-06-22 • sw **csc-v63** — ✅ SHIPPED + LIVE on prod, verified.
+> (csc-v63 = the §37 D RE-TEST fix on top of csc-v62; commit `da2e0c7`, prod csc-v62→csc-v63 verified.)
 >
 > **🆕 SESSION 2026-06-22f — §36e ONE-CORRECT PHASE MODEL + RETENTION REVIEW + TYPE-IN-CRAFT (csc-v62) — ✅ SHIPPED +
 > LIVE on prod, verified.** Committed `9a07d0f` + pushed `main` → Git-CD built + deployed (prod went csc-v61→**csc-v62**
