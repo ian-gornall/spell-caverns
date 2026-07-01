@@ -2,7 +2,7 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-06-23 • sw **csc-v66** — operator ADMIN APP (view/edit all students + CSV export): ✅ SHIPPED + LIVE on prod, verified. (§37 A active-pause shipped csc-v65.)
+> `C:\Users\iango\spell`  •  Last updated 2026-07-01 • sw **csc-v66** — NEW: §38 research-corpus multi-list integration (sampled, engine + importer, NOT in the live game path). Admin app + §37 A unchanged on prod.
 >
 > **WHERE THINGS STAND (read first):** prod is **csc-v65**, tree is CLEAN, all guards green. The §37 backlog Ian raised
 > 2026-06-22f is now essentially cleared in code: **A (active-pause) = ✅ BUILT + SHIPPED (csc-v65, this session)**,
@@ -15,6 +15,26 @@
 >    questions (monitor identity/auth, COPPA consent, free-first Google sync, reuse family-sync plumbing) BEFORE coding —
 >    see the §37 B entry below. Its "play time" metric is already being banked into `stats.playMs` (§37 A built it once).
 > (csc-v64 was the §37 C design-QA pass + a GEODE-BOSS "nullnull" fix, commit `ada3df5`, SHIPPED + LIVE.)
+>
+> **🆕 SESSION 2026-07-01 — §38 RESEARCH-CORPUS MULTI-LIST INTEGRATION (sampling) — ✅ BUILT + tested; NOT live.**
+> The app's future word data is the `C:\Users\iango\spelling-research` corpus (`app_data/`: 49,778 forms with AoA
+> band + governing pattern + grapheme span + carrier sentence; a 107-pattern spine; a 108-lesson rules catalog).
+> Its teaching loop is locked in that repo's `APP_DESIGN.md`: cumulative-by-age pool, one phonics spine,
+> shortest-then-most-frequent within a pattern, reteach-the-rule + grapheme highlight on a miss. Because those
+> lists are STILL BEING PROCESSED upstream (recall pass T4), this session built the MECHANISM on a sample, per Ian:
+> - **`scripts/import_research.mjs`** — repeatable import: streams `words.jsonl`, keeps the top 2 words per
+>   (pattern × band) by the app's own within-pattern order → **`data/research_sample.js`** (2,003 words, all 107
+>   lessons, all 11 bands, 198 homophone clusters). `--per-cell N` / remove the cap at full import.
+> - **`src/engine/lists.js`** — pure loop engine: `buildPool(words, age)` (age = ceiling, union of bands ≤ it),
+>   `lessonPlan(pool, spine)` (patterns surface only when the pool has words), `orderWithinPattern`,
+>   `reteach(word, patterns)` (rule + exemplars + grapheme indices), `needsCarrierSentence`.
+> - **`test/lists.test.js`** (13 tests; suite now 360 green) + **`scripts/demo_lists.mjs [age]`** (verified: age 7
+>   → 544-word pool/104 lessons; age 12 → 1,500/107; reteach + homophone dictation demoed on real data).
+> - **Deliberately INERT on prod:** `data/research_sample.js` is NOT in `build_deploy.mjs` or the `sw.js` precache;
+>   nothing in the live game imports `lists.js`. The live game still runs on `data/words.js`.
+> - **The migration plan (full steps 1–6: re-import at full size, rewire categories/selection to the pattern gate,
+>   reteach-on-miss UI, spine-based diagnostic, audio-clip gap, upstream refresh cadence) is in
+>   `RESEARCH_INTEGRATION.md`** — read that before wiring the live game over.
 >
 > **🆕 SESSION 2026-06-23b — §37 A ACTIVE-ENGAGEMENT AUTO-PAUSE (csc-v65) — ✅ SHIPPED + LIVE on prod, verified.**
 > Committed `8d6142e` + pushed `main` → Git-CD built + deployed (prod went csc-v64→**csc-v65** in ~15s; `check_deploy.mjs
