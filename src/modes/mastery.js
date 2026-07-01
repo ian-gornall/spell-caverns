@@ -163,6 +163,7 @@ export function startMastery(ctx, params = {}) {
   const verdictEl = el('div', { class: 'verdict' });
   const verdictChip = el('div', { class: 'verdict-chip' });
   const sentenceEl = el('div', { class: 'sentence' });
+  const reteachEl = el('div', { class: 'reteach' }); // §38: the pattern's rule, shown on a miss
   const slotsEl = el('div', { class: 'slots draw-slots' });
   // PHONE (narrow): a single shared canvas + up-to-4 candidate letterforms.
   const canvas = el('canvas', { class: 'draw-canvas', width: 320, height: 200 });
@@ -214,7 +215,7 @@ export function startMastery(ctx, params = {}) {
   const playBody = el(
     'div',
     { class: 'play-body' },
-    el('div', { class: 'prompt' }, el('div', { class: 'hear-row' }, hearBtn), sentenceEl, peekRow, verdictEl, verdictChip),
+    el('div', { class: 'prompt' }, el('div', { class: 'hear-row' }, hearBtn), sentenceEl, peekRow, verdictEl, verdictChip, reteachEl),
     el('div', { class: 'answer-zone' }, slotsEl, drawStageEl, boxesEl, keyboardEl, micEl, voiceDbgEl, hintEl, submitRow, controlsEl),
   );
   const screen = el('div', { class: 'screen mastery' }, hdr, dots, playBody);
@@ -878,6 +879,11 @@ export function startMastery(ctx, params = {}) {
       audio.sfx('miss');
       audio.speakPraise(inputMode === 'draw' ? PRAISE.redraw : PRAISE.retype);
       flashVerdict('Almost!', inputMode === 'draw' ? 'Fix the glowing letters' : 'Try again', '#8593A3');
+      // §38 reteach-the-rule (lessons mode): a miss surfaces the word's pattern rule.
+      const missed = session[index];
+      if (missed && missed.rule) {
+        reteachEl.replaceChildren(el('span', { class: 'reteach-icon' }, '💡'), el('span', {}, missed.rule));
+      }
       if (inputMode === 'type') {
         // the keypad fills the first empty slot, so we KEEP the right letters and clear only the
         // wrong ones (the old linear <input> couldn't show gaps); the kid retypes just those.
@@ -978,6 +984,7 @@ export function startMastery(ctx, params = {}) {
     cur = 0;
     verdictEl.textContent = '';
     verdictChip.textContent = '';
+    reteachEl.replaceChildren(); // §38: clear the previous word's rule
     sentenceEl.replaceChildren(...blankedSentence(entry));
     applyLayout(); // also applies the dictation sentence-hide/peek for voice mode
     rebuildSurface();
@@ -988,7 +995,13 @@ export function startMastery(ctx, params = {}) {
     } catch {
       /* ignore */
     }
-    audio.say(target); // the recogniser ignores the whole word, so listening can keep running
+    // §38 homophone (lessons mode): the bare audio is ambiguous — follow the dictation
+    // with the carrier sentence so the child knows WHICH word to spell.
+    if (entry.homophoneId != null && entry.sentence) {
+      audio.say(target, { onDone: () => { if (!locked) audio.say(entry.sentence); } });
+    } else {
+      audio.say(target); // the recogniser ignores the whole word, so listening can keep running
+    }
   }
 
   function finish() {

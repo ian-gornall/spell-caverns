@@ -144,10 +144,12 @@ test('no obvious British-only spellings remain as TARGET words (§36 B3)', () =>
 });
 
 // ------------------------------------------------------------- lexicon helpers
-test('REAL_WORDS is the full set of correct spellings', () => {
-  assert.equal(REAL_WORDS.size, WORDS.length);
+test('REAL_WORDS covers every correct spelling from BOTH word lists (§38)', () => {
+  // classic list + the research-corpus sample both count as real words, so a
+  // generated distractor can never be a real word from either list.
+  assert.ok(REAL_WORDS.size >= WORDS.length);
+  for (const w of WORDS) assert.ok(REAL_WORDS.has(w.word), `classic ${w.word}`);
   assert.ok(REAL_WORDS.has('the'));
-  assert.ok(REAL_WORDS.has(WORDS[WORDS.length - 1].word));
   assert.ok(!REAL_WORDS.has('zzznotaword'));
 });
 

@@ -11,8 +11,8 @@ import * as sync from '../cloud_sync_backend.js';
 import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
 import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
-import { setLevelAndRefill, resetForRetest } from '../engine/categories.js';
-import { byRank } from '../engine/lexicon.js';
+import { setLevelAndRefill, resetForRetest, createCategoryState } from '../engine/categories.js';
+import { byRank, setWordlistMode, wordlistMode, lessonForBand, lessonCount } from '../engine/lexicon.js';
 import { COLOURS } from './onboarding.js';
 import { APP_VERSION } from '../version.js';
 import { swCacheVersion } from '../pwa.js';
@@ -249,10 +249,13 @@ export function settingsScreen(ctx) {
       'div',
       { class: 'level-stepper' },
       el('button', { class: 'btn ghost', onClick: () => nudgeLevel(-1) }, '➖ Easier'),
-      el('span', { class: 'level-readout' }, `Cavern level ${curBand}`),
+      el('span', { class: 'level-readout' },
+        wordlistMode() === 'lessons' ? `Lesson ${curBand} of ${lessonCount()}` : `Cavern level ${curBand}`),
       el('button', { class: 'btn ghost', onClick: () => nudgeLevel(1) }, 'Harder ➕'),
     ),
-    el(
+    // §38: the placement walk diagnoses CLASSIC 30-word bands; in lessons mode the
+    // stepper (and later a spine diagnostic) sets the level, so no re-test button.
+    wordlistMode() === 'lessons' ? el('span', {}) : el(
       'button',
       {
         class: 'btn',
@@ -1075,6 +1078,67 @@ export function settingsScreen(ctx) {
     ),
   );
 
+  // --- §38 Word lists (grown-up): classic flat list vs the research-corpus pattern
+  // lessons filtered by age. Switching replaces the word universe, so the categories
+  // machine restarts fresh (level 1, mastery/mining re-lock); gems, streaks, and the
+  // long-term tracker are untouched. Lessons mode skips the classic placement walk
+  // (its bands are 30-word chunks, not lessons) — the spine diagnostic comes later.
+  const switchWordlists = (mode) => {
+    if ((s.wordlists || 'classic') === mode) return;
+    const name = mode === 'lessons' ? 'Pattern lessons' : 'Classic';
+    if (!confirm(`Switch ${ctx.state.profile.name} to ${name}? The word path starts fresh at level 1 (gems and streaks are kept).`)) return;
+    s.wordlists = mode;
+    if (mode === 'lessons' && s.age == null) s.age = ctx.state.placement?.age || 8;
+    ctx.state.categories = createCategoryState({ setSize: s.length, level: 1 });
+    ctx.state.startLevel = 1;
+    ctx.state.placement = { done: true, age: ctx.state.placement?.age || s.age || null };
+    setWordlistMode(s.wordlists, s.age);
+    ctx.save();
+    toast(mode === 'lessons' ? 'Pattern lessons on — the path starts at lesson 1. ✨' : 'Back to the classic word list.');
+    ctx.nav('settings');
+  };
+  const wordlistSeg = el(
+    'div',
+    { class: 'seg' },
+    ...[['classic', 'Classic'], ['lessons', 'Pattern lessons']].map(([id, label]) =>
+      el('button', { class: (s.wordlists || 'classic') === id ? 'on' : '', onClick: () => switchWordlists(id) }, label)),
+  );
+  const nudgeAge = (delta) => {
+    const next = Math.max(5, Math.min(15, (s.age || 8) + delta));
+    if (next === s.age) return;
+    s.age = next;
+    setWordlistMode('lessons', next);
+    // The pool (and so the lesson numbering) changed: clamp the level and refill.
+    const lvl = Math.max(1, Math.min(ctx.state.categories.level || 1, lessonCount()));
+    setLevelAndRefill(ctx.state.categories, lvl, levelPool());
+    ctx.state.startLevel = ctx.state.categories.level;
+    ctx.save();
+    ctx.nav('settings');
+  };
+  const ageField = s.wordlists === 'lessons'
+    ? el(
+        'div',
+        { class: 'field' },
+        el('label', {}, 'Age'),
+        el('p', { class: 'field-hint' }, 'Words are chosen for this age and below (age is a ceiling, not a track).'),
+        el(
+          'div',
+          { class: 'level-stepper' },
+          el('button', { class: 'btn ghost', onClick: () => nudgeAge(-1) }, '➖ Younger'),
+          el('span', { class: 'level-readout' }, `${s.age || 8} years`),
+          el('button', { class: 'btn ghost', onClick: () => nudgeAge(1) }, 'Older ➕'),
+        ),
+      )
+    : null;
+  const wordlistsPanel = el(
+    'div',
+    { class: 'panel' },
+    el('h3', {}, 'Word lists'),
+    el('p', { class: 'field-hint' }, 'Classic is the original list. Pattern lessons is the new spelling programme: one lesson per spelling pattern, walked in order, with words picked by age. Missed words reteach their rule.'),
+    el('div', { class: 'field' }, el('label', {}, 'List'), wordlistSeg),
+    ageField || el('span', {}),
+  );
+
   // --- Advanced play levers (parent-facing): answer-count + the device voice picker.
   // The two CORE kid levers (difficulty + length) stay on the always-visible Adventure panel;
   // these finer knobs move behind the grown-up disclosure (DESIGN_ANALYSIS rec #8). ---
@@ -1106,6 +1170,7 @@ export function settingsScreen(ctx) {
     el(
       'div',
       { class: 'gp-body' },
+      wordlistsPanel,
       advancedPanel,
       playersPanel,
       printablesPanel,
@@ -1132,8 +1197,12 @@ export function settingsScreen(ctx) {
         el(
           'div',
           { class: 'field' },
-          el('label', {}, `Starting level — Cavern level ${curBand}`),
-          el('p', { class: 'field-hint' }, 'Found by a quick spelling check when an explorer starts. Re-test any time, or nudge it easier/harder. The game still adapts and revisits tricky words.'),
+          el('label', {}, wordlistMode() === 'lessons'
+            ? `Starting level — Lesson ${curBand}${lessonForBand(curBand) ? `: ${lessonForBand(curBand).label}` : ''}`
+            : `Starting level — Cavern level ${curBand}`),
+          el('p', { class: 'field-hint' }, wordlistMode() === 'lessons'
+            ? 'The lesson path walks the spelling patterns in order. Nudge it easier/harder any time; the game still adapts and revisits tricky words.'
+            : 'Found by a quick spelling check when an explorer starts. Re-test any time, or nudge it easier/harder. The game still adapts and revisits tricky words.'),
           levelControlEl,
         ),
         el('div', { class: 'field' }, el('label', {}, 'Difficulty'), diffSeg),

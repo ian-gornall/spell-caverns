@@ -43,28 +43,46 @@ The teaching loop is locked in that repo's `APP_DESIGN.md`:
 - `scripts/demo_lists.mjs [age]`. Prints a learner's lesson plan, a reteach example,
   and a homophone dictation example from the sample.
 
-The sample data file is not in `build_deploy.mjs` or the `sw.js` precache, so nothing
-ships to prod. The live game still runs on `data/words.js`.
+## Live integration (shipped csc-v67, "Pattern lessons" mode)
 
-## The full migration (when the research lists are final)
+The lists now run in the live app behind a per-profile mode. A grown-up flips it in
+Settings, Grown-up settings, Word lists; classic stays the default while the research
+lists finish processing upstream.
 
-1. Re-run `import_research.mjs` against the finished corpus with a bigger or removed
-   cap. The engine and tests hold as-is; only the data grows. At full size the data
-   should move from a committed JS module to a fetched, cache-versioned JSON chunk
-   (per band or per spine segment) rather than one 15 MB module.
-2. Rewire selection. `engine/categories.js` currently levels by 30-word bands of the
-   flat list. Replace the band concept with (spine pattern, age pool): `fillLearning`
-   draws from the current lesson via `lessonPlan`, the level-up gate becomes the
-   pattern gate (APP_DESIGN decision 7), and the learning-set refill order inside a
-   lesson is already `orderWithinPattern`.
-3. Reteach on miss. Craft/mastery miss handlers call `reteach()` and render the rule
-   plus grapheme highlight (the span indices map straight onto the letter tiles).
-4. Diagnostic placement. `engine/assessment.js` samples patterns across the spine
-   instead of tiers 1 to 9 to set the floor; age sets the ceiling.
-5. Audio. Clips exist for the current 2,916 words only. New words fall back to device
-   TTS until a gen_audio run covers them; homophone words need their sentence audio
-   or TTS. This is the main content cost of going wide.
-6. Data still in flight upstream: the word-by-pattern recall pass (T4) and its
-   follow-ups will improve exception edges and may adjust placements. The importer
-   makes refreshing cheap, so import again after each upstream milestone rather than
-   hand-patching.
+How it's wired: `lexiconEntries()` (engine/lists.js) turns the sample plus the
+learner's age into classic-shaped entries where `band` is the 1-based lesson number in
+spine order. `engine/lexicon.js` serves those from `byRank()` when the mode is on
+(`setWordlistMode`, applied per profile in `app.refreshActive`). Everything downstream
+runs unchanged, which means the categories level gate IS the pattern gate, and the
+existing spaced review applies per lesson.
+
+What the UI got:
+- Settings: Word lists panel (Classic / Pattern lessons) plus an age stepper (5 to 15,
+  seeded from the onboarding age). Switching restarts the word path at lesson 1 (gems,
+  streaks, tracker kept). The classic re-test button hides in lessons mode; the level
+  stepper reads "Lesson N of M".
+- Craft and Mastery: a miss shows the pattern's rule in a reteach strip, and Craft
+  glows the letters of the pattern's grapheme span amber.
+- Dictation: homophone words are followed by their carrier sentence.
+- Progress: the cavern map becomes the Lesson path, each entry named by its pattern.
+
+Adapter details worth knowing: words under 3 letters are dropped (craft tiles need 3),
+and lessons L1/L2 (defined as 2-letter-word lessons) are dropped whole, including the
+corpus's stray longer placements there ("add", "spirit" — worth flagging upstream).
+Tier maps the AoA band index clamped to the classic 1 to 9 range.
+
+## What remains
+
+1. Full-size re-import when the research lists are final (`--per-cell` up or removed).
+   At full size move the data from a committed JS module to fetched, cache-versioned
+   JSON chunks rather than one 15 MB module.
+2. Diagnostic placement for lessons mode: sample patterns across the spine to set the
+   floor (the classic walk diagnoses 30-word bands, so it is skipped in lessons mode
+   and learners start at lesson 1).
+3. Audio. Clips exist for the current 2,916 words only; research words fall back to
+   device TTS. A gen_audio run over the research sample (and sentence audio for
+   homophones) is the main content cost.
+4. Printables still draw from the classic list regardless of mode.
+5. Upstream data still in flight: the word-by-pattern recall pass (T4) will improve
+   exception edges and may adjust placements. Re-run the importer after each upstream
+   milestone rather than hand-patching.

@@ -6,7 +6,7 @@
 // quests, personal bests, recent-days accuracy, and the crystal catalog. Display-only.
 import { el, header, toast } from '../ui.js';
 import { categorySummary, cavernLevels, setLevelAndRefill } from '../engine/categories.js';
-import { byRank } from '../engine/lexicon.js';
+import { byRank, wordlistMode, lessonForBand } from '../engine/lexicon.js';
 import { dailyQuests, questProgress, allQuestsDone } from '../engine/quests.js';
 import { catalogSummary } from '../engine/catalog.js';
 
@@ -61,7 +61,7 @@ export function progressScreen(ctx) {
             // climbed to) — that's the "where am I" number. (cavern DEPTH = mastery zones, separate;
             // unifying the two is the D4 cavern-map redesign.)
             el('span', { class: 'big-num' }, `⛏️ ${(ctx.state.categories && ctx.state.categories.level) || 1}`),
-            el('span', { class: 'haul-label' }, 'cavern level'),
+            el('span', { class: 'haul-label' }, wordlistMode() === 'lessons' ? 'lesson' : 'cavern level'),
           ),
           el(
             'div',
@@ -205,6 +205,8 @@ function cavernMap(ctx) {
     ctx.nav('puzzle');
   };
   const node = (lv) => {
+    // §38 lessons mode: a band IS a spelling-pattern lesson — show its name under the number.
+    const lesson = lessonForBand(lv.band);
     const b = el(
       'button',
       { class: `cavern-level ${lv.status}`, disabled: lv.status === 'locked', onClick: () => onTap(lv) },
@@ -212,7 +214,8 @@ function cavernMap(ctx) {
       el(
         'div',
         { class: 'cl-main' },
-        el('span', { class: 'cl-num' }, `Level ${lv.band}`),
+        el('span', { class: 'cl-num' }, lesson ? `Lesson ${lv.band}` : `Level ${lv.band}`),
+        lesson ? el('span', { class: 'cl-lesson' }, lesson.label) : null,
         el('div', { class: 'cl-bar' }, el('div', { class: 'cl-fill', style: { width: lv.total ? `${Math.round((lv.done / lv.total) * 100)}%` : '0%' } })),
       ),
       el('span', { class: 'cl-prog' }, lv.total ? `${lv.done}/${lv.total}` : ''),
@@ -227,14 +230,16 @@ function cavernMap(ctx) {
     if (currentEl) scroll.scrollTop = Math.max(0, currentEl.offsetTop - scroll.clientHeight / 2 + currentEl.clientHeight / 2);
   }, 0);
 
+  const lessonsMode = wordlistMode() === 'lessons';
+  const unit = lessonsMode ? 'Lesson' : 'Level';
   const note = skipped
-    ? `You're at Level ${current} of ${levels.length}. ${skipped} easier level${skipped === 1 ? '' : 's'} to go back and master! ⛏️`
-    : `You're at Level ${current} of ${levels.length}${cleared ? ` — ${cleared} cleared ⭐` : ''}. Tap a level to practice it.`;
+    ? `You're at ${unit} ${current} of ${levels.length}. ${skipped} easier ${unit.toLowerCase()}${skipped === 1 ? '' : 's'} to go back and master! ⛏️`
+    : `You're at ${unit} ${current} of ${levels.length}${cleared ? ` — ${cleared} cleared ⭐` : ''}. Tap a ${unit.toLowerCase()} to practice it.`;
 
   return el(
     'div',
     { class: 'panel' },
-    el('h3', {}, 'Cavern map'),
+    el('h3', {}, lessonsMode ? 'Lesson path' : 'Cavern map'),
     el('p', { class: 'quest-note', style: { marginTop: '0', marginBottom: '10px' } }, note),
     scroll,
   );

@@ -477,6 +477,15 @@ button.quest {
   font-weight: 800;
   font-size: 0.95rem;
 }
+/* §38 lessons mode: the pattern name under the lesson number — one line, ellipsized
+   (never clipped height-wise; the row keeps its height and the text truncates). */
+.cavern-level .cl-lesson {
+  font-size: 0.8rem;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .cavern-level .cl-prog {
   font-size: 0.8rem;
   color: var(--ink-dim);
@@ -1020,6 +1029,37 @@ button.quest {
   box-shadow: 0 6px 18px -8px var(--emerald), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   animation: none;
 }
+/* §38 reteach: after a miss, the letters that make the pattern's sound glow amber so
+   the child sees WHERE the rule lives in the word (empty or filled, the rim marks it). */
+.slot.grapheme {
+  border-color: #ffc94d;
+  border-style: solid;
+  box-shadow: 0 0 16px -2px rgba(255, 201, 77, 0.55), inset 0 0 10px rgba(255, 201, 77, 0.18);
+  animation: none; /* the socket-glow keyframes animate border-color and would override the amber */
+}
+/* §38 reteach strip: the pattern's kid-facing rule, shown under the verdict on a miss. */
+.reteach {
+  display: none;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 6px auto 0;
+  max-width: 520px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 201, 77, 0.1);
+  border: 1px solid rgba(255, 201, 77, 0.35);
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.35;
+  text-align: left;
+}
+.reteach:not(:empty) {
+  display: flex;
+}
+.reteach-icon {
+  flex: 0 0 auto;
+}
+
 .slots.shake {
   animation: shake 0.4s ease;
 }

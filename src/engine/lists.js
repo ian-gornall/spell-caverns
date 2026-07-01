@@ -80,3 +80,51 @@ export function reteach(entry, patterns) {
 export function needsCarrierSentence(entry) {
   return entry.homophoneId != null;
 }
+
+// ---- lexicon adapter --------------------------------------------------------
+// Turn the research dataset + a learner age into CLASSIC-shaped lexicon entries so
+// the whole existing engine (categories, selection, modes, progress) runs unchanged:
+//   band = 1-based LESSON number in spine order (so the categories level gate IS
+//   APP_DESIGN's pattern gate), rank/pos = global teaching order, tier = AoA band
+//   index (clamped to the classic 1..9 range the assessment/distractor code expects).
+// Words under 3 letters are dropped (craft tiles need >= 3); a lesson with no
+// servable words gets no band. Research extras (rule, lessonLabel, grapheme,
+// homophoneId) ride along for the reteach + homophone UI.
+// L1/L2 are BY DEFINITION 2-letter-word lessons ("2-letter VC/CV"), so they can never
+// be served — dropped whole, including the corpus's few stray >=3-letter placements
+// there ("add", "spirit"), whose rule text wouldn't describe them.
+const UNSERVABLE_LESSONS = new Set(['L1', 'L2']);
+
+export function lexiconEntries(research, age) {
+  const pool = buildPool(research.words, age)
+    .filter((e) => e.word.length >= 3 && !UNSERVABLE_LESSONS.has(e.pattern));
+  const plan = lessonPlan(pool, research.spine);
+  const entries = [];
+  const lessons = new Map();
+  let band = 0;
+  for (const l of plan) {
+    band += 1;
+    lessons.set(band, { id: l.id, label: l.label, rule: l.rule, index: l.index });
+    for (const e of l.words) {
+      const rank = entries.length + 1;
+      entries.push({
+        word: e.word,
+        rank,
+        pos: rank - 1,
+        band,
+        tier: Math.min(9, BAND_INDEX.get(e.band) + 1),
+        pattern: e.pattern,
+        syllables: [e.word],
+        misspellings: [],
+        sentence: e.sentence || '',
+        rule: l.rule,
+        lessonLabel: l.label,
+        lessonId: l.id,
+        grapheme: e.grapheme || null,
+        homophoneId: e.homophoneId ?? null,
+        aoaBand: e.band,
+      });
+    }
+  }
+  return { entries, lessons };
+}

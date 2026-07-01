@@ -2,7 +2,7 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-07-01 • sw **csc-v66** — NEW: §38 research-corpus multi-list integration (sampled, engine + importer, NOT in the live game path). Admin app + §37 A unchanged on prod.
+> `C:\Users\iango\spell`  •  Last updated 2026-07-01 • sw **csc-v67** — §38 research-corpus word lists LIVE as the per-profile "Pattern lessons" mode (grown-up Settings toggle; classic stays default). See §38 block + `RESEARCH_INTEGRATION.md`.
 >
 > **WHERE THINGS STAND (read first):** prod is **csc-v65**, tree is CLEAN, all guards green. The §37 backlog Ian raised
 > 2026-06-22f is now essentially cleared in code: **A (active-pause) = ✅ BUILT + SHIPPED (csc-v65, this session)**,
@@ -16,7 +16,22 @@
 >    see the §37 B entry below. Its "play time" metric is already being banked into `stats.playMs` (§37 A built it once).
 > (csc-v64 was the §37 C design-QA pass + a GEODE-BOSS "nullnull" fix, commit `ada3df5`, SHIPPED + LIVE.)
 >
-> **🆕 SESSION 2026-07-01 — §38 RESEARCH-CORPUS MULTI-LIST INTEGRATION (sampling) — ✅ BUILT + tested; NOT live.**
+> **🆕 SESSION 2026-07-01b — §38 PART 2: "PATTERN LESSONS" MODE SHIPPED (csc-v67).** The §38 engine below is
+> now WIRED INTO THE LIVE GAME as a per-profile mode (classic default): `lexicon.setWordlistMode` swaps
+> `byRank()` to research entries where **band = spine lesson number** (so the categories level gate IS the
+> APP_DESIGN pattern gate — zero engine rewiring); applied per profile in `app.refreshActive`. UI: Settings
+> grown-up **Word lists** panel (Classic/Pattern lessons + age stepper 5–15, switch restarts path at lesson 1,
+> re-test hidden in lessons mode, level stepper reads "Lesson N of M"); Craft+Mastery **reteach-the-rule strip**
+> on a miss (+ amber **grapheme glow** on Craft slots — needs `animation:none` or socket-glow overrides it);
+> **homophone carrier-sentence dictation** (say word → say sentence) in both modes; Progress **Lesson path**
+> (lesson names in the cavern map, `.cl-lesson`). Adapter drops <3-letter words AND lessons L1/L2 whole
+> (2-letter-word lessons by definition; corpus strays "add"/"spirit" excluded — flag upstream). REAL_WORDS
+> now includes research words (distractor safety, both modes). Sample re-emitted `--per-cell 4` (3,707 words,
+> 103 servable lessons). Tests 364 green (incl. new adapter tests); `scripts/qa_s38.mjs` (16 checks, phone
+> viewport, screenshots eyeballed incl. classic regression) = ISSUES none. Deferred: spine diagnostic
+> (lessons mode starts at lesson 1), audio clips for research words (TTS fallback), printables stay classic.
+>
+> **🆕 SESSION 2026-07-01 — §38 RESEARCH-CORPUS MULTI-LIST INTEGRATION (sampling) — ✅ BUILT + tested (part 1).**
 > The app's future word data is the `C:\Users\iango\spelling-research` corpus (`app_data/`: 49,778 forms with AoA
 > band + governing pattern + grapheme span + carrier sentence; a 107-pattern spine; a 108-lesson rules catalog).
 > Its teaching loop is locked in that repo's `APP_DESIGN.md`: cumulative-by-age pool, one phonics spine,

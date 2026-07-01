@@ -207,3 +207,76 @@ test('research_sample: the full teaching loop runs end-to-end on real data', asy
   assert.ok(r.rule.length > 0);
   assert.ok(r.graphemeIndices.every((i) => i >= 0 && i < withSpan.word.length));
 });
+
+// ---- lexicon adapter: research corpus -> classic-shaped entries ----------------
+// lexiconEntries() feeds engine/lexicon.js byRank() in "lessons" mode: entries carry
+// the classic fields every mode/screen already reads (word, rank, tier, pattern,
+// syllables, misspellings, sentence, pos, band) with band = 1-based LESSON number
+// in spine order (so categories' level gate becomes the pattern gate), plus the
+// research extras (rule, lessonLabel, grapheme, homophoneId) for the reteach UI.
+
+test('lexiconEntries maps lessons to sequential bands and keeps classic fields', async () => {
+  const { lexiconEntries } = await import('../src/engine/lists.js');
+  const { entries, lessons } = lexiconEntries({ words: WORDS, spine: SPINE, patterns: PATTERNS }, 13);
+  // 2-letter words are dropped (craft tiles need >= 3 letters), so L1/L2 thin out:
+  assert.ok(!entries.some((e) => e.word.length < 3));
+  // lessons with no servable words don't get a band; the rest number 1..N in spine order
+  const bands = [...new Set(entries.map((e) => e.band))];
+  assert.deepEqual(bands, bands.slice().sort((a, b) => a - b));
+  assert.equal(bands[0], 1);
+  // every entry has the classic shape + research extras
+  const cat = entries.find((e) => e.word === 'cat');
+  assert.equal(typeof cat.rank, 'number');
+  assert.equal(cat.tier, 1); // under6 -> tier 1
+  assert.deepEqual(cat.syllables, ['cat']);
+  assert.deepEqual(cat.misspellings, []);
+  assert.equal(cat.pattern, 'L3');
+  assert.match(cat.rule, /consonant/);
+  assert.deepEqual(cat.grapheme.indices, [1]);
+  assert.equal(cat.pos, cat.rank - 1);
+  // lessons map serves the UI label for a band
+  assert.equal(lessons.get(cat.band).id, 'L3');
+  assert.match(lessons.get(cat.band).label, /CVC/);
+});
+
+test('lexiconEntries drops the structural 2-letter lessons entirely (L1/L2)', async () => {
+  // Craft tiles need >= 3 letters, and L1/L2 are BY DEFINITION 2-letter-word lessons —
+  // so a stray long word placed there (corpus: "add", "spirit" in L1) must not surface
+  // carrying a rule that doesn't describe it.
+  const { lexiconEntries } = await import('../src/engine/lists.js');
+  const words = [
+    w('add', 'under6', 'L1', 0, 3, 5.0), // >= 3 letters but an L1 placement
+    w('cat', 'under6', 'L3', 2, 3, 5.5),
+  ];
+  const { entries, lessons } = lexiconEntries({ words, spine: SPINE, patterns: PATTERNS }, 13);
+  assert.ok(!entries.some((e) => e.pattern === 'L1' || e.pattern === 'L2'));
+  assert.equal(entries[0].word, 'cat');
+  assert.equal(lessons.get(1).id, 'L3'); // band numbering skips the dropped lessons
+});
+
+test('lexiconEntries respects the age ceiling and orders within a lesson', async () => {
+  const { lexiconEntries } = await import('../src/engine/lists.js');
+  const teen = lexiconEntries({ words: WORDS, spine: SPINE, patterns: PATTERNS }, 13);
+  const young = lexiconEntries({ words: WORDS, spine: SPINE, patterns: PATTERNS }, 6);
+  assert.ok(teen.entries.some((e) => e.word === 'vex'));
+  assert.ok(!young.entries.some((e) => e.word === 'vex'));
+  // within a lesson: shortest first then most frequent; rank strictly increases
+  const l3 = teen.entries.filter((e) => e.pattern === 'L3');
+  assert.deepEqual(l3.map((e) => e.word), ['cat', 'vex', 'quiz']);
+  const ranks = teen.entries.map((e) => e.rank);
+  assert.deepEqual(ranks, ranks.slice().sort((a, b) => a - b));
+});
+
+test('lexiconEntries tier maps the AoA band index (clamped to 9)', async () => {
+  const { lexiconEntries } = await import('../src/engine/lists.js');
+  const words = [
+    w('cat', 'under6', 'L3', 2, 3, 5.5),
+    w('quiz', '9_10', 'L3', 2, 4, 3.9),
+    w('vexing', '15plus', 'L3', 2, 6, 2.0),
+  ];
+  const { entries } = lexiconEntries({ words, spine: SPINE, patterns: PATTERNS }, 40);
+  const tier = (word) => entries.find((e) => e.word === word).tier;
+  assert.equal(tier('cat'), 1);
+  assert.equal(tier('quiz'), 5);
+  assert.equal(tier('vexing'), 9); // band index 10 clamps to tier 9
+});

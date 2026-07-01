@@ -41,6 +41,11 @@ function defaultSettings() {
     dailyGoalGems: 250,
     reminders: true, // §36 F2: daily reminder defaults ON; a grown-up is prompted for OS
     // notification permission at the END of onboarding (push can't be silently force-enabled).
+    // §38 research-corpus word lists: 'classic' (flat frequency list) or 'lessons'
+    // (pattern lessons filtered by age). Grown-up toggle in Settings; classic stays the
+    // default while the research lists finish processing upstream.
+    wordlists: 'classic',
+    age: null, // AoA ceiling for 'lessons' mode (years); seeded from placement.age when toggled
   };
 }
 

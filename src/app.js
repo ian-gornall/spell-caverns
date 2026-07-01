@@ -9,6 +9,7 @@ import * as audio from './audio.js';
 import { setRoot, render, toast, applyTheme, applyReadable, activePauseOverlay } from './ui.js';
 import { createActiveTimer } from './engine/activetime.js';
 import { learningProgress } from './engine/categories.js';
+import { setWordlistMode } from './engine/lexicon.js';
 import { homeScreen } from './screens/home.js';
 import { onboardingScreen } from './screens/onboarding.js';
 import { profilesScreen } from './screens/profiles.js';
@@ -94,6 +95,8 @@ function refreshActive() {
     audio.configure(s.settings);
     applyTheme(s.settings.themeColor);
     applyReadable(s.settings.readableText);
+    // §38: point the lexicon at this profile's word lists (classic or pattern lessons + age).
+    setWordlistMode(s.settings.wordlists, s.settings.age ?? s.placement?.age);
   }
   // §37 A: a profile switch is a real break — re-anchor play time to the new explorer + reset the
   // 20-minute streak so one child's session never carries into the next.

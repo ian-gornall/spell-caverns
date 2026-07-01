@@ -17,7 +17,7 @@ const OUT = path.join(ROOT, 'deploy');
 // the repo-root /functions dir and are processed by Cloudflare directly — NOT copied here.
 const FILES = ['index.html', 'styles.css', 'manifest.webmanifest', 'sw.js', '_headers', 'netlify.toml'];
 const DIRS = ['icons', 'src', 'audio', 'fonts', 'admin']; // audio optional (TTS clips, device-voice fallback); fonts = self-hosted Atkinson Hyperlegible (precached); admin = the operator dashboard bundle (ADMIN_APP.md, served at /admin, NOT precached)
-const DATA = ['words.js', 'patterns.js', 'nonsense_blocklist.js']; // the runtime dataset (not the build inputs)
+const DATA = ['words.js', 'patterns.js', 'nonsense_blocklist.js', 'research_sample.js']; // the runtime dataset (not the build inputs)
 
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });

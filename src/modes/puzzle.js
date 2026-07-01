@@ -100,6 +100,7 @@ export function startPuzzle(ctx, params = {}) {
   const verdictEl = el('div', { class: 'verdict' });
   const verdictChip = el('div', { class: 'verdict-chip' });
   const sentenceEl = el('div', { class: 'sentence' });
+  const reteachEl = el('div', { class: 'reteach' }); // §38: the pattern's rule, shown on a miss
   const slotsEl = el('div', { class: 'slots' });
   const trayEl = el('div', { class: 'tray' });
 
@@ -128,7 +129,7 @@ export function startPuzzle(ctx, params = {}) {
   const playBody = el(
     'div',
     { class: 'play-body' },
-    el('div', { class: 'prompt' }, hearRow, sentenceEl, verdictEl, verdictChip),
+    el('div', { class: 'prompt' }, hearRow, sentenceEl, verdictEl, verdictChip, reteachEl),
     el('div', { class: 'answer-zone' }, slotsEl, controlsEl, trayEl),
   );
   // §C1 DEBUG (Ian 2026-06-22b): during the placement diagnostic ONLY, show the current word's
@@ -188,6 +189,8 @@ export function startPuzzle(ctx, params = {}) {
   // --- per-word state -------------------------------------------------------
   let target = '';
   let isProper = false; // §4 caps: this word's first letter displays as a capital (proper noun)
+  let current = null; // the full entry for the word on screen (§38: carries rule/grapheme/homophone)
+  let glowIndices = null; // §38 reteach: slot indices to glow after a miss (the pattern's grapheme)
   let trayTiles = []; // [{ id, letter, used }]
   let slots = []; // [{ tileId, letter, locked } | null]
   let firstTry = true; // false after any wrong submit or hint (no clean-recall credit)
@@ -321,7 +324,8 @@ export function startPuzzle(ctx, params = {}) {
         el(
           'button',
           {
-            class: 'slot' + (s ? ' filled' : '') + (s && s.locked ? ' locked' : ''),
+            class: 'slot' + (s ? ' filled' : '') + (s && s.locked ? ' locked' : '')
+              + (glowIndices && glowIndices.includes(i) ? ' grapheme' : ''),
             onClick: () => {
               if (!locked && s && !s.locked) returnSlot(i);
             },
@@ -490,6 +494,17 @@ export function startPuzzle(ctx, params = {}) {
     audio.speakPraise(phrase);
     flashVerdict(phrase, 'Keep the letters that fit', '#8593A3'); // AA-lifted slate (see praise.MISS_TIER)
     updateCombo(null);
+    // §38 reteach-the-rule (lessons mode: the entry carries its pattern's rule): a miss
+    // surfaces the rule and glows the letters that make the pattern's sound (APP_DESIGN #8).
+    if (current && current.rule) {
+      reteachEl.replaceChildren(
+        el('span', { class: 'reteach-icon' }, '💡'),
+        el('span', {}, current.rule),
+      );
+      if (current.grapheme && Array.isArray(current.grapheme.indices)) {
+        glowIndices = current.grapheme.indices;
+      }
+    }
     // lock the letters that are right; return the rest to the tray to retry
     slots.forEach((s, i) => {
       if (!s) return;
@@ -632,6 +647,9 @@ export function startPuzzle(ctx, params = {}) {
     clearHintTimers();
     target = entry.word.toLowerCase();
     isProper = isProperWord(entry.word); // §4 caps: capitalize the first slot's DISPLAY for proper nouns
+    current = entry; // §38: keep the full entry (rule/grapheme/homophone) for reteach + dictation
+    glowIndices = null;
+    reteachEl.replaceChildren();
     // §C1 debug readout (placement only): rank / list-position / band, the running band-miss
     // tally toward the "3 in a band" stop, the word number, and the jump the last answer caused.
     if (placement && DEBUG) {
@@ -666,6 +684,11 @@ export function startPuzzle(ctx, params = {}) {
     armHintTimers();
     audio.say(target, {
       onDone: () => {
+        // §38 homophone: the bare audio is ambiguous, so follow with the carrier sentence
+        // (APP_DESIGN #4 dictation rule). Lessons-mode entries carry homophoneId + sentence.
+        if (!locked && !placement && entry.homophoneId != null && entry.sentence) {
+          audio.say(entry.sentence);
+        }
         if (locked || placement) return; // §C1: no speed clock during the placement diagnostic
         clearTimeout(graceTimer);
         graceTimer = setTimeout(() => {

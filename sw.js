@@ -276,7 +276,9 @@
 //      adopts it on next sync — this is the one PRECACHED change, hence the bump). New pure
 //      engine/admin_view.js (flatten) + engine/admin_export.js (CSV) + the admin/ bundle. styles.css
 //      gains --danger:#ff9aa2 (.gate-err now references it). +test/admin.test.js + adminRev tests.
-const VERSION = 'csc-v66';
+// csc-v67: §38 research-corpus word lists — 'Pattern lessons' mode (data/research_sample.js +
+// engine/lists.js): grown-up toggle in Settings, lesson path, reteach-the-rule, homophone sentences.
+const VERSION = 'csc-v67';
 
 const CORE = [
   '/',
@@ -305,6 +307,7 @@ const CORE = [
   '/src/engine/pushconfig.js',
   '/src/engine/activetime.js',
   '/src/engine/lexicon.js',
+  '/src/engine/lists.js',
   '/src/engine/distractors.js',
   '/src/engine/praise.js',
   '/src/engine/voicequeue.js',
@@ -343,6 +346,7 @@ const CORE = [
   '/src/screens/printables.js',
   '/src/screens/admin_feedback.js',
   '/data/words.js',
+  '/data/research_sample.js',
   '/data/patterns.js',
   '/data/nonsense_blocklist.js',
 ];
