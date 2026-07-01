@@ -2,7 +2,7 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-07-01 • sw **csc-v67** — §38 research-corpus word lists LIVE as the per-profile "Pattern lessons" mode (grown-up Settings toggle; classic stays default). See §38 block + `RESEARCH_INTEGRATION.md`.
+> `C:\Users\iango\spell`  •  Last updated 2026-07-01 • sw **csc-v67** — §38 research-corpus word lists LIVE as the per-profile "Pattern lessons" mode (grown-up Settings toggle; classic stays default). See §38 block + `RESEARCH_INTEGRATION.md`. **NEXT BUILD: §39 lessons-mode fix (csc-v68), plan below — Ian tried lessons mode and it failed him four ways; plan is settled with his decisions, ready to implement.**
 >
 > **WHERE THINGS STAND (read first):** prod is **csc-v65**, tree is CLEAN, all guards green. The §37 backlog Ian raised
 > 2026-06-22f is now essentially cleared in code: **A (active-pause) = ✅ BUILT + SHIPPED (csc-v65, this session)**,
@@ -15,6 +15,85 @@
 >    questions (monitor identity/auth, COPPA consent, free-first Google sync, reuse family-sync plumbing) BEFORE coding —
 >    see the §37 B entry below. Its "play time" metric is already being banked into `stats.playMs` (§37 A built it once).
 > (csc-v64 was the §37 C design-QA pass + a GEODE-BOSS "nullnull" fix, commit `ada3df5`, SHIPPED + LIVE.)
+>
+> **🆕 SESSION 2026-07-01c — §39 LESSONS-MODE FIX (csc-v68) — ⛔ PLANNED, NOT STARTED. Full plan (also at
+> `~/.claude/plans/typed-puzzling-petal.md`). Ian played csc-v67 lessons mode and hit four failures; all were
+> traced in code and confirmed structural. His design decisions are LOCKED (asked + answered 2026-07-01):**
+>
+> **The four problems, with root causes:**
+> 1. **NO VOICE.** Research words have no recorded clips → dictation falls to `speakTTS()` (`src/audio.js:242`),
+>    which calls `speechSynthesis.cancel()` synchronously right before `speak()` AND keeps no reference to the
+>    utterance. Both are known iOS WebKit bugs that silently swallow speech. Classic mode masks it (clips exist
+>    for ~2,916 classic words, so classic rarely reaches speakTTS).
+> 2. **LESSONS INVISIBLE.** Rule text renders ONLY in `wrongSubmit()` (`puzzle.js:498`) + mastery's wrong-finish
+>    branch (`mastery.js:882`). Spell right, or let the 8s auto-hint build it, and no lesson ever shows. No intro.
+>    The corpus's `teach_exemplars` never reach the UI (`reteach()` at `lists.js:69` is dead code). Hints
+>    themselves are FINE: the gem-cost 4s/8s system is unchanged and live in lessons mode.
+> 3. **ADVANCEMENT SILENT + HEAVY.** Lessons ride the classic band engine: advance = EVERY band word MASTERED
+>    (drawn from memory), no announcement. 6 lessons have <5 words; band 92 has ONE word.
+> 4. **ADULT COPY.** Corpus rule strings are teacher register ("consonant-vowel-consonant", "/or/ is usually
+>    spelled or"). Upstream repo is write-out-of-bounds → fix is an overlay in THIS repo.
+>
+> **Ian's locked decisions:** (a) advancement = STREAKS: ~5-in-a-row right in Craft → phase flips to Mastery →
+> ~5-in-a-row there → celebrate + next lesson; within a lesson word LENGTH adapts, 2-of-last-3 right steps to
+> longer words, 2-of-3 wrong steps shorter. (b) Teaching = kid-voiced INTRO CARD at lesson start (rule + 2-3
+> exemplars, read aloud) + reteach strip on miss AND after hint-assisted solves; mobile must stay CLEAN, one
+> element, never stacked (his explicit complaint). (c) Rewrite all ~107 rules + path labels into kid language
+> (age 6-9, no "consonant/vowel/cluster", no /slash/ phonemes; exemplars do the explaining).
+>
+> **The build steps (TDD; classic mode must stay byte-identical, `qa_s38.mjs` classic section is the guard):**
+> 1. **Voice fix** (`src/audio.js speakTTS`): keep a module-level utterance ref (iOS GC); only `cancel()` when
+>    `speaking||pending`, then defer `speak()` ~60ms + `resume()` first (iOS leaves synthesis paused after
+>    `<audio>`). Add `window.__ttsLog` hook (mirrors `__spokenLog`/`__clipLog`). Playwright probe: lessons
+>    profile, `__spokenLog` gets word + `__clipLog` empty + `__ttsLog` gets word. Gemini clips for research
+>    words stay out of scope (quota-gated); robust TTS fallback is the shipping fix.
+> 2. **Exemplars + lesson view**: `lexiconEntries()` lesson map gains `exemplars` from
+>    `research.patterns[id].teach_exemplars`; new `lexicon.lessonList()` → ordered
+>    `[{band,id,label,rule,exemplars,words}]` (empty in classic). Extend `test/lists.test.js`.
+> 3. **NEW pure `src/engine/lessonrun.js`** — owns lessons-mode serving + advancement (categories keeps running
+>    underneath for bookkeeping ONLY: pips/repair/tricky). Persisted per profile as `state.lessons`:
+>    `{v:1, lessonId, phase:'craft'|'mastery', streak, tier, recent:[], cursor, completed:[], seenIntro:[]}`.
+>    STREAK_TARGET=5, window=3. Streak +1 on first-try correct, reset on miss, persists across sessions.
+>    `lessonTiers(words)` groups by distinct length asc; a FULL 3-window steps tier: ≥2 right → up (clamped),
+>    ≥2 wrong → down; window clears. `nextLessonWord` round-robins within tier, skips immediate repeats when
+>    tier >1 word; tiny lessons complete via repetition BY DESIGN. Craft streak hit → `{event:'phase'}`
+>    (phase='mastery', streak/tier reset). Mastery streak hit → `{event:'complete'}` (push to `completed`,
+>    sync to next uncompleted lesson). `syncLesson` self-heals on age change / completed id; all-done → null
+>    lesson. `lessonStatus()` = the ONE read for chip/Progress/Home. Tests `test/lessonrun.test.js`: tiers,
+>    step/clamp, streak reset, phase flip, complete+advance, 1-word lesson, age resync, revive partial saves.
+> 4. **Persistence**: `state.js defaultProfile()` gains `lessons: createLessonRun()`; `storedToState` revives
+>    (absent = fresh). `settings.js switchWordlists()` (~:1086) also resets `state.lessons`.
+> 5. **Kid copy**: NEW `data/kid_rules.js` (`KID_RULES = {L3:{name,rule},…}`) + NEW `src/engine/kidcopy.js`
+>    (`kidLesson()` prefers overlay, falls back to corpus). ALL kid-facing surfaces read through it (reteach
+>    strips, intro card, chip, Progress path labels, settings label ~:1201). THE ~107 STRINGS ARE WRITTEN BY
+>    THE MAIN AGENT during implementation (language-quality work, don't delegate). `test/kidcopy.test.js`.
+> 6. **Craft** (`puzzle.js`): gate `wordlistMode()==='lessons' && !review && !placement`. Serving: `present()`
+>    pulls `syncLesson`+`nextLessonWord` dynamically (placement precedent), keep `recordCraft` bookkeeping.
+>    Record streak ONCE per word in `solve()` with `firstTry`. Non-firstTry solves (wrong submit OR hints) also
+>    render the reteach strip: kid rule + "like cat, dog, sun" + grapheme glow — ONE `.reteach` element. NEW
+>    one-line `.lesson-chip` header: `Lesson {n} · {kid name} · ⚡{streak}/5` + 🔨/✍️ glyph, ellipsized on phone.
+>    `event:'phase'` → end session with reward screen + "Master it!" CTA → mastery. Extend `__puzzleCurrent`
+>    with `{lessonId,phase,streak}`.
+> 7. **Intro card**: NEW `src/screens/lesson_intro.js`, full-screen overlay in the `parentalGate`/apause shape
+>    (ui.js): mascot, kid lesson name, rule, exemplar chips, one big "Let's go!" button; speaks via `audio.say`;
+>    dismiss stops audio. Mounted from puzzle.js BEFORE first `present()` when `needsIntro(run)` (card is the
+>    ONLY thing on screen — fixes the mobile jumble). Mobile-first CSS, verify 320/390.
+> 8. **Mastery** (`mastery.js`): lessons-mode unlock = `run.phase==='mastery'` (locked copy "Craft this lesson's
+>    words first!"). Serve from `nextLessonWord`; **guard `advanceLevelIfCleared` (:927) with `!lessonsMode`**
+>    (streak machine owns advancement). Streak: clean success=true, first wrong finish=false, fixed-after-broken
+>    records nothing more. Reteach through kidcopy + exemplars. Same `.lesson-chip`. `event:'complete'` →
+>    celebration screen (confetti + praise + "Lesson {n+1} next" CTA → Craft, which shows next intro) AND sync
+>    `categories.level` to the new band so map/Settings stay truthful.
+> 9. **Home + Progress**: home.js steers to Mastery when `run.phase==='mastery'` (lessons mode only, don't touch
+>    `recommendNext`). progress.js: path labels through kidcopy; node status from the run (`completed`=⭐,
+>    current, later locked); add readout `Lesson {n} of {total} · 🔨/✍️ · ⚡{streak}/5 · {left} lessons to go`.
+> 10. **QA + deploy**: `npm test` green; NEW `scripts/qa_s39.mjs` (390 + 320px, seeded lessons profile): intro
+>    once; craft streak → phase flip; reteach on miss AND after hinted solve, exactly one `.reteach` + one
+>    `.lesson-chip`, no overflow; mastery streak → celebration → next intro; Progress/Home readouts; `__ttsLog`.
+>    Regression: `qa_s38.mjs` unchanged + `qa_stay_in_level.mjs` + `smoke.mjs`. Deploy: sw.js CORE adds
+>    kid_rules.js/lessonrun.js/kidcopy.js/lesson_intro.js, bump sw+version.js → csc-v68, `build_deploy.mjs`
+>    DATA adds kid_rules.js, push main, `check_deploy.mjs` + `qa_prod.mjs`. Update THIS block to SHIPPED.
+>    **Owed to Ian on real device after ship: voice audible in lessons mode on the iPad + intro-card feel pass.**
 >
 > **🆕 SESSION 2026-07-01b — §38 PART 2: "PATTERN LESSONS" MODE SHIPPED (csc-v67).** The §38 engine below is
 > now WIRED INTO THE LIVE GAME as a per-profile mode (classic default): `lexicon.setWordlistMode` swaps
