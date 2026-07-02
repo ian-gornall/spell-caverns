@@ -2,7 +2,53 @@
 
 > Read this top-to-bottom before continuing. It is written so a fresh session (with no
 > prior context) can pick up without re-deriving decisions. Project root:
-> `C:\Users\iango\spell`  •  Last updated 2026-07-01 • sw **csc-v67** — §38 research-corpus word lists LIVE as the per-profile "Pattern lessons" mode (grown-up Settings toggle; classic stays default). See §38 block + `RESEARCH_INTEGRATION.md`. **NEXT BUILD: §39 lessons-mode fix (csc-v68), plan below — Ian tried lessons mode and it failed him four ways; plan is settled with his decisions, ready to implement.**
+> `C:\Users\iango\spell`  •  Last updated 2026-07-02 • sw **csc-v70** — §40 lessons-mode REHAUL SHIPPED + LIVE (all 4 slices): the incremental-rehearsal trial stream now IS lessons mode. See the §40 block below. Classic untouched.
+>
+> **🆕 SESSION 2026-07-01d→02 — §40 LESSONS-MODE REHAUL — ✅ ALL 4 SLICES SHIPPED + LIVE (csc-v68 → csc-v70), qa_prod clean.**
+> Supersedes §39 (the four csc-v67 failures fell out of not having this architecture). Plan:
+> `~/.claude/plans/immutable-puzzling-raven.md` — the evidence-based teaching loop from Ian's math-fact research
+> (`math-research/bib/human-app-design.md`), mapped fact→word, strategy family→spine pattern. Ian's four §40 forks
+> all settled 2026-07-01 (= recommended options): full IR stream (no Craft→Mastery phases), free timed hint ladder,
+> RT for praise+fatigue only (graduation stays accuracy-based), fatigue-ended blocks + effort-proportional reward.
+> - **Slice 1 (csc-v68, `19add14`)** — VOICE + KID COPY. `speakTTS` iOS-proofed (module-level utterance ref vs GC,
+>   cancel() only when busy, speak() deferred ~60ms with resume() first, `__ttsLog` QA hook; a deferred speak can't
+>   fire after stop()). `data/kid_rules.js`: all 107 spine lessons rewritten kid-voiced (age 6-9, no jargon, no
+>   /slash/ phonemes, exemplars explain) + `engine/kidcopy.js kidLesson()` = the ONE read for every kid-facing
+>   lesson string (reteach strips, Progress path, Settings label). Guard: `test/kidcopy.test.js` (full-spine
+>   coverage + register checks) + `scripts/qa_tts.mjs` (clipless lesson → `__ttsLog` gets the word, no clip fetch).
+> - **Slice 2 (`ca3198e`)** — THE IR ENGINE, pure + inert. `engine/lessonrun.js`: per-word rolling last-5 window
+>   (≥4/5 KNOWN · 3/5 LAPSED · ≤2/5 FORGOTTEN, accuracy only), errorless exposure, IR interleave (never two
+>   unknowns adjacent when a known exists, expanding gaps from the trailing streak, MIN_REGAP=2, knowns cycle
+>   longest-unseen), decayed words jump the queue with reteach, unknown ceiling (3 errors on one new word),
+>   lesson-complete when every pool word KNOWN; `state.lessons` persisted per profile (plain JSON — backup/sync
+>   inherit it). `engine/fatigue.js`: knee = recent median clean-recall RT >1.25× session baseline (min-samples
+>   guarded) + self-relative pace. `lexicon.lessonList()` (lessons carry exemplars + their entries).
+> - **Slice 3 (csc-v69, `eb7a165`)** — THE STREAM. `modes/lesson.js` (route `lesson`) + `screens/lesson_intro.js`
+>   (Geo + kid rule + exemplar chips, read aloud, replayable, full-screen overlay — never stacked). Ghost-copy
+>   exposures (keypad accepts only the correct next letter), recalls with dictation + the app keypad (duplicated
+>   from mastery, cross-linked), FREE timed hint ladder scaled by word length (rung 1 = kid rule + grapheme glow +
+>   exemplars + re-dictate; rung 2 = grey copy; stall = warm move-on; hint-assisted = recorded miss w/ rung; wrong
+>   submits clear wrong letters immediately). Economy/boss hooks = same store API as puzzle.js (quests/geode/depth
+>   keep working); gems: 8/response banked + 25/graduation + 100/lesson-complete, pulse every 5, 15-response blocks.
+>   Home hero = 📖 Today's lesson (Craft/Repair/Mastery cards gone in lessons mode); Practice gates on ≥4 graduated
+>   words + mines `maintenanceEntries`; Progress = lesson path + per-word window pips; Settings stepper moves the
+>   run (re-opens a stepped-onto lesson); brain-break chips read `activeLessonWords`. Celebration → next intro,
+>   `categories.level` mirrored for residual readers.
+> - **Slice 4 (csc-v70, `035ebe4`)** — DIAGNOSTIC + FATIGUE. `engine/spinediag.js`: invisible placement walk over
+>   the lesson path (binary search + dense refine, 2-word probes, one-shot misses, ladder capped at rung 1, the
+>   spelling NEVER revealed, ends on a success; resumable at `run.diag`; age-change discards the restore). Seeds
+>   ≤40 below-frontier words KNOWN → the frontier lesson's intro. Fresh/pre-§40 lessons runs revive UNPLACED (so
+>   existing csc-v67 lessons profiles get the diagnostic on first play — band-engine progress NOT translated).
+>   Fatigue knee ends a block with the 🌿 breather screen (no auto-relaunch). Settings: "🔁 Re-run lesson check".
+> - **QA state:** 409 unit tests green · `scripts/qa_s40.mjs` = the §40 guard (44 checks, 390+320px: intro
+>   once/replay, ghost exposure, 4-clean-recall graduation, trial-log adjacency+regap, rung 1/rung 2, wrong-submit
+>   clearing, celebration→next intro, diagnostic converges/seeds/never-reveals, forced-knee breather, home hero,
+>   lesson path, mining gate, zero overflow) · `qa_s38.mjs` (classic byte-identical + lessons routing) · smoke ·
+>   `qa_overflow` (full Galaxy matrix) · `qa_stay_in_level` · `qa_prod` clean on csc-v69 & csc-v70.
+> - **⚠️ OWED (Ian, real device):** the full-feel pass on iPad — voice actually audible in lessons mode (the TTS
+>   fix is emulator-verified only), intro-card feel, diagnostic invisibility, hint-ladder pacing, fatigue-end feel.
+>   Research words still have NO clips (TTS fallback is the shipping voice; Gemini clip generation is quota-gated,
+>   out of scope). QA knobs: `?` none needed — `window.__lessonBlockLen`, `__idleTest`, `__lessonKnee` (see qa_s40).
 >
 > **WHERE THINGS STAND (read first):** prod is **csc-v65**, tree is CLEAN, all guards green. The §37 backlog Ian raised
 > 2026-06-22f is now essentially cleared in code: **A (active-pause) = ✅ BUILT + SHIPPED (csc-v65, this session)**,
@@ -16,9 +62,9 @@
 >    see the §37 B entry below. Its "play time" metric is already being banked into `stats.playMs` (§37 A built it once).
 > (csc-v64 was the §37 C design-QA pass + a GEODE-BOSS "nullnull" fix, commit `ada3df5`, SHIPPED + LIVE.)
 >
-> **🆕 SESSION 2026-07-01c — §39 LESSONS-MODE FIX (csc-v68) — ⛔ PLANNED, NOT STARTED. Full plan (also at
-> `~/.claude/plans/typed-puzzling-petal.md`). Ian played csc-v67 lessons mode and hit four failures; all were
-> traced in code and confirmed structural. His design decisions are LOCKED (asked + answered 2026-07-01):**
+> **SESSION 2026-07-01c — §39 LESSONS-MODE FIX — ⛔ SUPERSEDED BY §40 (above), which shipped the rehaul instead
+> of these point fixes. Kept for the problem analysis (the four csc-v67 failures + root causes still read true;
+> the §39 build steps were replaced by the §40 slices). Original plan: `~/.claude/plans/typed-puzzling-petal.md`.**
 >
 > **The four problems, with root causes:**
 > 1. **NO VOICE.** Research words have no recorded clips → dictation falls to `speakTTS()` (`src/audio.js:242`),
