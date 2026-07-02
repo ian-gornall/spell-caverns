@@ -7,6 +7,7 @@
 import { el, header, toast } from '../ui.js';
 import { categorySummary, cavernLevels, setLevelAndRefill } from '../engine/categories.js';
 import { byRank, wordlistMode, lessonForBand } from '../engine/lexicon.js';
+import { kidLesson } from '../engine/kidcopy.js';
 import { dailyQuests, questProgress, allQuestsDone } from '../engine/quests.js';
 import { catalogSummary } from '../engine/catalog.js';
 
@@ -215,7 +216,7 @@ function cavernMap(ctx) {
         'div',
         { class: 'cl-main' },
         el('span', { class: 'cl-num' }, lesson ? `Lesson ${lv.band}` : `Level ${lv.band}`),
-        lesson ? el('span', { class: 'cl-lesson' }, lesson.label) : null,
+        lesson ? el('span', { class: 'cl-lesson' }, kidLesson(lesson).name) : null, // §39 kid-voiced
         el('div', { class: 'cl-bar' }, el('div', { class: 'cl-fill', style: { width: lv.total ? `${Math.round((lv.done / lv.total) * 100)}%` : '0%' } })),
       ),
       el('span', { class: 'cl-prog' }, lv.total ? `${lv.done}/${lv.total}` : ''),

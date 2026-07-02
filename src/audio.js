@@ -185,6 +185,7 @@ function pickVoice() {
 
 // Hard-silence the actual audio (speech + both clip players). Does NOT touch the queue.
 function hardStopAudio() {
+  clearTimeout(ttsSpeakTimer); // a deferred speakTTS speak() must not fire after a stop
   try {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   } catch {
@@ -217,6 +218,17 @@ export function listVoices() {
 
 // Speak via Web Speech (the fallback path). Calls `onDone` when finished, with a
 // length-based safety timer for engines that never fire `onend`.
+//
+// §39 iOS WebKit hardening (lessons-mode research words have NO clips, so this path
+// must actually speak): (1) keep a module-level reference to the active utterance —
+// iOS garbage-collects an unreferenced one MID-SPEECH and the audio just stops;
+// (2) only cancel() when something is speaking/pending — an idle cancel() can wedge
+// the synthesizer; (3) defer speak() ~60ms after a cancel() and resume() first —
+// iOS silently drops a speak() issued in the same tick as cancel(), and leaves the
+// synthesizer PAUSED after <audio> playback (our clips), which also swallows speech.
+let ttsUtterance = null; // module-level: keeps the active utterance out of GC's reach
+let ttsSpeakTimer = null; // the pending deferred speak(); superseded by a newer call
+
 function speakTTS(text, { rate = 1, pitch = 1, onDone } = {}) {
   const done = onceFn(onDone);
   // estimate duration, scaled by rate so the safety timer doesn't fire before a SLOW
@@ -227,7 +239,8 @@ function speakTTS(text, { rate = 1, pitch = 1, onDone } = {}) {
     return;
   }
   try {
-    if (!window.speechSynthesis) {
+    const synth = window.speechSynthesis;
+    if (!synth) {
       setTimeout(done, estMs);
       return;
     }
@@ -239,9 +252,21 @@ function speakTTS(text, { rate = 1, pitch = 1, onDone } = {}) {
     u.volume = settings.volume ?? 1;
     u.onend = done;
     u.onerror = done;
-    window.speechSynthesis.cancel(); // never queue — keeps feedback snappy
-    window.speechSynthesis.speak(u);
-    setTimeout(done, estMs + 600); // safety net
+    ttsUtterance = u;
+    if (synth.speaking || synth.pending) synth.cancel(); // never queue — keeps feedback snappy
+    clearTimeout(ttsSpeakTimer); // a superseded deferred speak must not fire after our cancel
+    ttsSpeakTimer = setTimeout(() => {
+      try {
+        synth.resume();
+        synth.speak(u);
+        // Off-DOM test hook (mirrors __spokenLog/__clipLog): the text actually handed to
+        // the device TTS, so QA can prove the fallback path runs when no clip exists.
+        try { (window.__ttsLog = window.__ttsLog || []).push(String(text)); } catch { /* ignore */ }
+      } catch {
+        done();
+      }
+    }, 60);
+    setTimeout(done, estMs + 700); // safety net (covers the 60ms defer too)
   } catch {
     setTimeout(done, estMs);
   }

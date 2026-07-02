@@ -32,6 +32,7 @@ import { byRank } from '../engine/lexicon.js';
 import { isProperWord, displayCase } from '../engine/puzzle.js';
 import { mulberry32 } from '../engine/distractors.js';
 import { PRAISE } from '../engine/ui_phrases.js';
+import { kidLesson } from '../engine/kidcopy.js';
 
 const MASTERY_GEMS = 25; // flat reward for mastering a word (drawing is slow; speed is irrelevant)
 const MASTERY_FIX_GEMS = 5; // §36e: gentle consolation for a word fixed AFTER it broke (not a master)
@@ -882,7 +883,8 @@ export function startMastery(ctx, params = {}) {
       // §38 reteach-the-rule (lessons mode): a miss surfaces the word's pattern rule.
       const missed = session[index];
       if (missed && missed.rule) {
-        reteachEl.replaceChildren(el('span', { class: 'reteach-icon' }, '💡'), el('span', {}, missed.rule));
+        // §39: kid-voiced overlay, corpus fallback
+        reteachEl.replaceChildren(el('span', { class: 'reteach-icon' }, '💡'), el('span', {}, kidLesson(missed).rule));
       }
       if (inputMode === 'type') {
         // the keypad fills the first empty slot, so we KEEP the right letters and clear only the

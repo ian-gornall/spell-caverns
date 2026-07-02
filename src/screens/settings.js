@@ -13,6 +13,7 @@ import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
 import { setLevelAndRefill, resetForRetest, createCategoryState } from '../engine/categories.js';
 import { byRank, setWordlistMode, wordlistMode, lessonForBand, lessonCount } from '../engine/lexicon.js';
+import { kidLesson } from '../engine/kidcopy.js';
 import { COLOURS } from './onboarding.js';
 import { APP_VERSION } from '../version.js';
 import { swCacheVersion } from '../pwa.js';
@@ -1198,7 +1199,7 @@ export function settingsScreen(ctx) {
           'div',
           { class: 'field' },
           el('label', {}, wordlistMode() === 'lessons'
-            ? `Starting level — Lesson ${curBand}${lessonForBand(curBand) ? `: ${lessonForBand(curBand).label}` : ''}`
+            ? `Starting level — Lesson ${curBand}${lessonForBand(curBand) ? `: ${kidLesson(lessonForBand(curBand)).name}` : ''}`
             : `Starting level — Cavern level ${curBand}`),
           el('p', { class: 'field-hint' }, wordlistMode() === 'lessons'
             ? 'The lesson path walks the spelling patterns in order. Nudge it easier/harder any time; the game still adapts and revisits tricky words.'

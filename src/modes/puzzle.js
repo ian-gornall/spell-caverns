@@ -18,6 +18,7 @@ import { mulberry32 } from '../engine/distractors.js';
 import { gradeAnswer, projectedScore, GENTLE_PHRASES, NEXT_WORD_PHRASES } from '../engine/praise.js';
 import { recordAnswer } from '../engine/progress.js';
 import { scrambleTray, gradeBuild, isProperWord, displayCase } from '../engine/puzzle.js';
+import { kidLesson } from '../engine/kidcopy.js';
 
 // §30 hint timing: with no CORRECT letter placed, highlight the hint button at 4s and
 // auto-fire a hint at 8s (the timer resets on every correct letter). Auto-fired hints
@@ -499,7 +500,7 @@ export function startPuzzle(ctx, params = {}) {
     if (current && current.rule) {
       reteachEl.replaceChildren(
         el('span', { class: 'reteach-icon' }, '💡'),
-        el('span', {}, current.rule),
+        el('span', {}, kidLesson(current).rule), // §39: kid-voiced overlay, corpus fallback
       );
       if (current.grapheme && Array.isArray(current.grapheme.indices)) {
         glowIndices = current.grapheme.indices;

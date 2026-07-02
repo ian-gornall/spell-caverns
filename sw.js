@@ -278,7 +278,14 @@
 //      gains --danger:#ff9aa2 (.gate-err now references it). +test/admin.test.js + adminRev tests.
 // csc-v67: §38 research-corpus word lists — 'Pattern lessons' mode (data/research_sample.js +
 // engine/lists.js): grown-up toggle in Settings, lesson path, reteach-the-rule, homophone sentences.
-const VERSION = 'csc-v67';
+// csc-v68: §39/§40 slice 1 — lessons-mode VOICE + KID COPY. speakTTS hardened for iOS WebKit
+//      (module-level utterance ref so GC can't kill speech mid-word; cancel() only when busy;
+//      speak() deferred ~60ms with resume() first, since iOS leaves the synthesizer paused after
+//      <audio> playback + drops a speak() in the same tick as cancel()) — research words have no
+//      clips, so lessons-mode dictation lives on this path. Plus data/kid_rules.js + engine/
+//      kidcopy.js: every kid-facing lesson string (reteach strips, Progress path, Settings label)
+//      now reads a kid-voiced (age 6-9) overlay of the corpus's teacher-register rules.
+const VERSION = 'csc-v68';
 
 const CORE = [
   '/',
@@ -308,6 +315,7 @@ const CORE = [
   '/src/engine/activetime.js',
   '/src/engine/lexicon.js',
   '/src/engine/lists.js',
+  '/src/engine/kidcopy.js',
   '/src/engine/distractors.js',
   '/src/engine/praise.js',
   '/src/engine/voicequeue.js',
@@ -347,6 +355,7 @@ const CORE = [
   '/src/screens/admin_feedback.js',
   '/data/words.js',
   '/data/research_sample.js',
+  '/data/kid_rules.js',
   '/data/patterns.js',
   '/data/nonsense_blocklist.js',
 ];

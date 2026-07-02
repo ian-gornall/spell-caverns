@@ -65,3 +65,4 @@ scripts/qa_stay_in_level/
 # Pre-existing archived scripts (not part of the app).
 scripts/_arch/
 scripts/qa_s38/
+scripts/qa_tts/
