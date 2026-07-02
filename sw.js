@@ -303,7 +303,17 @@
 //      fatigue.js: recent median clean known-word RT ~25% over the session baseline) with a
 //      gentle "Time for a breather" screen and no auto-relaunch. Fresh/pre-§40 lessons runs
 //      revive UNPLACED; Settings gains "Re-run lesson check" in lessons mode.
-const VERSION = 'csc-v70';
+// csc-v71: §40 first-play fixes (Ian's live test 2026-07-02). (1) The lesson chip showed
+//      "Lesson 1 · Three-sound words" over DIAGNOSTIC probes from anywhere on the spine
+//      (binary search starts mid-path — "exes"/"faces" are lesson 52's first words) → the
+//      chip is now neutral ("Finding your starting spot ✨") while the walk runs. (2) A
+//      missed probe now opens a REPAIR (miss booked first, rule re-teaches, wrong letters
+//      clear, finishing is uncounted closure) instead of dead-ending to the next word.
+//      (3) Word lookups go through the whole path, not the current lesson's pool — known-
+//      word (maintenance) trials kept losing their sentence and could re-teach the wrong
+//      lesson's rule. (4) Probe SUCCESSES seed as KNOWN too, so a low placement still has
+//      interleave scaffold on day one (was: the same few new words cycling back to back).
+const VERSION = 'csc-v71';
 
 const CORE = [
   '/',

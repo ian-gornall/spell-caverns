@@ -255,7 +255,10 @@ try {
   await dg.locator('.menu-card.lesson').click();
   await dg.waitForFunction(() => window.__lessonCurrent, null, { timeout: 8000 });
   ok(await dg.locator('.lintro-overlay').count() === 0, 'diagnostic: NO intro card before placement (the check is invisible)');
+  const chip = (await dg.locator('.lesson-chip').textContent()) || '';
+  ok(/starting spot/i.test(chip) && !/Three-sound/i.test(chip), `diagnostic: the chip is neutral, not a lesson label ("${chip.trim()}")`);
   let placedNow = false;
+  let repairChecked = false;
   for (let i = 0; i < 40 && !placedNow; i++) {
     const cur = await dg.evaluate(() => window.__lessonCurrent);
     if (cur.diag == null) break; // walk finished (intro should be up)
@@ -264,8 +267,17 @@ try {
     if (know) {
       await typeWord(dg, cur.word);
     } else {
+      // one wrong build = the miss is BOOKED, then the child repairs it (uncounted)
       const bad = [...'zxqjvk'].find((c) => !cur.word.includes(c));
-      await typeWord(dg, bad + cur.word.slice(1)); // one wrong build = one-shot miss
+      await typeWord(dg, bad + cur.word.slice(1));
+      await dg.waitForTimeout(400);
+      if (!repairChecked) {
+        repairChecked = true;
+        ok((await dg.locator('.reteach').textContent() || '').length > 15, 'diagnostic: a missed probe re-teaches the rule (repair open)');
+        const firstCls = (await dg.locator('.slots .slot').first().getAttribute('class')) || '';
+        ok(!firstCls.includes('filled'), 'diagnostic: the wrong letter cleared for the repair');
+      }
+      await typeWord(dg, cur.word[0]); // finish the repair — closure, not a re-grade
     }
     const before = cur.responses;
     await dg.waitForFunction((b) => {

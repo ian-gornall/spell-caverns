@@ -20,7 +20,7 @@
 // scale with responses completed, with a reward pulse every ~5 responses. Classic
 // mode never routes here. UI module — verified with Playwright (scripts/qa_s40.mjs).
 import { el, header, burst, toast, createIdleGuard, pulse, fitPlayArea, visibleTimeout } from '../ui.js';
-import { lessonList } from '../engine/lexicon.js';
+import { lessonList, byRank } from '../engine/lexicon.js';
 import { kidLesson } from '../engine/kidcopy.js';
 import {
   syncLesson, needsIntro, markIntroSeen, beginSession, nextTrial,
@@ -94,6 +94,11 @@ export function startLesson(ctx) {
   // trials (one-shot misses, ladder capped at rung 1, the spelling never revealed), so
   // the child never knows the first round is a check. Resumes across blocks (run.diag).
   let diag = !run.placed ? createSpineDiag(lessons, { restore: run.diag }) : null;
+  // Word -> full lexicon entry for EVERY word on the path, not just the current
+  // lesson's pool — so maintenance (known) trials from other lessons keep their
+  // sentence, grapheme, and their OWN lesson's rule (Ian 2026-07-02: the sentence
+  // vanished, and rung 1 could re-teach the wrong lesson's rule).
+  const wordEntries = new Map(byRank().map((e) => [e.word, e]));
   // §40 slice 4: the fatigue knee — clean known-word recall times, checked between trials.
   const meter = createFatigueMeter();
   let rtTainted = false; // a pause/hidden-tab taints the in-flight trial's RT
@@ -141,6 +146,7 @@ export function startLesson(ctx) {
   let copyMode = false; // exposure or rung-2: ghost letters, only the correct next letter lands
   let rung = 0; // 0 none | 1 rule re-taught | 2 grey copy
   let dirty = false; // a wrong submit happened (this recall is a miss even if finished)
+  let probeRecorded = false; // diag: the one-shot verdict is booked; what follows is repair
   let locked = false;
   let earned = 0; // everything this block (banked response gems + instant bonuses)
   let startTime = 0;
@@ -205,7 +211,9 @@ export function startLesson(ctx) {
     clearLadder();
     if (locked || copyMode && rung < 2) return; // exposure copy has no ladder
     if (trial && trial.expose) return;
-    if (diag && rung >= 1) { ladderTimer = visibleTimeout(moveOn, ladderStepMs()); return; }
+    // an UNANSWERED probe caps at rung 1 (never reveal); once its miss is booked,
+    // the repair gets the full ladder like any other trial
+    if (diag && !probeRecorded && rung >= 1) { ladderTimer = visibleTimeout(moveOn, ladderStepMs()); return; }
     if (rung >= 2) { ladderTimer = visibleTimeout(moveOn, ladderStepMs()); return; }
     ladderTimer = visibleTimeout(() => (rung === 0 ? rungOne() : rungTwo()), ladderStepMs());
   }
@@ -236,7 +244,10 @@ export function startLesson(ctx) {
     clearLadder();
     audio.speakPraise('Good try! Let’s keep going.');
     flashVerdict('Good try!', 'On to the next one', '#9D8DF1');
-    if (diag) return settleProbe(false);
+    if (diag) {
+      if (!probeRecorded) recordProbe(false); // a repair stall was already booked
+      return advance(1300);
+    }
     settleRecall({ correct: false, rung: 2, quiet: true });
   }
 
@@ -330,6 +341,12 @@ export function startLesson(ctx) {
     gemCountEl.classList.add('bump');
   }
   function renderChip() {
+    // During the diagnostic the run's lessonId is a placeholder — a lesson-1 chip
+    // over lesson-52 probe words is a lie (Ian 2026-07-02). Show a neutral line.
+    if (diag) {
+      chipEl.textContent = 'Finding your starting spot ✨';
+      return;
+    }
     const st = lessonStatus(run, lessons);
     const kid = kidLesson(lessons.find((l) => l.id === st.lessonId));
     chipEl.textContent = st.lessonId ? `Lesson ${st.number} · ${kid ? kid.name : ''} · ✨${st.graduated}/${st.pool}` : '';
@@ -378,15 +395,14 @@ export function startLesson(ctx) {
     if (locked) return;
     const built = slots.join('');
     if (built !== target) {
-      // §40 slice 4 — diagnostic probes are ONE-SHOT: a wrong build records the miss
-      // and moves straight on (forward-moving copy, never "try again" — csc-v60 lesson).
-      if (diag) {
-        locked = true;
-        clearLadder();
-        audio.sfx('great');
-        audio.speakPraise('Let’s keep going!');
-        flashVerdict('Let’s keep going!', 'Next word', '#9D8DF1');
-        return settleProbe(false);
+      // §40 slice 4 — a diagnostic probe is ONE-SHOT for the WALK: the first wrong
+      // build books the miss immediately. But the child still gets to REPAIR the word
+      // (Ian 2026-07-02): the wrong letters clear, the rule re-teaches, and finishing
+      // it is uncounted closure — the probe's verdict never changes after this point.
+      if (diag && !probeRecorded) {
+        probeRecorded = true;
+        recordProbe(false);
+        showReteach();
       }
       // a wrong submit clears the wrong letters IMMEDIATELY — never left on screen
       dirty = true;
@@ -401,11 +417,20 @@ export function startLesson(ctx) {
     locked = true;
     clearLadder();
     if (diag) {
-      // a probe success — dirty (a hinted rung-1) still passes only if the build was clean
+      if (probeRecorded) {
+        // repairing after a booked miss — honest closure, nothing more recorded
+        audio.sfx('great');
+        audio.speakPraise('You fixed it!');
+        flashVerdict('You fixed it! 🛠️', 'On to the next one', '#9D8DF1');
+        return advance(1100);
+      }
+      // a probe success — a rung-1 (rule re-taught) build still passes only when clean
       const clean = !dirty && rung === 0;
+      probeRecorded = true;
+      recordProbe(clean);
       audio.sfx(clean ? 'great' : 'good');
       flashVerdict('You got it! ✨', '', '#36F1CD');
-      return settleProbe(clean);
+      return advance(1000);
     }
     if (trial.expose) {
       // errorless first exposure completed — warm, small; never graded
@@ -422,7 +447,8 @@ export function startLesson(ctx) {
 
   // §40 slice 4: record a diagnostic probe's outcome + persist the walk so it can
   // resume across blocks/sessions. Probes feed the same store hooks as recalls.
-  function settleProbe(correct) {
+  // Bookkeeping only — the caller decides whether to advance or open a repair.
+  function recordProbe(correct) {
     submitProbe(diag, correct);
     run.diag = serializeDiag(diag);
     recordAnswer(state.tracker, target, correct, { responseMs: 0, source: 'craft' });
@@ -430,7 +456,6 @@ export function startLesson(ctx) {
     session.responses += 1;
     renderDots();
     ctx.save();
-    advance(correct ? 1000 : 1300);
   }
 
   // §40 slice 4: the walk converged — seed below-frontier words as KNOWN (capped at
@@ -446,6 +471,10 @@ export function startLesson(ctx) {
       for (const e of l.words) below.push({ word: e.word, lessonId: l.id });
     }
     seedKnown(run, below, { cap: 40 });
+    // Also seed the probe SUCCESSES (any position on the path) — proven live, and at a
+    // low placement they're the only interleave scaffold the child has (Ian 2026-07-02:
+    // without them, day one cycles the same few new words over and over).
+    seedKnown(run, res.correctWords, { cap: res.correctWords.length });
     run.placed = true;
     run.diag = null;
     run.lessonId = res.startLessonId;
@@ -629,8 +658,7 @@ export function startLesson(ctx) {
     }
     trial = nextTrial(run, session, lessons);
     if (!trial) return finish();
-    const pool = lessons.find((l) => l.id === run.lessonId)?.words || [];
-    entry = pool.find((e) => e.word === trial.word) || null;
+    entry = wordEntries.get(trial.word) || null;
     mountTrial();
   }
 
@@ -639,7 +667,7 @@ export function startLesson(ctx) {
     const probe = nextProbe(diag);
     if (!probe) return finishDiag();
     trial = { word: probe.word, expose: false, known: false, reteach: false, probe };
-    entry = (lessons[probe.lessonIdx]?.words || []).find((e) => e.word === probe.word) || null;
+    entry = wordEntries.get(probe.word) || null;
     mountTrial(probe.lessonIdx);
   }
 
@@ -650,6 +678,7 @@ export function startLesson(ctx) {
     copyMode = !!trial.expose;
     rung = 0;
     dirty = false;
+    probeRecorded = false;
     locked = false;
     startTime = 0;
     rtTainted = false; // a fresh trial's RT is clean again (fatigue-meter hygiene)
