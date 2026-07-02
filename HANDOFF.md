@@ -45,6 +45,15 @@
 >   clearing, celebration→next intro, diagnostic converges/seeds/never-reveals, forced-knee breather, home hero,
 >   lesson path, mining gate, zero overflow) · `qa_s38.mjs` (classic byte-identical + lessons routing) · smoke ·
 >   `qa_overflow` (full Galaxy matrix) · `qa_stay_in_level` · `qa_prod` clean on csc-v69 & csc-v70.
+> - **csc-v71 (`1dd1baf`) — first-play fixes from Ian's 2026-07-02 live test** (he hit the diagnostic without
+>   knowing it): (1) neutral chip ("Finding your starting spot ✨") while the walk runs — it had said "Lesson 1 ·
+>   Three-sound words" over lesson-52 probes ("exes"/"faces" = the path's midpoint, where binary search starts);
+>   (2) a missed probe books its one-shot verdict then opens a REPAIR (rule re-teach + full ladder + uncounted
+>   finish) instead of dead-ending; (3) word lookups now span the whole path so maintenance trials keep their
+>   sentence + their own lesson's rule; (4) probe successes seed KNOWN too (day-one interleave scaffold at a low
+>   placement — was the "same words over and over" complaint). NOTE: sentences are SPOKEN only for homophones (by
+>   design, §38); shown-sentence gaps were bug (3). A typo still fails a probe lesson for the WALK (conservative
+>   placement) — if that placed a tester too low, Settings → "Re-run lesson check" redoes placement.
 > - **⚠️ OWED (Ian, real device):** the full-feel pass on iPad — voice actually audible in lessons mode (the TTS
 >   fix is emulator-verified only), intro-card feel, diagnostic invisibility, hint-ladder pacing, fatigue-end feel.
 >   Research words still have NO clips (TTS fallback is the shipping voice; Gemini clip generation is quota-gated,
