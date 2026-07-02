@@ -68,10 +68,12 @@ test('createLessonRun starts fresh, placed by default, no lesson until synced', 
   assert.deepEqual(run.words, {});
 });
 
-test('reviveLessonRun: absent/malformed -> fresh; a partial save keeps its progress', () => {
+test('reviveLessonRun: absent/malformed -> fresh AND unplaced (diagnostic on first play)', () => {
   assert.equal(reviveLessonRun(undefined).lessonId, null);
+  assert.equal(reviveLessonRun(undefined).placed, false);
   assert.equal(reviveLessonRun('junk').trial, 0);
   assert.equal(reviveLessonRun({ v: 99 }).v, 1);
+  assert.equal(reviveLessonRun({ v: 99 }).placed, false);
   const saved = {
     v: 1, placed: true, diag: null, lessonId: 'B', seenIntro: ['A', 'B'], completed: ['A'],
     trial: 12, prev: { word: 'ship', unknown: true },

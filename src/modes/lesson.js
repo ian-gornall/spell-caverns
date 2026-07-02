@@ -24,8 +24,10 @@ import { lessonList } from '../engine/lexicon.js';
 import { kidLesson } from '../engine/kidcopy.js';
 import {
   syncLesson, needsIntro, markIntroSeen, beginSession, nextTrial,
-  recordExposure, recordRecall, lessonStatus,
+  recordExposure, recordRecall, lessonStatus, seedKnown,
 } from '../engine/lessonrun.js';
+import { createSpineDiag, nextProbe, submitProbe, serializeDiag, diagResult } from '../engine/spinediag.js';
+import { createFatigueMeter } from '../engine/fatigue.js';
 import { gradeAnswer } from '../engine/praise.js';
 import { recordAnswer } from '../engine/progress.js';
 import { isProperWord, displayCase } from '../engine/puzzle.js';
@@ -88,6 +90,13 @@ export function startLesson(ctx) {
   const session = beginSession();
   const blockLen = (typeof window !== 'undefined' && Number(window.__lessonBlockLen)) || RESPONSES_PER_BLOCK;
   const tScale = (typeof window !== 'undefined' && Number(window.__idleTest)) || 1;
+  // §40 slice 4: an unplaced run opens with the SPINE DIAGNOSTIC — played as ordinary
+  // trials (one-shot misses, ladder capped at rung 1, the spelling never revealed), so
+  // the child never knows the first round is a check. Resumes across blocks (run.diag).
+  let diag = !run.placed ? createSpineDiag(lessons, { restore: run.diag }) : null;
+  // §40 slice 4: the fatigue knee — clean known-word recall times, checked between trials.
+  const meter = createFatigueMeter();
+  let rtTainted = false; // a pause/hidden-tab taints the in-flight trial's RT
 
   // --- static structure -----------------------------------------------------
   const dots = el('div', { class: 'dots' });
@@ -157,6 +166,7 @@ export function startLesson(ctx) {
     onSuspend: () => {
       clearLadder();
       startTime = 0; // discard the in-flight trial's RT across a pause/break
+      rtTainted = true; // and keep it out of the fatigue meter
       clearTimeout(graceTimer);
     },
     onResume: () => {
@@ -188,11 +198,14 @@ export function startLesson(ctx) {
     if (ladderTimer) { ladderTimer.cancel(); ladderTimer = null; }
   }
   // (Re)arm the wait for the NEXT rung. Reset on every accepted letter and every
-  // wrong submit — the ladder is for a stalled child, not a busy one.
+  // wrong submit — the ladder is for a stalled child, not a busy one. During the
+  // diagnostic the ladder caps at rung 1: a stall past it is a one-shot miss and
+  // the spelling is NEVER revealed (a probe can't be taught into a false pass).
   function armLadder() {
     clearLadder();
     if (locked || copyMode && rung < 2) return; // exposure copy has no ladder
     if (trial && trial.expose) return;
+    if (diag && rung >= 1) { ladderTimer = visibleTimeout(moveOn, ladderStepMs()); return; }
     if (rung >= 2) { ladderTimer = visibleTimeout(moveOn, ladderStepMs()); return; }
     ladderTimer = visibleTimeout(() => (rung === 0 ? rungOne() : rungTwo()), ladderStepMs());
   }
@@ -215,13 +228,15 @@ export function startLesson(ctx) {
     pulse(slotsEl);
     armLadder(); // one more step of silence → move on
   }
-  // Still stalled after the grey copy appeared: praise the attempt and move on.
+  // Still stalled after the last allowed rung: praise the attempt and move on
+  // (a one-shot miss during the diagnostic; a rung-2 recorded miss otherwise).
   function moveOn() {
     if (locked) return;
     locked = true;
     clearLadder();
     audio.speakPraise('Good try! Let’s keep going.');
     flashVerdict('Good try!', 'On to the next one', '#9D8DF1');
+    if (diag) return settleProbe(false);
     settleRecall({ correct: false, rung: 2, quiet: true });
   }
 
@@ -363,6 +378,16 @@ export function startLesson(ctx) {
     if (locked) return;
     const built = slots.join('');
     if (built !== target) {
+      // §40 slice 4 — diagnostic probes are ONE-SHOT: a wrong build records the miss
+      // and moves straight on (forward-moving copy, never "try again" — csc-v60 lesson).
+      if (diag) {
+        locked = true;
+        clearLadder();
+        audio.sfx('great');
+        audio.speakPraise('Let’s keep going!');
+        flashVerdict('Let’s keep going!', 'Next word', '#9D8DF1');
+        return settleProbe(false);
+      }
       // a wrong submit clears the wrong letters IMMEDIATELY — never left on screen
       dirty = true;
       audio.sfx('miss');
@@ -375,6 +400,13 @@ export function startLesson(ctx) {
     }
     locked = true;
     clearLadder();
+    if (diag) {
+      // a probe success — dirty (a hinted rung-1) still passes only if the build was clean
+      const clean = !dirty && rung === 0;
+      audio.sfx(clean ? 'great' : 'good');
+      flashVerdict('You got it! ✨', '', '#36F1CD');
+      return settleProbe(clean);
+    }
     if (trial.expose) {
       // errorless first exposure completed — warm, small; never graded
       recordExposure(run, session, target);
@@ -388,12 +420,57 @@ export function startLesson(ctx) {
     settleRecall({ correct: !dirty && rung === 0, rung, ms });
   }
 
+  // §40 slice 4: record a diagnostic probe's outcome + persist the walk so it can
+  // resume across blocks/sessions. Probes feed the same store hooks as recalls.
+  function settleProbe(correct) {
+    submitProbe(diag, correct);
+    run.diag = serializeDiag(diag);
+    recordAnswer(state.tracker, target, correct, { responseMs: 0, source: 'craft' });
+    ctx.store.recordAnswerStat(correct, 'craft');
+    session.responses += 1;
+    renderDots();
+    ctx.save();
+    advance(correct ? 1000 : 1300);
+  }
+
+  // §40 slice 4: the walk converged — seed below-frontier words as KNOWN (capped at
+  // the 40 nearest the frontier) so IR has knowns to interleave from day one, place
+  // the run at the frontier lesson, and roll straight into the normal stream (the
+  // intro card is the child's first hint a "lesson" started — the check was invisible).
+  function finishDiag() {
+    const res = diagResult(diag);
+    const knownIds = new Set(res.knownLessonIds);
+    const below = [];
+    for (const l of lessons) {
+      if (!knownIds.has(l.id)) continue;
+      for (const e of l.words) below.push({ word: e.word, lessonId: l.id });
+    }
+    seedKnown(run, below, { cap: 40 });
+    run.placed = true;
+    run.diag = null;
+    run.lessonId = res.startLessonId;
+    syncLesson(run, lessons);
+    diag = null;
+    const cur = lessons.find((l) => l.id === run.lessonId);
+    if (cur) {
+      state.categories.level = cur.band; // mirror for residual readers (admin export)
+      state.startLevel = cur.band;
+    }
+    ctx.save();
+    renderChip();
+    renderDots();
+    maybeIntroThen();
+  }
+
   // Record a finished recall (clean, hinted, or moved-on) + fire the feedback.
   function settleRecall({ correct, rung: r, ms = null, quiet = false }) {
     const res = recordRecall(run, session, target, { correct, rung: r, ms }, lessons);
     // the same store hooks Craft feeds, so quests/geode-bosses/admin stay truthful (§40)
     recordAnswer(state.tracker, target, correct, { responseMs: ms || 0, source: 'craft' });
     ctx.store.recordAnswerStat(correct, 'craft');
+    // §40 slice 4 RT hygiene: only clean (correct, rung-0) KNOWN-word recalls with an
+    // untainted clock feed the fatigue knee — never new-word struggle or post-pause times.
+    if (correct && r === 0 && trial.known && Number.isFinite(ms) && !rtTainted) meter.record(ms);
     if (correct) {
       const verdict = gradeAnswer({ correct: true, responseMs: ms ?? Infinity, combo: 0 });
       audio.sfx(verdict.tier);
@@ -492,7 +569,7 @@ export function startLesson(ctx) {
     ctx.store.noteWaveEarned(earned);
   }
 
-  function finish() {
+  function finish({ breather = false } = {}) {
     guard.stop();
     clearLadder();
     endBlockStats();
@@ -505,21 +582,29 @@ export function startLesson(ctx) {
     const st = lessonStatus(run, lessons);
     const reward = el(
       'div',
-      { class: 'reward' },
-      el('div', { class: 'big' }, session.capped ? '🌱' : '💎'),
-      el('h2', {}, session.capped ? 'Great effort!' : 'Round done!'),
+      { class: 'reward' + (breather ? ' breather' : '') },
+      el('div', { class: 'big' }, breather ? '🌿' : session.capped ? '🌱' : '💎'),
+      el('h2', {}, breather ? 'Time for a breather!' : session.capped ? 'Great effort!' : 'Round done!'),
+      // §40 slice 4: the fatigue knee ends the block WARMLY — effort-proportional gems,
+      // a gentle stretch suggestion, and NO auto-relaunch (the child chooses).
+      breather && el('p', { style: { color: 'var(--ink-dim)' } }, 'You worked really hard. Stretch your legs or grab some water.'),
       el('div', { class: 'earned' }, `+${earned} gems`),
       el('p', { style: { color: 'var(--ink-dim)' } }, `Lesson ${st.number}: ✨ ${st.graduated}/${st.pool} words learned · Total 💎 ${state.gems || 0}`),
       el(
         'div',
         { class: 'row' },
-        el('button', { class: 'btn primary', onClick: () => ctx.nav('lesson') }, '📖 Keep going'),
+        breather
+          ? el('button', { class: 'btn primary', onClick: () => ctx.nav('home') }, '🏠 Home')
+          : el('button', { class: 'btn primary', onClick: () => ctx.nav('lesson') }, '📖 Keep going'),
         el('button', { class: 'btn', onClick: () => ctx.nav('progress') }, '🗺️ Progress'),
-        el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
+        breather
+          ? el('button', { class: 'btn', onClick: () => ctx.nav('lesson') }, '📖 One more round')
+          : el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
       ),
     );
-    screen.replaceChildren(header(ctx, { title: 'Round done', onBack: () => ctx.nav('home') }), reward);
+    screen.replaceChildren(header(ctx, { title: breather ? 'Break time' : 'Round done', onBack: () => ctx.nav('home') }), reward);
     if (earned > 0) audio.sfx('great');
+    if (breather) return; // no auto-relaunch after a fatigue end — resting is the point
     const rewardGuard = createIdleGuard({
       nudgeMs: 13000,
       pauseMs: 30000,
@@ -536,10 +621,29 @@ export function startLesson(ctx) {
   function present() {
     if (celebrating) return;
     if (session.responses >= blockLen) return finish();
+    if (diag) return presentProbe();
+    // §40 slice 4: the fatigue knee ends the block warmly, checked BETWEEN trials only
+    // (the meter's min-samples guard keeps a block from ending in its first minute).
+    if (meter.knee() || (typeof window !== 'undefined' && window.__lessonKnee)) {
+      return finish({ breather: true });
+    }
     trial = nextTrial(run, session, lessons);
     if (!trial) return finish();
     const pool = lessons.find((l) => l.id === run.lessonId)?.words || [];
     entry = pool.find((e) => e.word === trial.word) || null;
+    mountTrial();
+  }
+
+  // §40 slice 4: a diagnostic probe, presented as an ordinary trial.
+  function presentProbe() {
+    const probe = nextProbe(diag);
+    if (!probe) return finishDiag();
+    trial = { word: probe.word, expose: false, known: false, reteach: false, probe };
+    entry = (lessons[probe.lessonIdx]?.words || []).find((e) => e.word === probe.word) || null;
+    mountTrial(probe.lessonIdx);
+  }
+
+  function mountTrial(probeIdx = null) {
     target = trial.word.toLowerCase();
     isProper = isProperWord(entry ? entry.word : trial.word);
     slots = Array.from({ length: target.length }, () => null);
@@ -548,6 +652,7 @@ export function startLesson(ctx) {
     dirty = false;
     locked = false;
     startTime = 0;
+    rtTainted = false; // a fresh trial's RT is clean again (fatigue-meter hygiene)
     clearTimeout(graceTimer);
     clearLadder();
     verdictEl.textContent = '';
@@ -565,6 +670,7 @@ export function startLesson(ctx) {
       window.__lessonCurrent = {
         word: target, expose: !!trial.expose, known: !!trial.known, reteach: !!trial.reteach,
         lessonId: run.lessonId, rung, responses: session.responses,
+        diag: probeIdx, // non-null while the spine diagnostic is probing
       };
       (window.__lessonTrialLog = window.__lessonTrialLog || []).push({ word: target, expose: !!trial.expose, known: !!trial.known });
     } catch {
@@ -574,24 +680,32 @@ export function startLesson(ctx) {
     armLadder();
   }
 
-  // --- boot: intro card first when the pattern is new -----------------------------------
+  // Show the current lesson's intro card first when it hasn't been seen, then play.
+  // Used at boot and when the diagnostic finishes (the intro is the child's first
+  // "a lesson started" moment — the check itself stays invisible).
+  function maybeIntroThen() {
+    if (needsIntro(run)) {
+      const lesson = lessons.find((l) => l.id === run.lessonId);
+      introOverlay = lessonIntro({
+        lesson,
+        audio,
+        onGo: () => {
+          introOverlay = null;
+          markIntroSeen(run);
+          ctx.save();
+          present();
+        },
+      });
+    } else {
+      present();
+    }
+  }
+
+  // --- boot: diagnostic first for an unplaced run; else intro card, then the stream ----
   buildKeyboard();
   renderChip();
   renderDots();
-  if (needsIntro(run)) {
-    const lesson = lessons.find((l) => l.id === run.lessonId);
-    introOverlay = lessonIntro({
-      lesson,
-      audio,
-      onGo: () => {
-        introOverlay = null;
-        markIntroSeen(run);
-        ctx.save();
-        present();
-      },
-    });
-  } else {
-    present();
-  }
+  if (diag) present();
+  else maybeIntroThen();
   return screen;
 }

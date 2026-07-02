@@ -243,6 +243,83 @@ try {
   await cel.screenshot({ path: `${OUT}/09-next-intro.png` });
   await cel.close();
 
+  // ================= spine diagnostic (§40 slice 4) =================
+  console.log('\n=== spine diagnostic (unplaced profile, child knows first 2 lessons) ===');
+  const FRESH_UNPLACED = profileSeed({
+    v: 1, placed: false, diag: null, lessonId: null, seenIntro: [], completed: [], trial: 0, prev: null, words: {},
+  });
+  const LESSON_LIST = [...lessons.values()];
+  const K = 2; // the simulated child spells lessons 0..1 (bands 1..2) and misses beyond
+  const dg = await newPage({ width: 390, height: 844 }, FRESH_UNPLACED, () => { window.__lessonBlockLen = 60; });
+  await gotoHome(dg);
+  await dg.locator('.menu-card.lesson').click();
+  await dg.waitForFunction(() => window.__lessonCurrent, null, { timeout: 8000 });
+  ok(await dg.locator('.lintro-overlay').count() === 0, 'diagnostic: NO intro card before placement (the check is invisible)');
+  let placedNow = false;
+  for (let i = 0; i < 40 && !placedNow; i++) {
+    const cur = await dg.evaluate(() => window.__lessonCurrent);
+    if (cur.diag == null) break; // walk finished (intro should be up)
+    const know = cur.diag < K;
+    await dg.waitForTimeout(250);
+    if (know) {
+      await typeWord(dg, cur.word);
+    } else {
+      const bad = [...'zxqjvk'].find((c) => !cur.word.includes(c));
+      await typeWord(dg, bad + cur.word.slice(1)); // one wrong build = one-shot miss
+    }
+    const before = cur.responses;
+    await dg.waitForFunction((b) => {
+      const c = window.__lessonCurrent;
+      return c && (c.responses > b || c.diag == null);
+    }, before, { timeout: 15000 }).catch(() => {});
+    placedNow = await dg.evaluate(() => {
+      try { return JSON.parse(localStorage.getItem('crystal-spell-caverns:v1')).profiles[0].lessons.placed; } catch { return false; }
+    });
+  }
+  ok(placedNow, 'diagnostic: the walk converged and placed the run');
+  await dg.waitForSelector('.lintro-overlay', { timeout: 8000 });
+  ok(true, 'diagnostic: the frontier lesson\'s intro card follows placement');
+  const savedRun = await dg.evaluate(() => JSON.parse(localStorage.getItem('crystal-spell-caverns:v1')).profiles[0].lessons);
+  ok(savedRun.lessonId === LESSON_LIST[K].id, `diagnostic: placed at the frontier lesson (${savedRun.lessonId} = lesson ${K + 1})`);
+  const seededCount = Object.values(savedRun.words).filter((w) => w.seeded).length;
+  ok(seededCount > 0 && seededCount <= 40, `diagnostic: below-frontier words seeded KNOWN (${seededCount}, cap 40)`);
+  ok(savedRun.diag === null, 'diagnostic: the walk state is cleared once placed');
+  await dg.screenshot({ path: `${OUT}/13-diag-placed-intro.png` });
+  await dg.close();
+
+  // a stalled probe NEVER reveals the spelling: rung 1 reteach, then a one-shot miss
+  console.log('\n=== diagnostic ladder cap (scaled timers) ===');
+  const dg2 = await newPage({ width: 390, height: 844 }, FRESH_UNPLACED, () => { window.__lessonBlockLen = 60; window.__idleTest = 0.12; });
+  await gotoHome(dg2);
+  await dg2.locator('.menu-card.lesson').click();
+  await dg2.waitForFunction(() => window.__lessonCurrent && window.__lessonCurrent.diag != null, null, { timeout: 8000 });
+  await dg2.waitForSelector('.reteach:not(:empty)', { timeout: 8000 });
+  ok(true, 'diag ladder: rung 1 reteach still fires');
+  let sawGhost = false;
+  const t0resp = await dg2.evaluate(() => window.__lessonCurrent.responses);
+  for (let i = 0; i < 30; i++) {
+    if (await dg2.locator('.slot.ghost').count()) { sawGhost = true; break; }
+    const r = await dg2.evaluate(() => window.__lessonCurrent.responses);
+    if (r > t0resp) break; // moved on as a one-shot miss
+    await dg2.waitForTimeout(200);
+  }
+  ok(!sawGhost, 'diag ladder: the spelling is NEVER revealed (no grey copy during probes)');
+  const moved = await dg2.evaluate((b) => window.__lessonCurrent.responses > b, t0resp);
+  ok(moved, 'diag ladder: a stalled probe moves on as a one-shot miss');
+  await dg2.close();
+
+  // ================= fatigue breather (forced knee) =================
+  console.log('\n=== fatigue breather (forced knee) ===');
+  const fb = await newPage({ width: 390, height: 844 }, SEED_NEAR, () => { window.__lessonKnee = true; });
+  await gotoHome(fb);
+  await fb.locator('.menu-card.lesson').click();
+  await fb.waitForSelector('.reward.breather', { timeout: 8000 });
+  const fbTxt = (await fb.locator('.reward.breather').textContent()) || '';
+  ok(/breather/i.test(fbTxt), 'fatigue: the knee ends the block with the gentle breather screen');
+  ok(await fb.locator('.reward.breather .btn.primary', { hasText: 'Home' }).count() === 1, 'fatigue: Home is the primary action (no auto-relaunch)');
+  await fb.screenshot({ path: `${OUT}/14-breather.png` });
+  await fb.close();
+
   // ================= Progress (lesson path + pips) =================
   console.log('\n=== progress (390) ===');
   const pg = await newPage({ width: 390, height: 844 }, SEED_FRESH, null);

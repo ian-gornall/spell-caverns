@@ -294,7 +294,16 @@
 //      Home hero = 📖 Today's lesson; Practice gates on 4 graduated words and mines the
 //      run's maintenance words; Progress shows the lesson path + per-word window pips;
 //      Settings stepper moves the run; state.lessons persisted per profile.
-const VERSION = 'csc-v69';
+// csc-v70: §40 slice 4 — SPINE DIAGNOSTIC + FATIGUE KNEE. New engine/spinediag.js: an
+//      unplaced lessons profile opens with an invisible placement walk over the lesson path
+//      (binary search + dense probes, 2-word probes, one-shot misses, ladder capped at rung 1,
+//      the spelling never revealed, always ends on a success), then seeds below-frontier words
+//      KNOWN (cap 40 nearest the frontier) and rolls into the frontier lesson's intro.
+//      Resumable across blocks (run.diag). Blocks now also end at the FATIGUE KNEE (engine/
+//      fatigue.js: recent median clean known-word RT ~25% over the session baseline) with a
+//      gentle "Time for a breather" screen and no auto-relaunch. Fresh/pre-§40 lessons runs
+//      revive UNPLACED; Settings gains "Re-run lesson check" in lessons mode.
+const VERSION = 'csc-v70';
 
 const CORE = [
   '/',
@@ -327,6 +336,7 @@ const CORE = [
   '/src/engine/kidcopy.js',
   '/src/engine/lessonrun.js',
   '/src/engine/fatigue.js',
+  '/src/engine/spinediag.js',
   '/src/engine/distractors.js',
   '/src/engine/praise.js',
   '/src/engine/voicequeue.js',

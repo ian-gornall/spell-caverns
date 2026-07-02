@@ -102,16 +102,15 @@ try {
   await backHome(page);
 
   // ---------- B+C. the hero routes into the §40 LESSON STREAM (not classic Craft) ----------
-  // (The stream's own behavior — exposure/ghosts/ladder/reteach/graduation — is guarded in
-  // depth by scripts/qa_s40.mjs; here we just prove lessons mode plays through it.)
+  // A JUST-SWITCHED profile is UNPLACED, so the first round is the invisible spine
+  // diagnostic (no intro card yet — that follows placement). The stream's own behavior
+  // (exposure/ghosts/ladder/reteach/graduation/diagnostic) is guarded by scripts/qa_s40.mjs.
   await page.locator('.menu-card.lesson').click();
-  await page.waitForSelector('.lintro-overlay', { timeout: 8000 });
-  ok(true, 'lessons: the hero opens the lesson stream (intro card first)');
-  await page.screenshot({ path: `${OUT}/04-lesson-intro.png` });
-  await page.locator('.lintro-go').click();
   await page.waitForFunction(() => window.__lessonCurrent, null, { timeout: 8000 });
   const cur = await page.evaluate(() => window.__lessonCurrent);
   ok(!!cur && !!cur.word, `lessons: the stream serves a trial ("${cur?.word}")`);
+  ok(cur.diag != null, 'lessons: a fresh switch starts with the (invisible) spine diagnostic');
+  ok(await page.locator('.lintro-overlay').count() === 0, 'lessons: no intro card during the diagnostic');
   ok(await page.locator('.type-keyboard .key').count() > 20, 'lessons: the app keypad is the input');
   await page.screenshot({ path: `${OUT}/05-lesson-trial.png` });
 

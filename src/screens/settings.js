@@ -275,9 +275,23 @@ export function settingsScreen(ctx) {
         wordlistMode() === 'lessons' ? `Lesson ${curBand} of ${lessonCount()}` : `Cavern level ${curBand}`),
       el('button', { class: 'btn ghost', onClick: () => nudgeLevel(1) }, 'Harder ➕'),
     ),
-    // §38: the placement walk diagnoses CLASSIC 30-word bands; in lessons mode the
-    // stepper (and later a spine diagnostic) sets the level, so no re-test button.
-    wordlistMode() === 'lessons' ? el('span', {}) : el(
+    // §38/§40: the classic placement walk diagnoses 30-word bands; lessons mode has its
+    // own SPINE diagnostic — re-running it re-places the run on the lesson path.
+    wordlistMode() === 'lessons' ? el(
+      'button',
+      {
+        class: 'btn',
+        style: { marginTop: '10px', width: '100%' },
+        onClick: () => {
+          ctx.state.lessons.placed = false;
+          ctx.state.lessons.diag = null;
+          ctx.save();
+          toast('The next lesson round starts with a quick check. ✨');
+          ctx.nav('lesson');
+        },
+      },
+      '🔁 Re-run lesson check',
+    ) : el(
       'button',
       {
         class: 'btn',
@@ -1115,8 +1129,9 @@ export function settingsScreen(ctx) {
     ctx.state.startLevel = 1;
     ctx.state.placement = { done: true, age: ctx.state.placement?.age || s.age || null };
     // §40: switching word universes restarts the lesson run too (word records would
-    // point at the other list's words). syncLesson re-aims it at the new path.
-    ctx.state.lessons = createLessonRun();
+    // point at the other list's words) — UNPLACED, so lessons mode opens with the
+    // spine diagnostic. syncLesson re-aims it at the new path.
+    ctx.state.lessons = createLessonRun({ placed: false });
     setWordlistMode(s.wordlists, s.age);
     syncLesson(ctx.state.lessons, lessonList());
     ctx.save();

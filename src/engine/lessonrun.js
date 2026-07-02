@@ -42,9 +42,11 @@ export function createLessonRun({ placed = true } = {}) {
 }
 
 // Revive a stored run (absent/malformed => fresh). Normalizes every word record so
-// a corrupt or partial save can never crash the scheduler.
+// a corrupt or partial save can never crash the scheduler. A save with NO run yet
+// (pre-§40 profiles, incl. csc-v67 lessons profiles whose band-engine progress isn't
+// translated) revives UNPLACED, so lessons mode starts with the spine diagnostic.
 export function reviveLessonRun(raw) {
-  if (!raw || typeof raw !== 'object' || raw.v !== 1) return createLessonRun();
+  if (!raw || typeof raw !== 'object' || raw.v !== 1) return createLessonRun({ placed: false });
   const run = createLessonRun({ placed: raw.placed !== false });
   run.diag = raw.diag && typeof raw.diag === 'object' ? raw.diag : null;
   run.lessonId = typeof raw.lessonId === 'string' ? raw.lessonId : null;
