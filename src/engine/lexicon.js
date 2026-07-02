@@ -42,6 +42,14 @@ export function lessonCount() {
   return research ? research.lessons.size : 0;
 }
 
+// §40: the ordered lesson path for the active profile — [{ band, id, label, rule,
+// index, exemplars, words }] with band running 1..N, or [] in classic mode. The
+// lessonrun engine, intro card, and Progress path all read this one list.
+export function lessonList() {
+  if (!research) return [];
+  return [...research.lessons.entries()].map(([band, l]) => ({ band, ...l }));
+}
+
 // All entries that belong to a given orthographic pattern family (e.g. "ight").
 export function wordsByPattern(id) {
   return WORDS.filter((w) => w.pattern === id);

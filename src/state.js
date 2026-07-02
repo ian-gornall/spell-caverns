@@ -11,6 +11,7 @@
 // UI module (touches localStorage) — never imported by `node --test`.
 import { createTracker, serializeTracker, deserializeTracker } from './engine/progress.js';
 import { createCategoryState, serializeCategoryState, deserializeCategoryState } from './engine/categories.js';
+import { createLessonRun, reviveLessonRun } from './engine/lessonrun.js';
 import { defaultStreak, updateStreak } from './engine/streak.js';
 import { purchaseResult, nextFreeCrystal } from './engine/catalog.js';
 import { wrapBackup, readBackup } from './engine/backup.js';
@@ -77,6 +78,8 @@ function defaultProfile(id, over = {}) {
     // §30 word-category state machine (working set / known / mastered / tricky). setSize =
     // the "Words per dig" setting; level seeds from the chosen start level then adapts.
     categories: createCategoryState({ setSize: defaultSettings().length, level: over.startLevel || 1 }),
+    // §40 lessons-mode incremental-rehearsal run (plain JSON; inert in classic mode).
+    lessons: createLessonRun(),
   };
 }
 
@@ -105,6 +108,9 @@ function storedToState(p) {
     // revive the §30 category machine (absent on pre-§30 saves → a fresh one; words
     // re-categorise through play, while the continuous tracker keeps its history).
     categories: deserializeCategoryState(p.categories),
+    // §40 lessons run (absent on pre-§40 saves — incl. csc-v67 lessons profiles, whose
+    // band-engine progress isn't translated → fresh run, diagnostic on first play).
+    lessons: reviveLessonRun(p.lessons),
   };
 }
 

@@ -267,6 +267,36 @@ test('lexiconEntries respects the age ceiling and orders within a lesson', async
   assert.deepEqual(ranks, ranks.slice().sort((a, b) => a - b));
 });
 
+test('lexiconEntries lessons carry exemplars and their served entries (§40)', async () => {
+  const { lexiconEntries } = await import('../src/engine/lists.js');
+  const { entries, lessons } = lexiconEntries({ words: WORDS, spine: SPINE, patterns: PATTERNS }, 13);
+  const l3band = entries.find((e) => e.word === 'cat').band;
+  const l3 = lessons.get(l3band);
+  assert.deepEqual(l3.exemplars, ['cat'], 'exemplars from patterns.teach_exemplars');
+  assert.deepEqual(l3.words.map((e) => e.word), ['cat', 'vex', 'quiz'], 'the lesson’s served entries, in order');
+  assert.equal(l3.words[0].rank, entries.find((e) => e.word === 'cat').rank, 'the same entry objects');
+});
+
+test('lexicon.lessonList orders lessons by band and is empty in classic mode (§40)', async () => {
+  const lex = await import('../src/engine/lexicon.js');
+  try {
+    lex.setWordlistMode('lessons', 8);
+    const list = lex.lessonList();
+    assert.ok(list.length > 50, 'a real lesson path');
+    assert.deepEqual(list.map((l) => l.band), list.map((_, i) => i + 1), 'bands run 1..N in order');
+    for (const l of list) {
+      assert.equal(typeof l.id, 'string');
+      assert.ok(l.label.length > 0);
+      assert.ok(Array.isArray(l.exemplars));
+      assert.ok(Array.isArray(l.words) && l.words.length > 0, `lesson ${l.id} has served words`);
+      assert.ok(l.words.every((e) => e.band === l.band), `lesson ${l.id} words carry its band`);
+    }
+  } finally {
+    lex.setWordlistMode('classic');
+  }
+  assert.deepEqual(lex.lessonList(), [], 'classic mode has no lesson path');
+});
+
 test('lexiconEntries tier maps the AoA band index (clamped to 9)', async () => {
   const { lexiconEntries } = await import('../src/engine/lists.js');
   const words = [

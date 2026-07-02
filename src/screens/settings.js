@@ -12,8 +12,9 @@ import { normalizeSyncCode, isValidSyncCode } from '../engine/cloudsync.js';
 import { unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { summary } from '../engine/progress.js';
 import { setLevelAndRefill, resetForRetest, createCategoryState } from '../engine/categories.js';
-import { byRank, setWordlistMode, wordlistMode, lessonForBand, lessonCount } from '../engine/lexicon.js';
+import { byRank, setWordlistMode, wordlistMode, lessonForBand, lessonCount, lessonList } from '../engine/lexicon.js';
 import { kidLesson } from '../engine/kidcopy.js';
+import { createLessonRun, syncLesson } from '../engine/lessonrun.js';
 import { COLOURS } from './onboarding.js';
 import { APP_VERSION } from '../version.js';
 import { swCacheVersion } from '../pwa.js';
@@ -1093,7 +1094,11 @@ export function settingsScreen(ctx) {
     ctx.state.categories = createCategoryState({ setSize: s.length, level: 1 });
     ctx.state.startLevel = 1;
     ctx.state.placement = { done: true, age: ctx.state.placement?.age || s.age || null };
+    // §40: switching word universes restarts the lesson run too (word records would
+    // point at the other list's words). syncLesson re-aims it at the new path.
+    ctx.state.lessons = createLessonRun();
     setWordlistMode(s.wordlists, s.age);
+    syncLesson(ctx.state.lessons, lessonList());
     ctx.save();
     toast(mode === 'lessons' ? 'Pattern lessons on — the path starts at lesson 1. ✨' : 'Back to the classic word list.');
     ctx.nav('settings');
@@ -1112,6 +1117,7 @@ export function settingsScreen(ctx) {
     // The pool (and so the lesson numbering) changed: clamp the level and refill.
     const lvl = Math.max(1, Math.min(ctx.state.categories.level || 1, lessonCount()));
     setLevelAndRefill(ctx.state.categories, lvl, levelPool());
+    syncLesson(ctx.state.lessons, lessonList()); // §40: heal the run against the new path
     ctx.state.startLevel = ctx.state.categories.level;
     ctx.save();
     ctx.nav('settings');

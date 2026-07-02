@@ -104,7 +104,17 @@ export function lexiconEntries(research, age) {
   let band = 0;
   for (const l of plan) {
     band += 1;
-    lessons.set(band, { id: l.id, label: l.label, rule: l.rule, index: l.index });
+    // §40: each lesson carries its teach exemplars (intro card) and its own served
+    // entries (the lessonrun pool) — filled with the very entry objects pushed below.
+    const lessonWords = [];
+    lessons.set(band, {
+      id: l.id,
+      label: l.label,
+      rule: l.rule,
+      index: l.index,
+      exemplars: research.patterns?.[l.id]?.teach_exemplars || [],
+      words: lessonWords,
+    });
     for (const e of l.words) {
       const rank = entries.length + 1;
       entries.push({
@@ -124,6 +134,7 @@ export function lexiconEntries(research, age) {
         homophoneId: e.homophoneId ?? null,
         aoaBand: e.band,
       });
+      lessonWords.push(entries[entries.length - 1]);
     }
   }
   return { entries, lessons };
