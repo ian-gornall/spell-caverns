@@ -306,3 +306,10 @@ export function maintenanceEntries(run) {
     .filter((w) => isKnown(run, w))
     .sort((a, b) => run.words[a].last - run.words[b].last);
 }
+
+// The words currently being worked on (exposed, not yet KNOWN) in the active lesson —
+// the lessons-mode source for the brain-break word chips (app.installActivePause).
+export function activeLessonWords(run, lessons) {
+  const pool = lessonWords(findLesson(lessons, run.lessonId));
+  return pool.filter((w) => run.words[w]?.exposed && !isKnown(run, w));
+}

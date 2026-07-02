@@ -14,7 +14,7 @@ import {
   WIN, KNOWN_AT, LAPSED_AT, MIN_REGAP, CEILING_ERRORS,
   createLessonRun, reviveLessonRun, wordState, syncLesson, needsIntro, markIntroSeen,
   beginSession, nextTrial, recordExposure, recordRecall, seedKnown,
-  lessonStatus, graduatedWords, maintenanceEntries,
+  lessonStatus, graduatedWords, maintenanceEntries, activeLessonWords,
 } from '../src/engine/lessonrun.js';
 
 // ---- fixtures ----------------------------------------------------------------
@@ -347,6 +347,17 @@ test('a live graduation clears the seeded flag and counts as earned', () => {
   for (let i = 0; i < KNOWN_AT; i++) recordRecall(run, session, 'cat', { correct: true }, LESSONS);
   assert.deepEqual(graduatedWords(run), ['cat']);
   assert.ok(maintenanceEntries(run).includes('cat'));
+});
+
+test('activeLessonWords = the current lesson’s exposed, not-yet-known words (brain-break chips)', () => {
+  const run = freshRun();
+  const session = beginSession();
+  assert.deepEqual(activeLessonWords(run, LESSONS), []);
+  recordExposure(run, session, 'cat');
+  recordExposure(run, session, 'dog');
+  assert.deepEqual(activeLessonWords(run, LESSONS).sort(), ['cat', 'dog']);
+  for (let i = 0; i < KNOWN_AT; i++) recordRecall(run, session, 'cat', { correct: true }, LESSONS);
+  assert.deepEqual(activeLessonWords(run, LESSONS), ['dog']);
 });
 
 // ---- lessonStatus ---------------------------------------------------------------------

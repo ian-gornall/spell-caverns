@@ -14,7 +14,7 @@ import { summary } from '../engine/progress.js';
 import { setLevelAndRefill, resetForRetest, createCategoryState } from '../engine/categories.js';
 import { byRank, setWordlistMode, wordlistMode, lessonForBand, lessonCount, lessonList } from '../engine/lexicon.js';
 import { kidLesson } from '../engine/kidcopy.js';
-import { createLessonRun, syncLesson } from '../engine/lessonrun.js';
+import { createLessonRun, syncLesson, lessonStatus } from '../engine/lessonrun.js';
 import { COLOURS } from './onboarding.js';
 import { APP_VERSION } from '../version.js';
 import { swCacheVersion } from '../pwa.js';
@@ -235,9 +235,29 @@ export function settingsScreen(ctx) {
   // the placement diagnostic), not an age picker. A grown-up can RE-TEST (re-run the diagnostic
   // next Craft) or nudge the level ±1 band — the game still adapts up/down and revisits tricky
   // words. Writes state.categories.level (+ keeps startLevel in sync for display).
-  const curBand = ctx.state.categories.level || 1;
+  const curBand = wordlistMode() === 'lessons'
+    ? lessonStatus(ctx.state.lessons, lessonList()).number || 1
+    : ctx.state.categories.level || 1;
   const levelPool = () => byRank().filter((w) => w.word.length >= 3);
   const nudgeLevel = (delta) => {
+    // §40 lessons mode: the stepper moves the RUN through the lesson path (the categories
+    // machine is bypassed there — its level is just a mirror). Stepping onto a lesson
+    // re-opens it (drops it from completed) so it's playable again.
+    if (wordlistMode() === 'lessons') {
+      const lessons = lessonList();
+      const run = ctx.state.lessons;
+      let idx = lessons.findIndex((l) => l.id === run.lessonId);
+      if (idx === -1) idx = 0;
+      const target = lessons[Math.max(0, Math.min(lessons.length - 1, idx + delta))];
+      if (!target) return;
+      run.lessonId = target.id;
+      run.completed = run.completed.filter((id) => id !== target.id);
+      ctx.state.categories.level = target.band; // mirror for residual readers (admin export)
+      ctx.state.startLevel = target.band;
+      ctx.save();
+      ctx.nav('settings');
+      return;
+    }
     const next = Math.max(1, (ctx.state.categories.level || 1) + delta);
     setLevelAndRefill(ctx.state.categories, next, levelPool());
     ctx.state.startLevel = ctx.state.categories.level;

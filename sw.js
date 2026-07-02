@@ -285,7 +285,16 @@
 //      clips, so lessons-mode dictation lives on this path. Plus data/kid_rules.js + engine/
 //      kidcopy.js: every kid-facing lesson string (reteach strips, Progress path, Settings label)
 //      now reads a kid-voiced (age 6-9) overlay of the corpus's teacher-register rules.
-const VERSION = 'csc-v68';
+// csc-v69: §40 LESSONS-MODE REHAUL — the incremental-rehearsal trial stream replaces the
+//      Craft/Mastery split for lessons profiles (classic untouched). New engine/lessonrun.js
+//      (per-word rolling last-5 window, errorless exposure, IR interleave, unknown ceiling,
+//      lesson-complete) + engine/fatigue.js + modes/lesson.js (one stream: intro card →
+//      ghost-copy exposures → interleaved recalls with a FREE timed hint ladder — rung 1
+//      re-teaches the kid rule, rung 2 grey-copies the spelling) + screens/lesson_intro.js.
+//      Home hero = 📖 Today's lesson; Practice gates on 4 graduated words and mines the
+//      run's maintenance words; Progress shows the lesson path + per-word window pips;
+//      Settings stepper moves the run; state.lessons persisted per profile.
+const VERSION = 'csc-v69';
 
 const CORE = [
   '/',
@@ -316,6 +325,8 @@ const CORE = [
   '/src/engine/lexicon.js',
   '/src/engine/lists.js',
   '/src/engine/kidcopy.js',
+  '/src/engine/lessonrun.js',
+  '/src/engine/fatigue.js',
   '/src/engine/distractors.js',
   '/src/engine/praise.js',
   '/src/engine/voicequeue.js',
@@ -341,12 +352,14 @@ const CORE = [
   '/src/modes/rhythm.js',
   '/src/modes/puzzle.js',
   '/src/modes/mastery.js',
+  '/src/modes/lesson.js',
   '/src/modes/lab.js',
   '/src/screens/home.js',
   '/src/screens/settings.js',
   '/src/screens/progress.js',
   '/src/screens/feedback.js',
   '/src/screens/catalog.js',
+  '/src/screens/lesson_intro.js',
   '/src/screens/onboarding.js',
   '/src/screens/profiles.js',
   '/src/screens/boss.js',

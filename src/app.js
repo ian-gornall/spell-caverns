@@ -9,7 +9,7 @@ import * as audio from './audio.js';
 import { setRoot, render, toast, applyTheme, applyReadable, activePauseOverlay } from './ui.js';
 import { createActiveTimer } from './engine/activetime.js';
 import { learningProgress } from './engine/categories.js';
-import { setWordlistMode } from './engine/lexicon.js';
+import { setWordlistMode, wordlistMode, lessonList } from './engine/lexicon.js';
 import { homeScreen } from './screens/home.js';
 import { onboardingScreen } from './screens/onboarding.js';
 import { profilesScreen } from './screens/profiles.js';
@@ -24,7 +24,9 @@ import { adminFeedbackScreen } from './screens/admin_feedback.js';
 import { startRhythm } from './modes/rhythm.js';
 import { startPuzzle } from './modes/puzzle.js';
 import { startMastery } from './modes/mastery.js';
+import { startLesson } from './modes/lesson.js';
 import { startLab } from './modes/lab.js';
+import { activeLessonWords, syncLesson } from './engine/lessonrun.js';
 import { summary } from './engine/progress.js';
 import { depthForMastered } from './engine/narrative.js';
 // ⏸️ only used by the DISABLED /?dev=mastery test unlock (commented below) — kept for re-enabling:
@@ -39,6 +41,7 @@ const routes = {
   rhythm: startRhythm,
   puzzle: startPuzzle,
   mastery: startMastery,
+  lesson: startLesson, // §40 lessons-mode trial stream
   lab: startLab,
   feedback: feedbackScreen,
   catalog: catalogScreen,
@@ -97,6 +100,9 @@ function refreshActive() {
     applyReadable(s.settings.readableText);
     // §38: point the lexicon at this profile's word lists (classic or pattern lessons + age).
     setWordlistMode(s.settings.wordlists, s.settings.age ?? s.placement?.age);
+    // §40: self-heal the lesson run against the active path (fresh profiles pick lesson 1;
+    // age changes re-aim) so Home/Progress read a valid lesson before the mode first runs.
+    if (s.lessons) syncLesson(s.lessons, lessonList());
   }
   // §37 A: a profile switch is a real break — re-anchor play time to the new explorer + reset the
   // 20-minute streak so one child's session never carries into the next.
@@ -253,7 +259,11 @@ function installActivePause() {
   };
   const showBreak = () => {
     if (overlay) return;
-    const learning = ctx.state && ctx.state.categories ? learningProgress(ctx.state.categories) : [];
+    // §40: in lessons mode the categories machine is bypassed (learningProgress is empty
+    // there) — the break chips read the active lesson's in-progress words instead.
+    const learning = wordlistMode() === 'lessons'
+      ? (ctx.state && ctx.state.lessons ? activeLessonWords(ctx.state.lessons, lessonList()) : [])
+      : ctx.state && ctx.state.categories ? learningProgress(ctx.state.categories) : [];
     overlay = activePauseOverlay({ learning, durationMs: PAUSE_MS, onUnlock: endBreak, onGrownupSkip: endBreak });
   };
 

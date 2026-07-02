@@ -9,6 +9,9 @@ import { recommendNext } from '../engine/selection.js';
 import { streakIsLive, daysSinceLastPlayed } from '../engine/streak.js';
 import { dailyQuests, questProgress } from '../engine/quests.js';
 import { catalogSummary, affordableLocked } from '../engine/catalog.js';
+import { wordlistMode, lessonList } from '../engine/lexicon.js';
+import { lessonStatus, graduatedWords } from '../engine/lessonrun.js';
+import { kidLesson } from '../engine/kidcopy.js';
 
 export function homeScreen(ctx) {
   const name = ctx.state.profile.name || 'Explorer';
@@ -84,54 +87,90 @@ export function homeScreen(ctx) {
     ),
   );
 
-  const cards = [
-    // CRAFT is the headline act (§B): spelling a word from scratch is the assessment —
-    // the thing we most want kids to do and prove — so it's the full-width hero AND the
-    // best-paying path (gems carry the craft bonus). Mining is reframed as practice.
-    el(
-      'button',
-      { class: 'menu-card craft hero', onClick: () => ctx.nav('puzzle') },
-      el('span', { class: 'badge' }, '✨ Best gems'),
-      el('span', { class: 'ic' }, '🔨'),
-      el('span', { class: 'lbl' }, 'Craft'),
-      el('span', { class: 'desc' }, 'Spell the words yourself and prove you know them'),
-    ),
-    // Cracked crystals = words the learner missed. Surface a repair path (production
-    // practice of exactly those words) only when there are some to fix.
-    cracked > 0 &&
-      el(
-        'button',
-        { class: 'menu-card repair', onClick: () => ctx.nav('puzzle', { review: true }) },
-        el('span', { class: 'ic' }, '🔧'),
-        el('span', { class: 'lbl' }, `Repair${cracked >= 1 ? ` (${cracked})` : ''}`),
-        el('span', { class: 'desc' }, 'Re-spell the crystals you cracked'),
-      ),
-    // §30 MASTERY (draw): the headline test — spell a word by DRAWING each letter from memory.
-    // Unlocks once enough words are KNOWN from crafting (the unlock chain's middle rung).
-    gates.mastery &&
-      el(
-        'button',
-        { class: 'menu-card mastery' + (nudgeMastery ? ' nudge' : ''), onClick: () => ctx.nav('mastery') },
-        el('span', { class: 'badge' }, nudgeMastery ? '✍️ Master these!' : '⭐ Master it'),
-        el('span', { class: 'ic' }, '✍️'),
-        el('span', { class: 'lbl' }, 'Mastery'),
+  // §40 LESSONS MODE: the Craft/Repair/Mastery trio is replaced by ONE hero — today's
+  // lesson (the incremental-rehearsal stream owns teaching). Practice (mining) gates on
+  // earned graduations from the run, not the categories unlock chain (bypassed here).
+  const lessonsMode = wordlistMode() === 'lessons';
+  const lessonSt = lessonsMode ? lessonStatus(ctx.state.lessons, lessonList()) : null;
+  const lessonKid = lessonSt && lessonSt.lessonId
+    ? kidLesson(lessonList().find((l) => l.id === lessonSt.lessonId))
+    : null;
+  const miningReady = lessonsMode ? graduatedWords(ctx.state.lessons).length >= 4 : gates.mining;
+
+  const playCards = lessonsMode
+    ? [
         el(
-          'span',
-          { class: 'desc' },
-          nudgeMastery
-            ? `${rec.knownBacklog} word${rec.knownBacklog === 1 ? '' : 's'} ready — draw ${rec.knownBacklog === 1 ? 'it' : 'them'} from memory!`
-            : 'Draw the letters from memory — no tiles!',
+          'button',
+          { class: 'menu-card craft lesson hero', onClick: () => ctx.nav('lesson') },
+          el('span', { class: 'badge' }, '✨ Best gems'),
+          el('span', { class: 'ic' }, '📖'),
+          el('span', { class: 'lbl' }, "Today's lesson"),
+          el('span', { class: 'desc' }, lessonSt.allDone
+            ? 'Every lesson done — you finished the path! 🏆'
+            : lessonKid
+              ? `Lesson ${lessonSt.number}: ${lessonKid.name} · ✨${lessonSt.graduated}/${lessonSt.pool} learned`
+              : 'Learn your next spelling pattern'),
         ),
-      ),
-    // Mining is RECOGNITION practice — fast, fun, low-stakes warm-up. Kept engaging but
-    // clearly secondary to crafting (§B): the calmer, shorter "practice" banner.
-    el(
-      'button',
-      { class: 'menu-card play practice' + (gates.mining ? '' : ' locked'), onClick: () => ctx.nav('rhythm') },
-      el('span', { class: 'ic' }, gates.mining ? '⛏️' : '🔒'),
-      el('span', { class: 'lbl' }, 'Practice'),
-      el('span', { class: 'desc' }, gates.mining ? 'Warm up — spell the words you hear' : 'Master words in Mastery to unlock fast mining'),
-    ),
+        el(
+          'button',
+          { class: 'menu-card play practice' + (miningReady ? '' : ' locked'), onClick: () => ctx.nav('rhythm') },
+          el('span', { class: 'ic' }, miningReady ? '⛏️' : '🔒'),
+          el('span', { class: 'lbl' }, 'Practice'),
+          el('span', { class: 'desc' }, miningReady ? 'Keep your learned words sparkling' : 'Learn 4 words in your lesson to unlock'),
+        ),
+      ]
+    : [
+        // CRAFT is the headline act (§B): spelling a word from scratch is the assessment —
+        // the thing we most want kids to do and prove — so it's the full-width hero AND the
+        // best-paying path (gems carry the craft bonus). Mining is reframed as practice.
+        el(
+          'button',
+          { class: 'menu-card craft hero', onClick: () => ctx.nav('puzzle') },
+          el('span', { class: 'badge' }, '✨ Best gems'),
+          el('span', { class: 'ic' }, '🔨'),
+          el('span', { class: 'lbl' }, 'Craft'),
+          el('span', { class: 'desc' }, 'Spell the words yourself and prove you know them'),
+        ),
+        // Cracked crystals = words the learner missed. Surface a repair path (production
+        // practice of exactly those words) only when there are some to fix.
+        cracked > 0 &&
+          el(
+            'button',
+            { class: 'menu-card repair', onClick: () => ctx.nav('puzzle', { review: true }) },
+            el('span', { class: 'ic' }, '🔧'),
+            el('span', { class: 'lbl' }, `Repair${cracked >= 1 ? ` (${cracked})` : ''}`),
+            el('span', { class: 'desc' }, 'Re-spell the crystals you cracked'),
+          ),
+        // §30 MASTERY (draw): the headline test — spell a word by DRAWING each letter from memory.
+        // Unlocks once enough words are KNOWN from crafting (the unlock chain's middle rung).
+        gates.mastery &&
+          el(
+            'button',
+            { class: 'menu-card mastery' + (nudgeMastery ? ' nudge' : ''), onClick: () => ctx.nav('mastery') },
+            el('span', { class: 'badge' }, nudgeMastery ? '✍️ Master these!' : '⭐ Master it'),
+            el('span', { class: 'ic' }, '✍️'),
+            el('span', { class: 'lbl' }, 'Mastery'),
+            el(
+              'span',
+              { class: 'desc' },
+              nudgeMastery
+                ? `${rec.knownBacklog} word${rec.knownBacklog === 1 ? '' : 's'} ready — draw ${rec.knownBacklog === 1 ? 'it' : 'them'} from memory!`
+                : 'Draw the letters from memory — no tiles!',
+            ),
+          ),
+        // Mining is RECOGNITION practice — fast, fun, low-stakes warm-up. Kept engaging but
+        // clearly secondary to crafting (§B): the calmer, shorter "practice" banner.
+        el(
+          'button',
+          { class: 'menu-card play practice' + (gates.mining ? '' : ' locked'), onClick: () => ctx.nav('rhythm') },
+          el('span', { class: 'ic' }, gates.mining ? '⛏️' : '🔒'),
+          el('span', { class: 'lbl' }, 'Practice'),
+          el('span', { class: 'desc' }, gates.mining ? 'Warm up — spell the words you hear' : 'Master words in Mastery to unlock fast mining'),
+        ),
+      ];
+
+  const cards = [
+    ...playCards,
     el(
       'button',
       { class: 'menu-card lab', onClick: () => ctx.nav('lab') },
@@ -191,8 +230,10 @@ export function homeScreen(ctx) {
     mastery: { sel: '.menu-card.mastery', nav: 'mastery', toast: '✍️ You’ve learned these — now master them!' },
     mining: { sel: '.menu-card.play', nav: 'rhythm', toast: '⛏️ Warm up with some mining!' },
     craft: { sel: '.menu-card.craft', nav: 'puzzle', toast: '✨ Ready to craft some words? Tap Craft!' },
+    lesson: { sel: '.menu-card.lesson', nav: 'lesson', toast: '📖 Your lesson is waiting — let’s go!' },
   };
-  const nudge = NUDGE[rec.mode] || NUDGE.craft;
+  // §40: in lessons mode the recommender is bypassed — the lesson hero IS the next act.
+  const nudge = lessonsMode ? NUDGE.lesson : NUDGE[rec.mode] || NUDGE.craft;
   const guard = createIdleGuard({
     nudgeMs: 13000,
     pauseMs: 32000,

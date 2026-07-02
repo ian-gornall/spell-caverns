@@ -101,20 +101,19 @@ try {
   ok(/9 years/.test(age2 || ''), `settings: Older ➕ nudges the age (got "${age2}")`);
   await backHome(page);
 
-  // ---------- B+C. Craft serves lesson words; a miss reteaches the rule ----------
-  await page.locator('.menu-card.craft').click();
-  await page.waitForSelector('.tray-tile', { timeout: 8000 });
-  await page.waitForTimeout(600);
-  const cur = await page.evaluate(() => window.__puzzleCurrent);
-  ok(cur && cur.band === 1, `craft: serving lesson 1 (band=${cur?.band}, word="${cur?.word}")`);
-  ok(!cur?.placement, 'craft: no placement diagnostic in lessons mode');
-  await page.screenshot({ path: `${OUT}/04-craft-lesson1.png` });
-  const { target, forcedWrong } = await buildWrong(page);
-  ok(forcedWrong, `craft: built a wrong "${target}" on purpose`);
-  await page.waitForTimeout(600);
-  const rule = (await page.locator('.puzzle .reteach, .reteach').first().textContent().catch(() => ''))?.trim();
-  ok(!!rule && rule.length > 10, `craft: reteach strip shows the rule ("${(rule || '').slice(0, 60)}…")`);
-  await page.screenshot({ path: `${OUT}/05-craft-reteach.png` });
+  // ---------- B+C. the hero routes into the §40 LESSON STREAM (not classic Craft) ----------
+  // (The stream's own behavior — exposure/ghosts/ladder/reteach/graduation — is guarded in
+  // depth by scripts/qa_s40.mjs; here we just prove lessons mode plays through it.)
+  await page.locator('.menu-card.lesson').click();
+  await page.waitForSelector('.lintro-overlay', { timeout: 8000 });
+  ok(true, 'lessons: the hero opens the lesson stream (intro card first)');
+  await page.screenshot({ path: `${OUT}/04-lesson-intro.png` });
+  await page.locator('.lintro-go').click();
+  await page.waitForFunction(() => window.__lessonCurrent, null, { timeout: 8000 });
+  const cur = await page.evaluate(() => window.__lessonCurrent);
+  ok(!!cur && !!cur.word, `lessons: the stream serves a trial ("${cur?.word}")`);
+  ok(await page.locator('.type-keyboard .key').count() > 20, 'lessons: the app keypad is the input');
+  await page.screenshot({ path: `${OUT}/05-lesson-trial.png` });
 
   // ---------- D. Progress: lesson path ----------
   await backHome(page);

@@ -21,6 +21,8 @@ import { el, header, burst, toast, createIdleGuard, pulse, fitPlayArea } from '.
 import { buildFirstWave, unlockedDifficulties, UNLOCK_THRESHOLDS } from '../engine/session.js';
 import { buildMiningPool, recommendNext } from '../engine/selection.js';
 import { unlocks } from '../engine/categories.js';
+import { maintenanceEntries, graduatedWords } from '../engine/lessonrun.js';
+import { wordlistMode } from '../engine/lexicon.js';
 import { buildOptions, mulberry32, recognitionOptionCount } from '../engine/distractors.js';
 import { byRank } from '../engine/lexicon.js';
 import { gradeAnswer, projectedScore, MINING_SPEED_TIERS } from '../engine/praise.js';
@@ -70,9 +72,22 @@ export function startRhythm(ctx, params = {}) {
   // a guaranteed-win taste of easy words before anything is known yet. (Interim gate: once
   // the draw mode ships, mining tightens to "after [set size] MASTERED" per §30.C; until
   // then it's available as soon as there are known words to mine.)
+  // §40 lessons mode: mining serves the run's MAINTENANCE material (known words,
+  // longest-unseen first) instead of the categories pool — the categories machine is
+  // bypassed there. Classic keeps the §30 buildMiningPool path unchanged.
+  const lessonsMode = wordlistMode() === 'lessons';
+  const lessonMiningSession = () => {
+    const known = new Set(maintenanceEntries(state.lessons));
+    const entries = byRank().filter((w) => known.has(w.word));
+    // longest-unseen order from the run; entries lookup keeps sentences/graphemes
+    const byWord = new Map(entries.map((e) => [e.word, e]));
+    return maintenanceEntries(state.lessons).map((w) => byWord.get(w)).filter(Boolean).slice(0, length);
+  };
   const session = firstRun
     ? buildFirstWave(byRank(), { startTier: state.startLevel || 1, length, rng })
-    : buildMiningPool(state.categories, byRank().filter((w) => w.word.length >= 3), { length, rng });
+    : lessonsMode
+      ? lessonMiningSession()
+      : buildMiningPool(state.categories, byRank().filter((w) => w.word.length >= 3), { length, rng });
 
   // --- static structure -----------------------------------------------------
   const dots = el('div', { class: 'dots' });
@@ -153,20 +168,26 @@ export function startRhythm(ctx, params = {}) {
   // §30.C unlock chain: MINING is the LAST rung — it opens only after [set size] words are
   // MASTERED (via the draw mode). The first-run welcome wave bypasses this. A locked/empty
   // mine steers onward (Mastery → Craft) instead of dead-ending.
-  const miningLocked = !firstRun && !unlocks(state.categories).mining;
+  // §40 lessons mode gates on earned graduations from the run (>= 4), steering back
+  // to the lesson stream; classic keeps the §30 mastered-words gate.
+  const miningLocked = !firstRun && (lessonsMode
+    ? graduatedWords(state.lessons).length < 4
+    : !unlocks(state.categories).mining);
   if (miningLocked || !session.length) {
     speedMeter.style.display = 'none';
     tilesEl.replaceChildren(
       el(
         'button',
-        { class: 'btn primary', onClick: () => ctx.nav(miningLocked ? 'mastery' : 'puzzle') },
-        miningLocked ? '✍️ Master words to unlock mining' : '🔨 Craft some words first ✨',
+        { class: 'btn primary', onClick: () => ctx.nav(lessonsMode ? 'lesson' : miningLocked ? 'mastery' : 'puzzle') },
+        lessonsMode ? '📖 Back to your lesson' : miningLocked ? '✍️ Master words to unlock mining' : '🔨 Craft some words first ✨',
       ),
       el('button', { class: 'btn', onClick: () => ctx.nav('home') }, '🏠 Home'),
     );
-    sentenceEl.textContent = miningLocked
-      ? 'Mining unlocks once you’ve MASTERED enough words — draw them in Mastery! ✍️'
-      : 'Craft a few words to fill your mine — then come dig them for gems!';
+    sentenceEl.textContent = lessonsMode
+      ? 'Practice opens once you’ve learned a few lesson words — keep going!'
+      : miningLocked
+        ? 'Mining unlocks once you’ve MASTERED enough words — draw them in Mastery! ✍️'
+        : 'Craft a few words to fill your mine — then come dig them for gems!';
     return screen;
   }
 

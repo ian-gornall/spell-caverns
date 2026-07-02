@@ -6,8 +6,9 @@
 // quests, personal bests, recent-days accuracy, and the crystal catalog. Display-only.
 import { el, header, toast } from '../ui.js';
 import { categorySummary, cavernLevels, setLevelAndRefill } from '../engine/categories.js';
-import { byRank, wordlistMode, lessonForBand } from '../engine/lexicon.js';
+import { byRank, wordlistMode, lessonForBand, lessonList } from '../engine/lexicon.js';
 import { kidLesson } from '../engine/kidcopy.js';
+import { lessonStatus, wordState, graduatedWords, activeLessonWords, WIN } from '../engine/lessonrun.js';
 import { dailyQuests, questProgress, allQuestsDone } from '../engine/quests.js';
 import { catalogSummary } from '../engine/catalog.js';
 
@@ -61,7 +62,9 @@ export function progressScreen(ctx) {
             // §C1: show the CAVERN LEVEL (the 30-word band the diagnostic placed them at / they've
             // climbed to) — that's the "where am I" number. (cavern DEPTH = mastery zones, separate;
             // unifying the two is the D4 cavern-map redesign.)
-            el('span', { class: 'big-num' }, `⛏️ ${(ctx.state.categories && ctx.state.categories.level) || 1}`),
+            el('span', { class: 'big-num' }, `⛏️ ${wordlistMode() === 'lessons'
+              ? lessonStatus(ctx.state.lessons, lessonList()).number || 1
+              : (ctx.state.categories && ctx.state.categories.level) || 1}`),
             el('span', { class: 'haul-label' }, wordlistMode() === 'lessons' ? 'lesson' : 'cavern level'),
           ),
           el(
@@ -72,8 +75,8 @@ export function progressScreen(ctx) {
           ),
         ),
       ),
-      wordsPanel(ctx),
-      cavernMap(ctx),
+      wordlistMode() === 'lessons' ? lessonWordsPanel(ctx) : wordsPanel(ctx),
+      wordlistMode() === 'lessons' ? lessonPath(ctx) : cavernMap(ctx),
       questsPanel(ctx),
       el(
         'div',
@@ -156,6 +159,108 @@ function wordsPanel(ctx) {
         { class: 'btn', style: { marginTop: '14px', width: '100%' }, onClick: () => ctx.nav('puzzle', { review: true }) },
         `🔧 Repair ${cracked} word${cracked === 1 ? '' : 's'} you missed`,
       ),
+  );
+}
+
+// §40 lessons mode: "Words I'm learning" reads the RUN (the categories machine is
+// bypassed) — the current lesson's in-progress words, each with its rolling last-5
+// recall window as pips (● hit ○ miss), plus a learned/left tally.
+function lessonWordsPanel(ctx) {
+  const run = ctx.state.lessons;
+  const lessons = lessonList();
+  const st = lessonStatus(run, lessons);
+  const active = activeLessonWords(run, lessons);
+  const learnList = active.length
+    ? el(
+        'div',
+        { class: 'learn-grid' },
+        ...active.map((w) => {
+          const win = (run.words[w]?.win || []).slice(-WIN);
+          return el(
+            'div',
+            { class: 'learn-word' },
+            el('span', { class: 'learn-text' }, w),
+            el(
+              'div',
+              { class: 'learn-pips' },
+              ...win.map((x) => el('span', { class: 'pip' + (x.c ? ' on' : '') })),
+            ),
+          );
+        }),
+      )
+    : el('p', { style: { color: 'var(--ink-dim)' } }, 'Start your lesson to meet your next words! 📖');
+
+  const tile = (ic, n, label) =>
+    el(
+      'div',
+      { class: 'stat', style: { flexDirection: 'column' } },
+      el('span', { class: 'big-num' }, `${ic} ${n}`),
+      el('span', { style: { color: 'var(--ink-dim)' } }, label),
+    );
+
+  return el(
+    'div',
+    { class: 'panel' },
+    el('h3', {}, 'Words I’m learning'),
+    learnList,
+    el(
+      'div',
+      { class: 'seg', style: { marginTop: '12px' } },
+      tile('⭐', graduatedWords(run).length, 'learned'),
+      tile('✨', st.graduated, 'this lesson'),
+      tile('🪨', Math.max(0, st.pool - st.graduated), 'to finish it'),
+    ),
+  );
+}
+
+// §40 lessons mode: the LESSON PATH from the run — completed lessons ⭐, the current
+// one highlighted with its graduated/pool bar, later lessons locked. Labels are
+// kid-voiced (kidcopy). Tapping the current lesson jumps into the stream.
+function lessonPath(ctx) {
+  const run = ctx.state.lessons;
+  const lessons = lessonList();
+  const st = lessonStatus(run, lessons);
+  let currentEl = null;
+  const node = (l) => {
+    const status = run.completed.includes(l.id) ? 'cleared' : l.id === run.lessonId ? 'current' : 'locked';
+    const pool = l.words.length;
+    const done = status === 'cleared' ? pool : l.words.filter((e) => wordState(run, e.word) === 'known').length;
+    const b = el(
+      'button',
+      {
+        class: `cavern-level ${status}`,
+        disabled: status === 'locked',
+        onClick: () => {
+          if (status === 'current') ctx.nav('lesson');
+          else if (status === 'cleared') toast('⭐ Done! Its words stay in your Practice mine.');
+        },
+      },
+      el('span', { class: 'cl-icon' }, LEVEL_ICON[status]),
+      el(
+        'div',
+        { class: 'cl-main' },
+        el('span', { class: 'cl-num' }, `Lesson ${l.band}`),
+        el('span', { class: 'cl-lesson' }, kidLesson(l).name),
+        el('div', { class: 'cl-bar' }, el('div', { class: 'cl-fill', style: { width: pool ? `${Math.round((done / pool) * 100)}%` : '0%' } })),
+      ),
+      el('span', { class: 'cl-prog' }, pool ? `${done}/${pool}` : ''),
+    );
+    if (status === 'current') currentEl = b;
+    return b;
+  };
+  const scroll = el('div', { class: 'cavern-scroll' }, ...lessons.map(node));
+  setTimeout(() => {
+    if (currentEl) scroll.scrollTop = Math.max(0, currentEl.offsetTop - scroll.clientHeight / 2 + currentEl.clientHeight / 2);
+  }, 0);
+  const note = st.allDone
+    ? `Every lesson done — the whole path is yours! 🏆`
+    : `You're at Lesson ${st.number} of ${st.total} — ${run.completed.length} done ⭐`;
+  return el(
+    'div',
+    { class: 'panel' },
+    el('h3', {}, 'Lesson path'),
+    el('p', { class: 'quest-note', style: { marginTop: '0', marginBottom: '10px' } }, note),
+    scroll,
   );
 }
 
